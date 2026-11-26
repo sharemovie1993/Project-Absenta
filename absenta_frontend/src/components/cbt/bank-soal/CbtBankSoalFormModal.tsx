@@ -1007,6 +1007,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         .map((c) => c.kelasId)
         .filter((id): id is string => Boolean(id));
 
+      let parallelRows: any[] = [];
       if (isShared) {
         const cachedParallel: any = queryClient.getQueryData([
           'parallel-teachers',
@@ -1014,7 +1015,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
           activeTpId,
           activeSemId,
         ]);
-        const parallelRows: any[] = cachedParallel?.data || [];
+        parallelRows = cachedParallel?.data || [];
         const targetTingkatNum = parseStrictTingkatValue(tingkat);
         const creatorDuty = tingkat ? tingkatDutyMap.get(tingkat) : undefined;
         const creatorJurusans =

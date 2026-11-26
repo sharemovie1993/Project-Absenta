@@ -100,24 +100,34 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
   }, [parallelTeachersRes?.data, mapelId, currentGuruId, targetTingkatNum, targetJurusanTokens]);
 
   // Peta eksplisit guru_id -> daftar kelas (id, nama_kelas, jurusanCode) pada tingkat sasaran
-  const colleagueKelasMap = useMemo(() => {
+  const { colleagueKelasMap, creatorInfo } = useMemo(() => {
     const map = new Map<string, Array<{ kelasId: string; namaKelas: string; jurusanCode: string }>>();
+    const creatorKelas: Array<{ kelasId: string; namaKelas: string; jurusanCode: string }> = [];
+    let creatorName = '';
     const rows: any[] = parallelTeachersRes?.data || [];
     rows.forEach((gm: any) => {
-      if (!gm?.guru_id || gm.guru_id === currentGuruId || !gm.Kelas?.id) return;
+      if (!gm?.guru_id || !gm.Kelas?.id) return;
       const gmTingkat = Number(gm.Kelas?.tingkat ?? gm.tingkat);
       if (targetTingkatNum && gmTingkat && gmTingkat !== targetTingkatNum) return;
       const jObj = gm.Kelas?.Jurusan || gm.Jurusan;
       const jCode = (jObj?.singkatan || jObj?.kode || jObj?.kode_jurusan || jObj?.nama || '')
         .toUpperCase()
         .trim();
+      const kelasItem = {
+        kelasId: gm.Kelas.id,
+        namaKelas: gm.Kelas.nama_kelas || gm.Kelas.nama || '-',
+        jurusanCode: jCode,
+      };
+      if (gm.guru_id === currentGuruId) {
+        if (!creatorName && gm.Guru?.nama_guru) creatorName = gm.Guru.nama_guru;
+        if (!creatorKelas.some((x) => x.kelasId === kelasItem.kelasId)) {
+          creatorKelas.push(kelasItem);
+        }
+        return;
+      }
       const arr = map.get(gm.guru_id) || [];
-      if (!arr.some((x) => x.kelasId === gm.Kelas.id)) {
-        arr.push({
-          kelasId: gm.Kelas.id,
-          namaKelas: gm.Kelas.nama_kelas || gm.Kelas.nama || '-',
-          jurusanCode: jCode,
-        });
+      if (!arr.some((x) => x.kelasId === kelasItem.kelasId)) {
+        arr.push(kelasItem);
       }
       map.set(gm.guru_id, arr);
     });
@@ -125,7 +135,17 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
       arr.sort((a, b) => a.namaKelas.localeCompare(b.namaKelas, 'id', { numeric: true }));
       map.set(key, arr);
     });
-    return map;
+    creatorKelas.sort((a, b) => a.namaKelas.localeCompare(b.namaKelas, 'id', { numeric: true }));
+    return {
+      colleagueKelasMap: map,
+      creatorInfo: currentGuruId
+        ? {
+            id: currentGuruId,
+            name: creatorName || 'Anda (Pembuat Soal)',
+            kelasList: creatorKelas,
+          }
+        : null,
+    };
   }, [parallelTeachersRes?.data, currentGuruId, targetTingkatNum]);
 
   const guruOwnBankSet = useMemo(() => {
@@ -336,6 +356,47 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
         </div>
 
         <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto pr-1">
+          {creatorInfo && (
+            <div className="p-2.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50/70 dark:bg-emerald-950/30 text-xs space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0 flex-1 select-none">
+                  <input
+                    type="checkbox"
+                    checked={true}
+                    disabled
+                    readOnly
+                    className="rounded border-emerald-400 text-emerald-600 shrink-0 cursor-not-allowed"
+                  />
+                  <span className="font-bold text-slate-800 dark:text-slate-100 truncate">
+                    {creatorInfo.name}
+                  </span>
+                  {creatorInfo.kelasList.length > 0 && (
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 font-semibold shrink-0">
+                      {creatorInfo.kelasList.length}/{creatorInfo.kelasList.length} kelas
+                    </span>
+                  )}
+                </div>
+                <span className="text-[9.5px] px-1.5 py-0.5 rounded-md bg-emerald-600 text-white font-bold shrink-0">
+                  Pembuat Master (Anda)
+                </span>
+              </div>
+              {creatorInfo.kelasList.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pl-6">
+                  {creatorInfo.kelasList.map((k) => (
+                    <span
+                      key={k.kelasId}
+                      className="px-2 py-1 rounded-lg border border-emerald-500 bg-emerald-600 text-white text-[11px] font-semibold flex items-center gap-1.5 shadow-2xs"
+                    >
+                      <span className="w-3 h-3 rounded-xs flex items-center justify-center text-[9px] border border-white/70 bg-white/20 text-white">
+                        ✓
+                      </span>
+                      <span>{k.namaKelas}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {parallelColleagues.map((colleague) => {
             const teacherKelasList = colleagueKelasMap.get(colleague.id) || [];
             const selectedCountForTeacher = teacherKelasList.filter((k) =>
