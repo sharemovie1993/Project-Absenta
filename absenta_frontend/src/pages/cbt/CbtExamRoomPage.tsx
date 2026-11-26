@@ -1508,7 +1508,7 @@ export default function CbtExamRoomPage() {
     return (
       <div
         ref={containerRef}
-        className="fixed inset-0 z-50 min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col select-none overflow-hidden"
+        className="fixed inset-0 z-50 h-[100dvh] max-h-[100dvh] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col select-none overflow-hidden"
       >
         {/* Top Bar Pengawasan & Timer dengan Proteksi Kamera Notch / Punch Hole Depan */}
         <header
@@ -1611,7 +1611,7 @@ export default function CbtExamRoomPage() {
         </header>
 
         {/* Main Workspace Layout */}
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+        <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden relative">
           {/* Kolom Soal Aktif (75%) */}
           <main className="flex-1 overflow-y-auto p-3.5 sm:p-6 lg:p-8 space-y-5 pb-24 md:pb-8">
             {currentSoal ? (
@@ -1849,9 +1849,9 @@ export default function CbtExamRoomPage() {
         {/* ── STICKY MOBILE BOTTOM BAR (SLIM & BEBAS TUMPANG TINDIH TOMBOL NAVIGASI HP) ── */}
         <nav
           aria-label="Navigasi Soal Ponsel"
-          className="md:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-2.5 py-1.5 shrink-0 z-40 shadow-md"
+          className="md:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-2.5 pt-2 shrink-0 z-40 shadow-md"
           style={{
-            paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)',
+            paddingBottom: 'calc(max(env(safe-area-inset-bottom, 0px), 16px) + 10px)',
             paddingLeft: 'max(env(safe-area-inset-left, 0px), 0.5rem)',
             paddingRight: 'max(env(safe-area-inset-right, 0px), 0.5rem)',
           }}
