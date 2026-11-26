@@ -374,14 +374,29 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       }));
     } catch {}
 
-    // ── 7. Hubin & PKL Industri ───────────────────────────────────────────────
+    // ── 7. Konteks Akademik Aktif & Hubin PKL / Sidang ────────────────────────
+    const [activeTp, activeSem] = await Promise.all([
+      prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true, tahun: true } }),
+      prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true, nama_semester: true } }),
+    ]);
+    const activeTpLabel = activeTp ? `${activeTp.tahun}${activeSem ? ` (${activeSem.nama_semester})` : ''}` : '';
+
+    const pklAcademicScope: any = activeTp
+      ? {
+          OR: [
+            { SiswaAkademik: { tahun_pelajaran_id: activeTp.id } },
+            { siswa_akademik_id: null, tanggal_mulai: { gte: new Date(`${activeTp.tahun.slice(0, 4)}-01-01T00:00:00Z`) } },
+          ],
+        }
+      : {};
+
     let totalSiswaPklAktif = 0;
     let siswaPklHadir = 0;
     let siswaPklKendala = 0;
 
     try {
       totalSiswaPklAktif = await prisma.siswaPkl.count({
-        where: { tenant_id: tenantId, status: 'AKTIF' },
+        where: { tenant_id: tenantId, status: 'AKTIF', ...pklAcademicScope },
       });
 
       const pklStats = await prisma.absensiPkl.groupBy({
@@ -389,6 +404,7 @@ export class KepsekBriefingCollector implements IBriefingCollector {
         where: {
           tenant_id: tenantId,
           tanggal: { gte: startUTC, lte: endUTC },
+          ...(activeTp ? { SiswaPkl: pklAcademicScope } : {}),
         },
         _count: { id: true },
       });
@@ -401,35 +417,66 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       }
     } catch {}
 
-    // ── 7b. Hubin & PKL: Progres Input Nilai PKL & Sidang ───────────────────
+    // ── 7b. Hubin & PKL: Progres Input Nilai PKL & Sidang (Scoped TP Aktif) ──
     let totalPklAll = 0;
     let pklNilaiTerisi = 0;
     let pklSidangTerisi = 0;
+    let pklSidangScheduled = 0;
+    let pklAssessmentMode = 'DUDI_ONLY';
     try {
+      if (activeTp) {
+        const hubinSetting = await prisma.hubinSetting.findUnique({
+          where: {
+            tenant_id_tahun_pelajaran_id: {
+              tenant_id: tenantId,
+              tahun_pelajaran_id: activeTp.id,
+            },
+          },
+          select: { assessment_mode: true },
+        });
+        if (hubinSetting?.assessment_mode) {
+          pklAssessmentMode = hubinSetting.assessment_mode;
+        }
+      }
+
       const pklRows = await prisma.siswaPkl.findMany({
-        where: { tenant_id: tenantId, status: { in: ['AKTIF', 'SELESAI'] } },
+        where: {
+          tenant_id: tenantId,
+          status: { in: ['AKTIF', 'SELESAI'] },
+          ...pklAcademicScope,
+        },
         select: {
           nilai_akhir_pkl: true,
           hard_kompetensi_teknis: true,
+          soft_kedisiplinan: true,
           nomor_sertifikat: true,
           nilai_json: true,
         },
       });
       totalPklAll = pklRows.length;
       for (const row of pklRows) {
-        const hasNilai =
+        const nj = (row.nilai_json && typeof row.nilai_json === 'object' ? row.nilai_json : {}) as Record<string, any>;
+        const hasNilaiPkl =
           row.nilai_akhir_pkl !== null ||
           row.hard_kompetensi_teknis !== null ||
-          (row.nilai_json && typeof row.nilai_json === 'object' && Object.keys(row.nilai_json as any).length > 0);
-        if (hasNilai) pklNilaiTerisi++;
-        const hasSidang = Boolean(row.nomor_sertifikat) || (row.nilai_akhir_pkl !== null);
+          row.soft_kedisiplinan !== null ||
+          (nj.dudi_avg !== undefined && nj.dudi_avg !== null) ||
+          (nj.nilai_akhir !== undefined && nj.nilai_akhir !== null);
+        if (hasNilaiPkl) pklNilaiTerisi++;
+
+        if (nj.penguji_id) pklSidangScheduled++;
+        const hasSidang =
+          (nj.nilai_sidang !== undefined && nj.nilai_sidang !== null) ||
+          (nj.sidang_avg !== undefined && nj.sidang_avg !== null) ||
+          Boolean(nj.sidang_completed_at);
         if (hasSidang) pklSidangTerisi++;
       }
     } catch (err) {
       console.warn('[Briefing:PKL] Error querying PKL grading:', err);
     }
     const progresNilaiPklPct = totalPklAll > 0 ? Math.round((pklNilaiTerisi / totalPklAll) * 100) : 0;
-    const progresSidangPklPct = totalPklAll > 0 ? Math.round((pklSidangTerisi / totalPklAll) * 100) : 0;
+    const sidangDenominator = pklSidangScheduled > 0 ? pklSidangScheduled : totalPklAll;
+    const progresSidangPklPct = sidangDenominator > 0 ? Math.round((pklSidangTerisi / sidangDenominator) * 100) : 0;
 
     // ── 7c. Kurikulum: Event CBT Aktif & Progres Pengumpulan Soal ─────────────
     let activeCbtEvents: Array<{ nama_event: string; kode_event: string; semester: string }> = [];
@@ -440,11 +487,6 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       activeCbtEvents = await prisma.cbtEvent.findMany({
         where: { tenant_id: tenantId, is_active: true },
         select: { nama_event: true, kode_event: true, semester: true },
-      });
-
-      const activeTp = await prisma.tahunPelajaran.findFirst({
-        where: { tenant_id: tenantId, is_active: true },
-        select: { id: true },
       });
 
       const bankWhere: any = { tenant_id: tenantId };
@@ -490,11 +532,6 @@ export class KepsekBriefingCollector implements IBriefingCollector {
         );
         if (isComplete) biodataLengkapCount++;
       }
-
-      const [activeTp, activeSem] = await Promise.all([
-        prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true, tahun: true } }),
-        prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true, nama_semester: true } }),
-      ]);
 
       if (activeTp && activeSem) {
         activeSemesterLabel = `${activeTp.tahun} (${activeSem.nama_semester})`;
@@ -851,30 +888,35 @@ export class KepsekBriefingCollector implements IBriefingCollector {
 
     // SEKSI 5: HUBIN & PKL (Jika sekolah SMK / ada siswa PKL)
     if (totalSiswaPklAktif > 0 || totalPklAll > 0) {
+      const sidangProgressDetail =
+        pklAssessmentMode === 'DUDI_ONLY' && pklSidangScheduled === 0 && pklSidangTerisi === 0
+          ? 'Mode Penilaian: DUDI Only (Tanpa Sidang)'
+          : `${pklSidangTerisi} / ${sidangDenominator} Siswa Selesai Sidang`;
+
       sections.push({
         id: 'hubin_pkl',
         title: 'Divisi Hubungan Industri, PKL & Sidang',
         category: 'Hubin & PKL',
         badge: `Nilai PKL ${progresNilaiPklPct}%`,
-        summary: `Terdapat ${totalSiswaPklAktif} siswa aktif magang di mitra DUDI (${siswaPklHadir} lapor hadir hari ini). Progres input nilai PKL mencapai ${progresNilaiPklPct}% dan sidang/sertifikat ${progresSidangPklPct}%.`,
+        summary: `Konteks ${activeTpLabel || 'TP Aktif'}: ${totalPklAll} siswa PKL (${totalSiswaPklAktif} aktif di DUDI, ${siswaPklHadir} lapor hadir hari ini). Progres input nilai PKL ${progresNilaiPklPct}% dan penilaian sidang ${progresSidangPklPct}%.`,
         stats: [
           { label: 'Total Siswa PKL', value: totalPklAll || totalSiswaPklAktif },
           { label: 'Lapor Hadir Hari Ini', value: siswaPklHadir },
           { label: 'Kendala / Tidak Hadir', value: siswaPklKendala },
           { label: 'Input Nilai PKL', value: `${progresNilaiPklPct}%` },
-          { label: 'Nilai Sidang / Sertifikat', value: `${progresSidangPklPct}%` },
+          { label: 'Nilai Sidang PKL', value: `${progresSidangPklPct}%` },
         ],
         progressBars: [
           {
-            label: 'Progres Input Nilai PKL',
+            label: 'Progres Input Nilai PKL (DUDI)',
             value: progresNilaiPklPct,
             detail: `${pklNilaiTerisi} / ${totalPklAll} Siswa Dinilai`,
             color: progresNilaiPklPct >= 90 ? 'emerald' : progresNilaiPklPct >= 50 ? 'indigo' : 'amber',
           },
           {
-            label: 'Progres Penilaian Sidang & Sertifikat PKL',
+            label: 'Progres Penilaian Sidang PKL',
             value: progresSidangPklPct,
-            detail: `${pklSidangTerisi} / ${totalPklAll} Siswa Selesai`,
+            detail: sidangProgressDetail,
             color: progresSidangPklPct >= 90 ? 'emerald' : 'blue',
           },
         ],
