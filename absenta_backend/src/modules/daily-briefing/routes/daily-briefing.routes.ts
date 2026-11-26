@@ -40,4 +40,20 @@ export async function dailyBriefingRoutes(fastify: any) {
     },
     dailyBriefingController.previewBriefing.bind(dailyBriefingController)
   );
+
+  fastify.get(
+    '/daily-briefing/group-target',
+    {
+      preHandler: [requireCapability('dashboard.view.overview')],
+    },
+    dailyBriefingController.getGroupTarget.bind(dailyBriefingController)
+  );
+
+  fastify.post(
+    '/daily-briefing/group-target',
+    {
+      preHandler: [requireCapability('dashboard.view.overview')],
+    },
+    dailyBriefingController.saveGroupTarget.bind(dailyBriefingController)
+  );
 }

@@ -15,6 +15,8 @@ import {
   Building2,
   Calendar,
   X,
+  Users,
+  BookmarkCheck,
 } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import { Button, Input, Alert, AlertTitle, AlertDescription } from '@/components/ui';
@@ -23,7 +25,12 @@ import { cn } from '@/lib/utils';
 import {
   getDailyBriefingPreview,
   triggerDailyBriefingSend,
+  getWhatsappGroupsForBriefing,
+  getDailyBriefingGroupTarget,
+  saveDailyBriefingGroupTarget,
   type UniversalBriefingData,
+  type WaGroupOption,
+  type BriefingGroupTarget,
 } from '@/api/dailyBriefing.api';
 import { DailyBriefingView } from './DailyBriefingView';
 import { toast } from 'sonner';
@@ -38,8 +45,30 @@ export const DailyExecutiveBriefingModal: React.FC<DailyExecutiveBriefingModalPr
   onClose,
 }) => {
   const [testPhone, setTestPhone] = useState('');
+  const [selectedGroupJid, setSelectedGroupJid] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isSavingGroup, setIsSavingGroup] = useState(false);
   const [lastSentUrl, setLastSentUrl] = useState<string | null>(null);
+
+  const { data: waGroups = [] } = useQuery<WaGroupOption[]>({
+    queryKey: ['wa-groups-for-briefing'],
+    queryFn: getWhatsappGroupsForBriefing,
+    enabled: isOpen,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: savedGroupTarget, refetch: refetchGroupTarget } = useQuery<BriefingGroupTarget | null>({
+    queryKey: ['daily-briefing-group-target'],
+    queryFn: getDailyBriefingGroupTarget,
+    enabled: isOpen,
+    staleTime: 60 * 1000,
+  });
+
+  React.useEffect(() => {
+    if (savedGroupTarget?.groupJid && !selectedGroupJid) {
+      setSelectedGroupJid(savedGroupTarget.groupJid);
+    }
+  }, [savedGroupTarget, selectedGroupJid]);
 
   const {
     data: previewData,
@@ -56,9 +85,10 @@ export const DailyExecutiveBriefingModal: React.FC<DailyExecutiveBriefingModalPr
   const handleSendWa = async () => {
     try {
       setIsSending(true);
+      const targetOverride = testPhone.trim() || selectedGroupJid.trim() || undefined;
       const res = await triggerDailyBriefingSend({
         role: 'KEPALA_SEKOLAH',
-        targetPhoneOverride: testPhone.trim() || undefined,
+        targetPhoneOverride: targetOverride,
       });
 
       if (res.success) {
@@ -73,6 +103,23 @@ export const DailyExecutiveBriefingModal: React.FC<DailyExecutiveBriefingModalPr
       toast.error(err?.response?.data?.message || err?.message || 'Gagal mengirim pesan WhatsApp');
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleSaveDefaultGroup = async () => {
+    try {
+      setIsSavingGroup(true);
+      const matched = waGroups.find((g) => g.id === selectedGroupJid);
+      const res = await saveDailyBriefingGroupTarget(
+        selectedGroupJid || null,
+        matched?.subject
+      );
+      toast.success(res.message);
+      refetchGroupTarget();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Gagal menyimpan grup WA default');
+    } finally {
+      setIsSavingGroup(false);
     }
   };
 
@@ -114,56 +161,91 @@ export const DailyExecutiveBriefingModal: React.FC<DailyExecutiveBriefingModalPr
       </div>
 
       {/* Control Action Bar */}
-      <div className="p-3 sm:p-4 bg-indigo-50/40 dark:bg-indigo-950/20 border-b border-indigo-100 dark:border-indigo-900/40 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-64">
-            <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <Input
-              type="text"
-              placeholder="No. WA Tes (opsional)"
-              value={testPhone}
-              onChange={(e) => setTestPhone(e.target.value)}
-              className="h-9 pl-9 text-xs rounded-xl bg-white dark:bg-slate-900"
-            />
-          </div>
-          <Button
-            size="sm"
-            onClick={handleSendWa}
-            disabled={isSending}
-            className="h-9 px-4 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs shrink-0"
-          >
-            {isSending ? (
-              <Loader className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-            ) : (
-              <Send className="w-3.5 h-3.5 mr-1.5" />
-            )}
-            Kirim ke WhatsApp
-          </Button>
-        </div>
-
-        <div className="flex items-center gap-2 self-end sm:self-auto">
-          {lastSentUrl && (
-            <a
-              href={lastSentUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center text-xs font-bold text-indigo-600 hover:underline px-2 py-1"
+      <div className="p-3 sm:p-4 bg-indigo-50/40 dark:bg-indigo-950/20 border-b border-indigo-100 dark:border-indigo-900/40 flex flex-col gap-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+            <div className="relative flex-1 min-w-[210px] sm:max-w-xs">
+              <Users className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <select
+                value={selectedGroupJid}
+                onChange={(e) => setSelectedGroupJid(e.target.value)}
+                aria-label="Pilih Grup WhatsApp Tujuan"
+                className="w-full h-9 pl-9 pr-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">-- Target Default (Kepsek / Grup Tersimpan) --</option>
+                {waGroups.map((grp) => (
+                  <option key={grp.id} value={grp.id}>
+                    Grup: {grp.subject} {grp.participantsCount ? `(${grp.participantsCount})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleSaveDefaultGroup}
+              disabled={isSavingGroup}
+              className="h-9 px-3 text-xs font-semibold rounded-xl shrink-0"
+              title="Simpan grup terpilih sebagai tujuan otomatis pukul 19:00 WIB"
             >
-              <ExternalLink className="w-3.5 h-3.5 mr-1" />
-              Buka Link Terkirim
-            </a>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => refetch()}
-            disabled={isRefetching}
-            className="h-9 text-xs text-slate-500 rounded-xl"
-          >
-            <RefreshCw className={cn('w-3.5 h-3.5 mr-1.5', isRefetching && 'animate-spin')} />
-            Segarkan Data
-          </Button>
+              <BookmarkCheck className="w-3.5 h-3.5 mr-1.5 text-indigo-600" />
+              {selectedGroupJid ? 'Set Grup Default' : 'Reset Default'}
+            </Button>
+            <div className="relative w-full sm:w-48">
+              <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Input
+                type="text"
+                placeholder="Atau No. WA Manual"
+                value={testPhone}
+                onChange={(e) => setTestPhone(e.target.value)}
+                className="h-9 pl-9 text-xs rounded-xl bg-white dark:bg-slate-900"
+              />
+            </div>
+            <Button
+              size="sm"
+              onClick={handleSendWa}
+              disabled={isSending}
+              className="h-9 px-4 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs shrink-0"
+            >
+              {isSending ? (
+                <Loader className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+              ) : (
+                <Send className="w-3.5 h-3.5 mr-1.5" />
+              )}
+              {selectedGroupJid && !testPhone.trim() ? 'Kirim ke Grup WA' : 'Kirim ke WhatsApp'}
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {lastSentUrl && (
+              <a
+                href={lastSentUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center text-xs font-bold text-indigo-600 hover:underline px-2 py-1"
+              >
+                <ExternalLink className="w-3.5 h-3.5 mr-1" />
+                Buka Link Terkirim
+              </a>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isRefetching}
+              className="h-9 text-xs text-slate-500 rounded-xl"
+            >
+              <RefreshCw className={cn('w-3.5 h-3.5 mr-1.5', isRefetching && 'animate-spin')} />
+              Segarkan Data
+            </Button>
+          </div>
         </div>
+        {savedGroupTarget && (
+          <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+            Grup WA otomatis aktif (19:00 WIB): <b>{savedGroupTarget.groupName}</b>
+          </p>
+        )}
       </div>
 
       {/* Modal Body Preview */}

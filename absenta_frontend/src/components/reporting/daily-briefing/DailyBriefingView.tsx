@@ -83,6 +83,8 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
     early_warning: true,
     kesiswaan: true,
     kurikulum: true,
+    cbt_kurikulum: true,
+    penilaian_rapor: true,
     bpbk: true,
     hubin_pkl: true,
   });
@@ -459,6 +461,51 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
                           </span>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {/* Progress Bars per Divisi */}
+                  {sec.progressBars && sec.progressBars.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                      {sec.progressBars.map((pb, pIdx) => {
+                        const pct = Math.max(0, Math.min(100, Math.round(pb.value)));
+                        const barColor =
+                          pb.color === 'emerald'
+                            ? 'bg-emerald-500'
+                            : pb.color === 'blue'
+                            ? 'bg-blue-500'
+                            : pb.color === 'amber'
+                            ? 'bg-amber-500'
+                            : pb.color === 'rose'
+                            ? 'bg-rose-500'
+                            : 'bg-indigo-500';
+                        return (
+                          <div
+                            key={pIdx}
+                            className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800"
+                          >
+                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                              <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">
+                                {pb.label}
+                              </span>
+                              <span className="text-xs font-black text-slate-900 dark:text-white shrink-0">
+                                {pct}%
+                              </span>
+                            </div>
+                            <div className="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                              <div
+                                className={cn('h-full rounded-full transition-all duration-500', barColor)}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            {pb.detail && (
+                              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                                {pb.detail}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 

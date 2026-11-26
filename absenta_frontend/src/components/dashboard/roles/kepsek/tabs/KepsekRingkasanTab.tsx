@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Users,
@@ -15,6 +15,7 @@ import {
   Activity,
   Trophy,
   ArrowUpRight,
+  Send,
 } from 'lucide-react';
 import {
   HubCard,
@@ -31,6 +32,10 @@ import { CompactSectionCard } from '@/components/dashboard/shared/CompactSection
 import { MonitoringKbmWidget } from '@/components/dashboard/shared/MonitoringKbmWidget';
 import { SchoolAttendanceAnalytics } from '@/components/dashboard/shared/SchoolAttendanceAnalytics';
 import type { KepsekTabId } from '../types';
+
+const DailyExecutiveBriefingModal = lazy(
+  () => import('@/components/reporting/daily-briefing/DailyExecutiveBriefingModal')
+);
 
 export interface KepsekRingkasanTabProps {
   stats: any;
@@ -56,6 +61,7 @@ export const KepsekRingkasanTab: React.FC<KepsekRingkasanTabProps> = React.memo(
   onOpenTeacherLeaderboard,
 }) => {
   const navigate = useNavigate();
+  const [isBriefingOpen, setIsBriefingOpen] = useState(false);
 
   const guruAttendance = useMemo(
     () => (stats?.total_guru ? Math.round((stats.guru_hadir / stats.total_guru) * 100) : 0),
@@ -122,6 +128,13 @@ export const KepsekRingkasanTab: React.FC<KepsekRingkasanTabProps> = React.memo(
   // 2. Shopee Quick Action Slider
   const actionItems: HubActionItem[] = useMemo(
     () => [
+      {
+        id: 'daily_briefing',
+        label: 'Ringkasan Harian WA',
+        icon: Send,
+        iconColorClass: 'text-emerald-600 dark:text-emerald-400',
+        onClick: () => setIsBriefingOpen(true),
+      },
       {
         id: 'kbm',
         label: 'KBM & Guru',
@@ -191,6 +204,15 @@ export const KepsekRingkasanTab: React.FC<KepsekRingkasanTabProps> = React.memo(
       <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl py-3 px-2 shadow-xs">
         <HubActionGrid items={actionItems} variant="slider" />
       </div>
+
+      {isBriefingOpen && (
+        <Suspense fallback={null}>
+          <DailyExecutiveBriefingModal
+            isOpen={isBriefingOpen}
+            onClose={() => setIsBriefingOpen(false)}
+          />
+        </Suspense>
+      )}
 
       {/* 3. Grafik Kehadiran & Distribusi (Komponen Terpadu Admin & Kepsek) */}
       <SchoolAttendanceAnalytics

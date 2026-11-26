@@ -401,6 +401,164 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       }
     } catch {}
 
+    // ── 7b. Hubin & PKL: Progres Input Nilai PKL & Sidang ───────────────────
+    let totalPklAll = 0;
+    let pklNilaiTerisi = 0;
+    let pklSidangTerisi = 0;
+    try {
+      const pklRows = await prisma.siswaPkl.findMany({
+        where: { tenant_id: tenantId, status: { in: ['AKTIF', 'SELESAI'] } },
+        select: {
+          nilai_akhir_pkl: true,
+          hard_kompetensi_teknis: true,
+          nomor_sertifikat: true,
+          nilai_json: true,
+        },
+      });
+      totalPklAll = pklRows.length;
+      for (const row of pklRows) {
+        const hasNilai =
+          row.nilai_akhir_pkl !== null ||
+          row.hard_kompetensi_teknis !== null ||
+          (row.nilai_json && typeof row.nilai_json === 'object' && Object.keys(row.nilai_json as any).length > 0);
+        if (hasNilai) pklNilaiTerisi++;
+        const hasSidang = Boolean(row.nomor_sertifikat) || (row.nilai_akhir_pkl !== null);
+        if (hasSidang) pklSidangTerisi++;
+      }
+    } catch (err) {
+      console.warn('[Briefing:PKL] Error querying PKL grading:', err);
+    }
+    const progresNilaiPklPct = totalPklAll > 0 ? Math.round((pklNilaiTerisi / totalPklAll) * 100) : 0;
+    const progresSidangPklPct = totalPklAll > 0 ? Math.round((pklSidangTerisi / totalPklAll) * 100) : 0;
+
+    // ── 7c. Kurikulum: Event CBT Aktif & Progres Pengumpulan Soal ─────────────
+    let activeCbtEvents: Array<{ nama_event: string; kode_event: string; semester: string }> = [];
+    let cbtTotalBank = 0;
+    let cbtSiapBank = 0;
+    let cbtTotalSoal = 0;
+    try {
+      activeCbtEvents = await prisma.cbtEvent.findMany({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { nama_event: true, kode_event: true, semester: true },
+      });
+
+      const activeTp = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true },
+      });
+
+      const bankWhere: any = { tenant_id: tenantId };
+      if (activeTp?.id) bankWhere.tahun_pelajaran_id = activeTp.id;
+
+      const bankList = await prisma.cbtBankSoal.findMany({
+        where: bankWhere,
+        select: { status: true, jumlah_soal: true },
+      });
+      cbtTotalBank = bankList.length;
+      for (const b of bankList) {
+        cbtTotalSoal += b.jumlah_soal || 0;
+        if ((b.jumlah_soal || 0) > 0 && b.status !== 'ARCHIVED') {
+          cbtSiapBank++;
+        }
+      }
+    } catch (err) {
+      console.warn('[Briefing:CBT] Error querying CBT progress:', err);
+    }
+    const cbtProgressPct = cbtTotalBank > 0 ? Math.round((cbtSiapBank / cbtTotalBank) * 100) : 0;
+
+    // ── 7d. Fase Penilaian KBM: Kesiapan Biodata & Keterisian Nilai Sumatif ───
+    let biodataLengkapCount = 0;
+    let nilaiSumatifTerisiCount = 0;
+    let nilaiSumatifTargetCount = 0;
+    let activeSemesterLabel = '';
+    try {
+      const activeSiswaList = await prisma.siswa.findMany({
+        where: { tenant_id: tenantId, status: 'AKTIF' },
+        select: {
+          nisn: true,
+          nik: true,
+          tempat_lahir: true,
+          tanggal_lahir: true,
+          alamat: true,
+          nama_ibu: true,
+          nama_ayah: true,
+        },
+      });
+      for (const s of activeSiswaList) {
+        const isComplete = Boolean(
+          s.nisn && s.tempat_lahir && s.tanggal_lahir && s.alamat && (s.nama_ibu || s.nama_ayah)
+        );
+        if (isComplete) biodataLengkapCount++;
+      }
+
+      const [activeTp, activeSem] = await Promise.all([
+        prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true, tahun: true } }),
+        prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true, nama_semester: true } }),
+      ]);
+
+      if (activeTp && activeSem) {
+        activeSemesterLabel = `${activeTp.tahun} (${activeSem.nama_semester})`;
+        const nilaiRows = await prisma.nilaiSiswa.findMany({
+          where: {
+            tenant_id: tenantId,
+            tahun_pelajaran_id: activeTp.id,
+            semester_id: activeSem.id,
+          },
+          select: {
+            sumatif_1: true,
+            nilai_akhir_sumatif: true,
+            nilai_rapor_final: true,
+            nilai: true,
+          },
+        });
+        nilaiSumatifTargetCount = nilaiRows.length;
+        for (const n of nilaiRows) {
+          if (
+            n.nilai_akhir_sumatif !== null ||
+            n.nilai_rapor_final !== null ||
+            n.sumatif_1 !== null ||
+            (n.nilai && n.nilai > 0)
+          ) {
+            nilaiSumatifTerisiCount++;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[Briefing:Rapor] Error querying rapor readiness:', err);
+    }
+    const biodataSiapPct = totalSiswaAktif > 0 ? Math.round((biodataLengkapCount / totalSiswaAktif) * 100) : 0;
+    const nilaiSumatifPct =
+      nilaiSumatifTargetCount > 0 ? Math.round((nilaiSumatifTerisiCount / nilaiSumatifTargetCount) * 100) : 0;
+
+    // ── 7e. Kesiswaan: Tren Penurunan Pelanggaran Siswa (7 Hari vs 7 Hari Lalu)
+    let pelanggaranMingguIni = 0;
+    let pelanggaranMingguLalu = 0;
+    let pelanggaranDeltaPct: number | null = null;
+    try {
+      const nowEnd = endUTC;
+      const week1Start = new Date(startUTC.getTime() - 6 * 24 * 3600 * 1000);
+      const week2End = new Date(week1Start.getTime() - 1);
+      const week2Start = new Date(week1Start.getTime() - 7 * 24 * 3600 * 1000);
+
+      const [c1, c2] = await Promise.all([
+        prisma.pelanggaranSiswa.count({
+          where: { tenant_id: tenantId, tanggal: { gte: week1Start, lte: nowEnd } },
+        }),
+        prisma.pelanggaranSiswa.count({
+          where: { tenant_id: tenantId, tanggal: { gte: week2Start, lte: week2End } },
+        }),
+      ]);
+      pelanggaranMingguIni = c1;
+      pelanggaranMingguLalu = c2;
+      if (c2 > 0) {
+        pelanggaranDeltaPct = Math.round(((c1 - c2) / c2) * 100);
+      } else if (c1 === 0) {
+        pelanggaranDeltaPct = 0;
+      }
+    } catch (err) {
+      console.warn('[Briefing:Pelanggaran] Error querying violation trend:', err);
+    }
+
     // ── 8. Indeks Kesehatan Sekolah (Traffic Light Status) ─────────────────────
     const healthScore = Math.round(persentaseSiswa * 0.45 + persentaseGuru * 0.35 + persentaseJurnal * 0.20);
     const statusBadge = {
@@ -544,14 +702,36 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       title: 'Divisi Kesiswaan & Kedisiplinan Siswa',
       category: 'Kesiswaan',
       badge: persentaseSiswa >= 95 ? 'Optimal' : 'Perlu Perhatian',
-      summary: `Presensi siswa berada pada angka ${persentaseSiswa}%. Terdapat ${siswaTerlambat} siswa terlambat gerbang dan ${siswaIzinKeluar} siswa izin keluar via piket.`,
+      summary: `Presensi siswa berada pada angka ${persentaseSiswa}%. Terdapat ${siswaTerlambat} siswa terlambat gerbang, ${siswaIzinKeluar} izin keluar, dan ${pelanggaranMingguIni} catatan pelanggaran (7 hari terakhir).`,
       stats: [
         { label: 'Siswa Hadir', value: siswaHadir },
-        { label: 'Sakit', value: siswaSakit },
-        { label: 'Izin', value: siswaIzin },
+        { label: 'Sakit / Izin', value: siswaSakit + siswaIzin },
         { label: 'Alpa / Tanpa Ket.', value: siswaAlpa },
         { label: 'Terlambat Gerbang', value: siswaTerlambat },
-        { label: 'Izin Keluar Kampus', value: siswaIzinKeluar },
+        { label: 'Pelanggaran (7 Hari)', value: pelanggaranMingguIni },
+        {
+          label: 'Tren Pelanggaran',
+          value:
+            pelanggaranDeltaPct === null
+              ? 'Data Awal'
+              : pelanggaranDeltaPct <= 0
+              ? `Turun ${Math.abs(pelanggaranDeltaPct)}%`
+              : `Naik +${pelanggaranDeltaPct}%`,
+        },
+      ],
+      progressBars: [
+        {
+          label: 'Persentase Kehadiran Siswa di KBM',
+          value: persentaseSiswa,
+          detail: `${siswaHadir} / ${totalSiswaAktif} Siswa Hadir`,
+          color: persentaseSiswa >= 95 ? 'emerald' : persentaseSiswa >= 85 ? 'amber' : 'rose',
+        },
+        {
+          label: 'Indeks Penurunan Pelanggaran (7 Hari vs Sebelumnya)',
+          value: pelanggaranDeltaPct === null ? 100 : Math.max(0, Math.min(100, 100 - Math.max(0, pelanggaranDeltaPct))),
+          detail: `${pelanggaranMingguIni} kasus minggu ini vs ${pelanggaranMingguLalu} minggu lalu`,
+          color: pelanggaranDeltaPct !== null && pelanggaranDeltaPct <= 0 ? 'emerald' : 'amber',
+        },
       ],
       items: kesiswaanItems,
     });
@@ -569,10 +749,10 @@ export class KepsekBriefingCollector implements IBriefingCollector {
 
     sections.push({
       id: 'kurikulum',
-      title: 'Divisi Kurikulum & KBM Guru',
+      title: 'Divisi Kurikulum & Kedisiplinan Guru KBM',
       category: 'Kurikulum',
       badge: `${persentaseGuru}% Guru Hadir`,
-      summary: `Sebanyak ${guruHadir} guru aktif mengajar. Total sesi KBM terjadwal sebanyak ${totalSesiKbm} sesi dengan kepatuhan jurnal ${persentaseJurnal}%.`,
+      summary: `Sebanyak ${guruHadir} guru aktif mengajar (${persentaseGuru}%). Total sesi KBM terjadwal ${totalSesiKbm} sesi dengan kepatuhan jurnal ${persentaseJurnal}%.`,
       stats: [
         { label: 'Guru Hadir', value: guruHadir },
         { label: 'Guru Izin / Sakit', value: guruTidakHadir },
@@ -580,7 +760,75 @@ export class KepsekBriefingCollector implements IBriefingCollector {
         { label: 'KBM Terlaksana', value: sesiKbmTerlaksana },
         { label: 'Guru Inval / Pengganti', value: guruInvalCount },
       ],
+      progressBars: [
+        {
+          label: 'Persentase Kehadiran Guru di KBM',
+          value: persentaseGuru,
+          detail: `${guruHadir} / ${totalGuru} Guru Hadir`,
+          color: persentaseGuru >= 95 ? 'emerald' : persentaseGuru >= 85 ? 'amber' : 'rose',
+        },
+        {
+          label: 'Kepatuhan Pengisian Jurnal KBM',
+          value: persentaseJurnal,
+          detail: `${sesiKbmTerlaksana} / ${totalSesiKbm} Sesi Terlaksana`,
+          color: persentaseJurnal >= 90 ? 'blue' : 'amber',
+        },
+      ],
       items: kurikulumItems.length > 0 ? kurikulumItems : undefined,
+    });
+
+    // SEKSI 3b: EVENT CBT & PENGUMPULAN SOAL
+    if (activeCbtEvents.length > 0 || cbtTotalBank > 0) {
+      sections.push({
+        id: 'cbt_kurikulum',
+        title: 'Event CBT & Progres Pengumpulan Soal',
+        category: 'Kurikulum • CBT',
+        badge: activeCbtEvents.length > 0 ? `${activeCbtEvents.length} Event Aktif` : `${cbtTotalBank} Bank Soal`,
+        summary: activeCbtEvents.length > 0
+          ? `Event CBT aktif: ${activeCbtEvents.map(e => e.nama_event).join(', ')}. Kesiapan bank soal mencapai ${cbtProgressPct}% (${cbtSiapBank}/${cbtTotalBank} bank siap, ${cbtTotalSoal} butir soal).`
+          : `Terdapat ${cbtTotalBank} bank soal terdaftar dengan ${cbtTotalSoal} butir soal terkumpul.`,
+        stats: [
+          { label: 'Event CBT Aktif', value: activeCbtEvents.length },
+          { label: 'Bank Soal Siap', value: `${cbtSiapBank} / ${cbtTotalBank}` },
+          { label: 'Total Butir Soal', value: cbtTotalSoal },
+        ],
+        progressBars: [
+          {
+            label: 'Progres Pengumpulan Soal CBT',
+            value: cbtProgressPct,
+            detail: `${cbtSiapBank} dari ${cbtTotalBank} Bank Soal terisi (${cbtTotalSoal} soal)`,
+            color: cbtProgressPct >= 90 ? 'emerald' : cbtProgressPct >= 60 ? 'indigo' : 'amber',
+          },
+        ],
+      });
+    }
+
+    // SEKSI 3c: FASE PENILAIAN KBM & KESIAPAN RAPOR
+    sections.push({
+      id: 'penilaian_rapor',
+      title: 'Fase Penilaian KBM & Kesiapan Rapor',
+      category: 'Penilaian & Rapor',
+      badge: `Rapor ${nilaiSumatifPct}%`,
+      summary: `Kesiapan biodata siswa aktif mencapai ${biodataSiapPct}% (${biodataLengkapCount}/${totalSiswaAktif}) dan keterisian nilai sumatif/rapor${activeSemesterLabel ? ` ${activeSemesterLabel}` : ''} sebesar ${nilaiSumatifPct}%.`,
+      stats: [
+        { label: 'Biodata Siswa Siap', value: `${biodataSiapPct}%` },
+        { label: 'Nilai Sumatif Terisi', value: `${nilaiSumatifPct}%` },
+        { label: 'Entri Nilai Masuk', value: `${nilaiSumatifTerisiCount} / ${nilaiSumatifTargetCount}` },
+      ],
+      progressBars: [
+        {
+          label: 'Kesiapan Keterisian Biodata Siswa',
+          value: biodataSiapPct,
+          detail: `${biodataLengkapCount} / ${totalSiswaAktif} Siswa Lengkap`,
+          color: biodataSiapPct >= 95 ? 'emerald' : biodataSiapPct >= 75 ? 'blue' : 'amber',
+        },
+        {
+          label: 'Keterisian Nilai Sumatif & Rapor',
+          value: nilaiSumatifPct,
+          detail: `${nilaiSumatifTerisiCount} / ${nilaiSumatifTargetCount} Data Nilai Terisi`,
+          color: nilaiSumatifPct >= 90 ? 'emerald' : nilaiSumatifPct >= 50 ? 'indigo' : 'amber',
+        },
+      ],
     });
 
     // SEKSI 4: BP/BK & PEMBINAAN
@@ -602,17 +850,33 @@ export class KepsekBriefingCollector implements IBriefingCollector {
     });
 
     // SEKSI 5: HUBIN & PKL (Jika sekolah SMK / ada siswa PKL)
-    if (totalSiswaPklAktif > 0) {
+    if (totalSiswaPklAktif > 0 || totalPklAll > 0) {
       sections.push({
         id: 'hubin_pkl',
-        title: 'Divisi Hubungan Industri & PKL',
+        title: 'Divisi Hubungan Industri, PKL & Sidang',
         category: 'Hubin & PKL',
-        badge: `${totalSiswaPklAktif} Siswa PKL`,
-        summary: `Terdapat ${totalSiswaPklAktif} siswa aktif magang di mitra industri DUDI. ${siswaPklHadir} siswa tercatat telah melakukan absensi harian.`,
+        badge: `Nilai PKL ${progresNilaiPklPct}%`,
+        summary: `Terdapat ${totalSiswaPklAktif} siswa aktif magang di mitra DUDI (${siswaPklHadir} lapor hadir hari ini). Progres input nilai PKL mencapai ${progresNilaiPklPct}% dan sidang/sertifikat ${progresSidangPklPct}%.`,
         stats: [
-          { label: 'Total Siswa di DUDI', value: totalSiswaPklAktif },
+          { label: 'Total Siswa PKL', value: totalPklAll || totalSiswaPklAktif },
           { label: 'Lapor Hadir Hari Ini', value: siswaPklHadir },
           { label: 'Kendala / Tidak Hadir', value: siswaPklKendala },
+          { label: 'Input Nilai PKL', value: `${progresNilaiPklPct}%` },
+          { label: 'Nilai Sidang / Sertifikat', value: `${progresSidangPklPct}%` },
+        ],
+        progressBars: [
+          {
+            label: 'Progres Input Nilai PKL',
+            value: progresNilaiPklPct,
+            detail: `${pklNilaiTerisi} / ${totalPklAll} Siswa Dinilai`,
+            color: progresNilaiPklPct >= 90 ? 'emerald' : progresNilaiPklPct >= 50 ? 'indigo' : 'amber',
+          },
+          {
+            label: 'Progres Penilaian Sidang & Sertifikat PKL',
+            value: progresSidangPklPct,
+            detail: `${pklSidangTerisi} / ${totalPklAll} Siswa Selesai`,
+            color: progresSidangPklPct >= 90 ? 'emerald' : 'blue',
+          },
         ],
       });
     }

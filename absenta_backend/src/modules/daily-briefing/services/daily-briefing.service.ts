@@ -198,6 +198,19 @@ export class DailyBriefingService {
       lines.push(``);
     }
 
+    // Progres Tiap Divisi (Ringkas)
+    const progressSections = (data.sections || []).filter((s) => s.progressBars && s.progressBars.length > 0);
+    if (progressSections.length > 0) {
+      lines.push(`🏛️ *PROGRES DIVISI HARI INI*`);
+      for (const sec of progressSections) {
+        const barsText = sec.progressBars!
+          .map((pb) => `${pb.label}: *${pb.value}%*`)
+          .join(' | ');
+        lines.push(`• *${sec.category}*: ${barsText}`);
+      }
+      lines.push(``);
+    }
+
     // Tautan Akses Laporan Ber-token
     lines.push(`🔗 *Laporan Lengkap & Rekapitulasi Divisi:*`);
     lines.push(`${tokenUrl}`);
@@ -269,6 +282,69 @@ export class DailyBriefingService {
   }
 
   /**
+   * Mengambil konfigurasi WA Group tujuan default Daily Briefing per tenant
+   */
+  public async getBriefingGroupTarget(tenantId: string): Promise<{ groupJid: string; groupName: string } | null> {
+    try {
+      const cfg = await prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: 'DAILY_BRIEFING_WA_GROUP' },
+      });
+      if (!cfg?.value) return null;
+      const parsed = JSON.parse(cfg.value);
+      if (parsed?.groupJid) {
+        return {
+          groupJid: String(parsed.groupJid),
+          groupName: String(parsed.groupName || parsed.groupJid),
+        };
+      }
+    } catch {}
+    return null;
+  }
+
+  /**
+   * Menyimpan konfigurasi WA Group tujuan default Daily Briefing per tenant
+   */
+  public async saveBriefingGroupTarget(
+    tenantId: string,
+    groupJid: string | null,
+    groupName?: string
+  ): Promise<{ groupJid: string; groupName: string } | null> {
+    const existing = await prisma.config.findFirst({
+      where: { tenant_id: tenantId, key: 'DAILY_BRIEFING_WA_GROUP' },
+    });
+
+    if (!groupJid || !groupJid.trim()) {
+      if (existing) {
+        await prisma.config.delete({ where: { id: existing.id } });
+      }
+      return null;
+    }
+
+    const payload = {
+      groupJid: groupJid.trim(),
+      groupName: (groupName || groupJid).trim(),
+    };
+    const serialized = JSON.stringify(payload);
+
+    if (existing) {
+      await prisma.config.update({
+        where: { id: existing.id },
+        data: { value: serialized },
+      });
+    } else {
+      await prisma.config.create({
+        data: {
+          tenant_id: tenantId,
+          key: 'DAILY_BRIEFING_WA_GROUP',
+          value: serialized,
+          description: 'Target Grup WhatsApp default untuk pengiriman Ringkasan Kegiatan Sekolah Harian',
+        },
+      });
+    }
+    return payload;
+  }
+
+  /**
    * Menghasilkan token, pesan WA, dan mengirimkan ke penerima
    */
   public async sendBriefingViaWhatsapp(
@@ -290,18 +366,26 @@ export class DailyBriefingService {
     // 2. Kumpulkan data briefing
     const data = await this.getBriefingDirect(tenantId, role, tanggal);
 
-    // 3. Tentukan nomor telepon tujuan
+    // 3. Tentukan nomor telepon / JID grup tujuan
     let recipientPhone = targetPhoneOverride;
     let recipientName = data.targetName;
 
     if (!recipientPhone) {
       if (role === 'KEPALA_SEKOLAH') {
-        const resolved = await this.resolveKepsekPhoneNumber(tenantId);
-        if (resolved) {
-          recipientPhone = resolved.phone;
-          recipientName = resolved.name;
+        const groupTarget = await this.getBriefingGroupTarget(tenantId);
+        if (groupTarget?.groupJid) {
+          recipientPhone = groupTarget.groupJid;
+          recipientName = `Grup WA: ${groupTarget.groupName}`;
+        } else {
+          const resolved = await this.resolveKepsekPhoneNumber(tenantId);
+          if (resolved) {
+            recipientPhone = resolved.phone;
+            recipientName = resolved.name;
+          }
         }
       }
+    } else if (recipientPhone.includes('@g.us')) {
+      recipientName = 'Grup WhatsApp';
     }
 
     if (!recipientPhone) {

@@ -49,6 +49,13 @@ export interface BriefingSectionItem {
   tags?: string[];
 }
 
+export interface BriefingProgressBar {
+  label: string;
+  value: number; // 0 - 100
+  detail?: string;
+  color?: 'emerald' | 'blue' | 'amber' | 'rose' | 'indigo';
+}
+
 export interface BriefingSection {
   id: string;
   title: string;
@@ -57,6 +64,7 @@ export interface BriefingSection {
   badge?: string;
   summary: string;
   stats?: Array<{ label: string; value: string | number }>;
+  progressBars?: BriefingProgressBar[];
   items?: BriefingSectionItem[];
 }
 

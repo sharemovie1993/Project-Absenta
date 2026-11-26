@@ -110,6 +110,41 @@ export class DailyBriefingController {
       });
     }
   }
+
+  /**
+   * GET /reports/daily-briefing/group-target
+   */
+  async getGroupTarget(request: any, reply: any) {
+    const tenantId = (request as any).tenantId;
+    if (!tenantId) {
+      return reply.status(400).send({ success: false, message: 'Tenant ID tidak terdeteksi.' });
+    }
+    const target = await dailyBriefingService.getBriefingGroupTarget(tenantId);
+    return reply.status(200).send({ success: true, data: target });
+  }
+
+  /**
+   * POST /reports/daily-briefing/group-target
+   */
+  async saveGroupTarget(request: any, reply: any) {
+    const tenantId = (request as any).tenantId;
+    if (!tenantId) {
+      return reply.status(400).send({ success: false, message: 'Tenant ID tidak terdeteksi.' });
+    }
+    const body = (request.body || {}) as { groupJid?: string | null; groupName?: string };
+    const saved = await dailyBriefingService.saveBriefingGroupTarget(
+      tenantId,
+      body.groupJid || null,
+      body.groupName
+    );
+    return reply.status(200).send({
+      success: true,
+      message: saved
+        ? `Grup WA default berhasil diatur ke "${saved.groupName}"`
+        : 'Target Grup WA default dihapus (kembali ke nomor Kepala Sekolah)',
+      data: saved,
+    });
+  }
 }
 
 export const dailyBriefingController = new DailyBriefingController();

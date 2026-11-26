@@ -24,6 +24,13 @@ export interface BriefingSectionItem {
   tags?: string[];
 }
 
+export interface BriefingProgressBar {
+  label: string;
+  value: number;
+  detail?: string;
+  color?: 'emerald' | 'blue' | 'amber' | 'rose' | 'indigo';
+}
+
 export interface BriefingSection {
   id: string;
   title: string;
@@ -32,6 +39,7 @@ export interface BriefingSection {
   badge?: string;
   summary: string;
   stats?: Array<{ label: string; value: string | number }>;
+  progressBars?: BriefingProgressBar[];
   items?: BriefingSectionItem[];
 }
 
@@ -108,5 +116,42 @@ export async function triggerDailyBriefingSend(params?: {
     '/reports/daily-briefing/trigger-send',
     params || {}
   );
+  return res.data;
+}
+
+export interface WaGroupOption {
+  id: string;
+  subject: string;
+  participantsCount?: number;
+}
+
+export interface BriefingGroupTarget {
+  groupJid: string;
+  groupName: string;
+}
+
+export async function getWhatsappGroupsForBriefing(): Promise<WaGroupOption[]> {
+  try {
+    const res = await axiosInstance.get<{ success: boolean; data?: WaGroupOption[]; groups?: WaGroupOption[] }>('/whatsapp/groups');
+    return res.data?.data || res.data?.groups || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function getDailyBriefingGroupTarget(): Promise<BriefingGroupTarget | null> {
+  try {
+    const res = await axiosInstance.get<{ success: boolean; data: BriefingGroupTarget | null }>('/reports/daily-briefing/group-target');
+    return res.data?.data || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveDailyBriefingGroupTarget(
+  groupJid: string | null,
+  groupName?: string
+): Promise<{ success: boolean; message: string; data: BriefingGroupTarget | null }> {
+  const res = await axiosInstance.post('/reports/daily-briefing/group-target', { groupJid, groupName });
   return res.data;
 }
