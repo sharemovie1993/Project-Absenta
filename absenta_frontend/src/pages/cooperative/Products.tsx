@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useCallback, useMemo, Suspense, lazy } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/axiosInstance';
 import toast from 'react-hot-toast';
@@ -21,6 +20,7 @@ const ProductStockInTab = lazy(() => import('../../components/cooperative/produc
 const ProductHistoryTab = lazy(() => import('../../components/cooperative/products/ProductHistoryTab'));
 const ProductCategoriesTab = lazy(() => import('../../components/cooperative/products/ProductCategoriesTab'));
 const ProductOpnameTab = lazy(() => import('../../components/cooperative/products/ProductOpnameTab'));
+const LaporanInventori = lazy(() => import('./LaporanInventori'));
 
 interface Product {
   id: string;
@@ -46,7 +46,6 @@ export interface ProductsProps {
 }
 
 const Products: React.FC<ProductsProps> = React.memo(({ hideLayout = false }) => {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const { isKoperasiStore, isKoperasiHead, isAdmin, can } = useCapabilities();
@@ -57,7 +56,7 @@ const Products: React.FC<ProductsProps> = React.memo(({ hideLayout = false }) =>
   const canManageInventory = isAdmin || isKoperasiStore || isKoperasiHead || can('cooperative.store.inventory.manage');
   const canViewReports = isAdmin || isKoperasiHead || can('cooperative.reports.view.financial');
 
-  const [activeTab, setActiveTab] = useState<'catalog' | 'inventory' | 'stock-in' | 'history' | 'categories' | 'opname'>('catalog');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'inventory' | 'stock-in' | 'history' | 'categories' | 'opname' | 'inventory-report'>('catalog');
   const [preselectedPurchaseProduct, setPreselectedPurchaseProduct] = useState<Product | null>(null);
   
   // Reset tab if user has no edit rights
@@ -71,7 +70,10 @@ const Products: React.FC<ProductsProps> = React.memo(({ hideLayout = false }) =>
     if ((activeTab === 'opname' || activeTab === 'inventory') && !canManageInventory) {
       setActiveTab('catalog');
     }
-  }, [activeTab, canUpdateProducts, canManageCategories, canManageInventory]);
+    if (activeTab === 'inventory-report' && !canViewReports) {
+      setActiveTab('catalog');
+    }
+  }, [activeTab, canUpdateProducts, canManageCategories, canManageInventory, canViewReports]);
 
   // React Query setup for shared central states with enterprise caching (Phase 4 Hardening)
   const productsQuery = useQuery({
@@ -179,16 +181,20 @@ const Products: React.FC<ProductsProps> = React.memo(({ hideLayout = false }) =>
                 <TabSwitcher
                   options={tabOptions}
                   activeTab={activeTab}
-                  onChange={(id) => setActiveTab(id as 'catalog' | 'inventory' | 'stock-in' | 'history' | 'categories' | 'opname')}
+                  onChange={(id) => setActiveTab(id as 'catalog' | 'inventory' | 'stock-in' | 'history' | 'categories' | 'opname' | 'inventory-report')}
                 />
 
                 {canViewReports && (
                   <div className="flex justify-end items-center">
                     <button
                       type="button"
-                      onClick={() => navigate('/cooperative/inventory-report')}
-                      className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 px-3.5 py-1.5 rounded-xl transition-all shadow-2xs cursor-pointer"
-                      title="Buka Laporan Persediaan"
+                      onClick={() => setActiveTab(activeTab === 'inventory-report' ? 'catalog' : 'inventory-report')}
+                      className={`flex items-center gap-2 text-xs font-bold px-3.5 py-1.5 rounded-xl transition-all shadow-2xs cursor-pointer border ${
+                        activeTab === 'inventory-report'
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                          : 'text-blue-600 dark:text-blue-400 hover:text-blue-800 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 border-blue-200 dark:border-blue-800'
+                      }`}
+                      title="Buka Laporan Persediaan (Inline View)"
                     >
                       <BarChart2 size={15} />
                       <span>Laporan Persediaan</span>
@@ -254,6 +260,10 @@ const Products: React.FC<ProductsProps> = React.memo(({ hideLayout = false }) =>
                   categories={categories}
                   activeTab={activeTab}
                 />
+              )}
+
+              {activeTab === 'inventory-report' && (
+                <LaporanInventori hideLayout={true} />
               )}
             </Suspense>
           </div>
