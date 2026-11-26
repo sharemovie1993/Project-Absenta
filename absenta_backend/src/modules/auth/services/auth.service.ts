@@ -26,6 +26,74 @@ export interface QuickLoginResult {
 }
 
 export class AuthService {
+  private static roleCache = new Map<string, { data: any; exp: number }>();
+  private static tenantMetaCache = new Map<string, { data: { tenant: any; features: any }; exp: number }>();
+  private static activeTpCache = new Map<string, { id: string | null; exp: number }>();
+
+  private static async getCachedRole(roleId: string) {
+    const now = Date.now();
+    const cached = AuthService.roleCache.get(roleId);
+    if (cached && cached.exp > now) return cached.data;
+
+    const role = await prisma.role.findUnique({
+      where: { id: roleId },
+      include: {
+        rolePermissions: {
+          include: { Permission: true },
+        },
+      },
+    });
+    if (role) {
+      AuthService.roleCache.set(roleId, { data: role, exp: now + 300000 }); // 5 menit
+    }
+    return role;
+  }
+
+  private static async getCachedTenantMeta(tenantId: string) {
+    const now = Date.now();
+    const cached = AuthService.tenantMetaCache.get(tenantId);
+    if (cached && cached.exp > now) return cached.data;
+
+    const t = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true, name: true, subdomain: true, custom_domain: true },
+    });
+    if (!t) return null;
+
+    const [resolvedMode, features] = await Promise.all([
+      getEffectiveAbsensiMode(tenantId),
+      getTenantCapabilities(t.id),
+    ]);
+
+    const data = {
+      tenant: {
+        id: t.id,
+        name: t.name,
+        domain: t.subdomain ?? undefined,
+        subdomain: t.subdomain ?? undefined,
+        custom_domain: t.custom_domain ?? undefined,
+        absensi_mode: resolvedMode,
+      },
+      features,
+    };
+    AuthService.tenantMetaCache.set(tenantId, { data, exp: now + 60000 }); // 1 menit
+    return data;
+  }
+
+  private static async getCachedActiveTpId(tenantId: string): Promise<string | null> {
+    const now = Date.now();
+    const cached = AuthService.activeTpCache.get(tenantId);
+    if (cached && cached.exp > now) return cached.id;
+
+    const activeTp = await prisma.tahunPelajaran.findFirst({
+      where: { tenant_id: tenantId, is_active: true },
+      select: { id: true },
+    });
+    const id = activeTp?.id || null;
+    AuthService.activeTpCache.set(tenantId, { id, exp: now + 60000 }); // 1 menit
+    return id;
+  }
+
   /**
    * SHARED DOMAIN SERVICE METHOD:
    * Menghasilkan Quick Login Token (JWT) & URL Akses Langsung tanpa password.
@@ -231,22 +299,25 @@ export class AuthService {
       // SUPERADMIN identified
     } else {
       // For regular users, enforce tenant membership by using tenant_id resolved from domain
-      const regularUser = await prisma.user.findFirst({
+      const regularUser: any = await prisma.user.findFirst({
         where: {
           email: targetEmail,
           tenant_id,
         },
-        include: { 
-            Role: {
-                include: {
-                    rolePermissions: {
-                        include: { Permission: true }
-                    }
-                }
-            },
-            Tenant: {
-              select: { status: true }
-            }
+        select: {
+          id: true,
+          email: true,
+          password: true,
+          full_name: true,
+          role_id: true,
+          tenant_id: true,
+          status: true,
+          has_completed_onboarding: true,
+          created_at: true,
+          updated_at: true,
+          Tenant: {
+            select: { status: true }
+          }
         },
       });
 
@@ -284,15 +355,20 @@ export class AuthService {
       throw new Error('Invalid credentials');
     }
 
-    // Update last_login timestamp on successful login
-    try {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { last_login: new Date() }
-      });
-    } catch (err) {
-      console.error('[AUTH] Failed to update last_login:', err);
+    // Hydrate Role from cache if omitted from lightweight regularUser select
+    if (!user.Role && user.role_id) {
+      user.Role = await AuthService.getCachedRole(user.role_id);
     }
+
+    // Update last_login timestamp secara non-blocking agar tidak menahan response login serentak
+    prisma.user
+      .update({
+        where: { id: user.id },
+        data: { last_login: new Date() },
+      })
+      .catch((err) => {
+        console.error('[AUTH] Failed to update last_login:', err);
+      });
 
     console.info(`[AUTH] Login Success | User: ${user.id} | Role: ${user.Role.name}`);
 
@@ -304,7 +380,7 @@ export class AuthService {
       role: {
         id: user.Role.id,
         name: user.Role.name,
-        permissions: user.Role.rolePermissions?.map(rp => rp.Permission.id) ?? [],
+        permissions: user.Role.rolePermissions?.map((rp: any) => rp.Permission.id) ?? [],
       },
       tenant_id: user.Role.name === 'SUPERADMIN' ? null as any : user.tenant_id,
       has_completed_onboarding: user.has_completed_onboarding,
@@ -313,34 +389,22 @@ export class AuthService {
       tenant: null,
     };
 
-    // ✅ Invalidasi cache posisi jabatan sebelum attachCapabilities agar login selalu dapat data terbaru dari DB
-    try { await organizationalContextCache.invalidateUser(String(user.id)); } catch {}
+    // ✅ Invalidasi cache posisi jabatan sebelum attachCapabilities untuk non-SISWA
+    if (user.Role.name !== 'SISWA') {
+      try { await organizationalContextCache.invalidateUser(String(user.id)); } catch {}
+    }
 
     // Attach capabilities using shared logic
     await this.attachCapabilities(user, userResponse);
 
-    // Attach tenant info including absensi_mode for non-system SUPERADMIN
+    // Attach tenant info including absensi_mode for non-system SUPERADMIN (cached)
     try {
       const effectiveTenantId = userResponse.tenant_id;
       if (effectiveTenantId && effectiveTenantId !== 'system') {
-        const t = await prisma.tenant.findUnique({
-          where: { id: effectiveTenantId },
-          select: { id: true, name: true, subdomain: true, custom_domain: true },
-        });
-        if (t) {
-          const resolvedMode = await getEffectiveAbsensiMode(effectiveTenantId);
-
-          userResponse.tenant = {
-            id: t.id,
-            name: t.name,
-            domain: t.subdomain ?? undefined,
-            subdomain: t.subdomain ?? undefined,
-            custom_domain: t.custom_domain ?? undefined,
-            absensi_mode: resolvedMode,
-          };
-          // Attach Tenant Features (Capability Switch)
-          const features = await getTenantCapabilities(t.id);
-          userResponse.features = features;
+        const meta = await AuthService.getCachedTenantMeta(effectiveTenantId);
+        if (meta) {
+          userResponse.tenant = meta.tenant;
+          userResponse.features = meta.features;
         }
       }
     } catch {}
@@ -904,11 +968,9 @@ export class AuthService {
     // Fetch active Tahun Pelajaran for strict academic context enforcement
     let activeTpId: string | null = null;
     try {
-      const activeTp = await prisma.tahunPelajaran.findFirst({
-        where: { tenant_id: user.tenant_id, is_active: true },
-        select: { id: true },
-      });
-      activeTpId = activeTp?.id || null;
+      if (user.tenant_id) {
+        activeTpId = await AuthService.getCachedActiveTpId(user.tenant_id);
+      }
     } catch {
       activeTpId = null;
     }

@@ -55,6 +55,175 @@ export class CbtTestEngineService {
   private static denahCache = new Map<string, { data: any[]; exp: number }>();
   private static classesCache = new Map<string, { data: any[]; exp: number }>();
   private static guruMapelCache = new Map<string, { data: any[]; exp: number }>();
+  private static classExamsCache = new Map<string, { data: any; exp: number }>();
+
+  private static async getCachedClassExamsMeta(tenantId: string, kelasId: string) {
+    const memKey = `${tenantId}:${kelasId}`;
+    const now = Date.now();
+    const memCached = CbtTestEngineService.classExamsCache.get(memKey);
+    if (memCached && memCached.exp > now) return memCached.data;
+
+    const redis = getRedisConnection();
+    const redisKey = `cbt:${tenantId}:my-exams-meta:${kelasId}`;
+    if (redis) {
+      const redisRaw = await redis.get(redisKey).catch(() => null);
+      if (redisRaw) {
+        try {
+          const parsed = JSON.parse(redisRaw);
+          CbtTestEngineService.classExamsCache.set(memKey, { data: parsed, exp: now + 15000 });
+          return parsed;
+        } catch {}
+      }
+    }
+
+    const [activeTp, activeSem, allEvents] = await Promise.all([
+      prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true },
+      }),
+      prisma.semester.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true, nama_semester: true },
+      }),
+      prisma.cbtEvent.findMany({
+        where: { tenant_id: tenantId },
+        select: { id: true, is_active: true, tahun_pelajaran_id: true, semester: true, tokenless: true },
+      }),
+    ]);
+
+    const activeSemUpper = (activeSem?.nama_semester || '').toUpperCase();
+    const activeEventIds = allEvents
+      .filter((ev) => {
+        if (!ev.is_active) return false;
+        if (ev.tahun_pelajaran_id && activeTp?.id && ev.tahun_pelajaran_id !== activeTp.id) {
+          return false;
+        }
+        if (ev.semester && activeSemUpper) {
+          const evSem = ev.semester.toUpperCase();
+          if (evSem !== 'SEMUA' && !activeSemUpper.includes(evSem) && !evSem.includes(activeSemUpper)) {
+            return false;
+          }
+        }
+        return true;
+      })
+      .map((ev) => ev.id);
+
+    const tokenlessEventIds = allEvents.filter((ev) => ev.tokenless).map((ev) => ev.id);
+
+    const jadwalList = await prisma.cbtJadwalUjian.findMany({
+      where: {
+        tenant_id: tenantId,
+        status: { in: ['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED'] },
+        target_kelas_ids: { array_contains: [kelasId] },
+        ...(activeTp?.id ? { tahun_pelajaran_id: activeTp.id } : {}),
+        ...(activeSem?.id ? { semester_id: activeSem.id } : {}),
+      },
+      orderBy: { tanggal_mulai: 'desc' },
+      take: 100,
+      select: {
+        id: true,
+        nama_sesi: true,
+        tanggal_mulai: true,
+        tanggal_selesai: true,
+        durasi_menit: true,
+        status: true,
+        setting_keamanan: true,
+        TahunPelajaran: { select: { tahun: true } },
+        Semester: { select: { nama_semester: true } },
+        BankSoal: {
+          select: {
+            id: true,
+            event_id: true,
+            mapel_id: true,
+            unit_pengajaran_id: true,
+            kode_bank: true,
+            judul: true,
+            tingkat: true,
+            jumlah_soal: true,
+            Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
+            Guru: { select: { id: true, nama_guru: true } },
+            UnitPengajaran: {
+              select: {
+                id: true,
+                nama_unit: true,
+                guru_id: true,
+                Guru: { select: { id: true, nama_guru: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const proctorIds = new Set<string>();
+    for (const j of jadwalList) {
+      const sec = (j.setting_keamanan as any) || {};
+      const roomMappings = sec.room_mappings || sec.kelas_room_map || {};
+      const studentRoom = kelasId ? roomMappings[kelasId] : null;
+      const candidates = [
+        studentRoom?.pengawas_1_id,
+        studentRoom?.pengawas_1_guru_id,
+        studentRoom?.pengawas_2_id,
+        studentRoom?.pengawas_2_guru_id,
+        studentRoom?.proktor_id,
+        sec.pengawas_1_id,
+        sec.pengawas_1_guru_id,
+        sec.pengawas_2_id,
+        sec.pengawas_2_guru_id,
+        sec.proktor_id,
+        sec.pengawas_guru_id,
+        sec.pengawas_id,
+      ];
+      for (const cid of candidates) {
+        if (typeof cid === 'string' && cid.trim()) {
+          proctorIds.add(cid.trim());
+        }
+      }
+    }
+
+    const proctorGuruEntries: Array<[string, { id: string; nama_guru: string; nip: string | null; foto: string | null }]> = [];
+    if (proctorIds.size > 0) {
+      const proctors = await prisma.guru.findMany({
+        where: { tenant_id: tenantId, id: { in: Array.from(proctorIds) } },
+        select: {
+          id: true,
+          nama_guru: true,
+          nip: true,
+          foto: true,
+          GuruDocument: {
+            where: { kategori: 'FOTO' },
+            orderBy: { created_at: 'desc' },
+            take: 1,
+            select: { file_storage_path: true },
+          },
+        },
+      });
+      for (const g of proctors) {
+        proctorGuruEntries.push([
+          g.id,
+          {
+            id: g.id,
+            nama_guru: g.nama_guru,
+            nip: g.nip,
+            foto: g.foto || g.GuruDocument?.[0]?.file_storage_path || null,
+          },
+        ]);
+      }
+    }
+
+    const payload = {
+      activeEventIds,
+      tokenlessEventIds,
+      jadwalList,
+      proctorGuruEntries,
+    };
+
+    CbtTestEngineService.classExamsCache.set(memKey, { data: payload, exp: now + 15000 });
+    if (redis) {
+      await redis.set(redisKey, JSON.stringify(payload), 'EX', 20).catch(() => null);
+    }
+    return payload;
+  }
 
   private static async getCachedDenahs(tenantId: string) {
     const now = Date.now();
@@ -132,86 +301,31 @@ export class CbtTestEngineService {
       return [];
     }
 
-    const [activeTp, activeSem, activeEvents] = await Promise.all([
-      prisma.tahunPelajaran.findFirst({
-        where: { tenant_id: tenantId, is_active: true },
-        select: { id: true },
-      }),
-      prisma.semester.findFirst({
-        where: { tenant_id: tenantId, is_active: true },
-        select: { id: true, nama_semester: true },
-      }),
-      prisma.cbtEvent.findMany({
-        where: { tenant_id: tenantId, is_active: true },
-        select: { id: true, tahun_pelajaran_id: true, semester: true },
-      }),
+    const [classExamsMeta, activeDenahs, allClasses, classGuruMapels] = await Promise.all([
+      CbtTestEngineService.getCachedClassExamsMeta(tenantId, siswa.kelas_id),
+      CbtTestEngineService.getCachedDenahs(tenantId),
+      CbtTestEngineService.getCachedClasses(tenantId),
+      CbtTestEngineService.getCachedClassGuruMapels(tenantId, siswa.kelas_id),
     ]);
 
-    const activeSemUpper = (activeSem?.nama_semester || '').toUpperCase();
-    const activeEventIds = new Set(
-      activeEvents
-        .filter((ev) => {
-          if (ev.tahun_pelajaran_id && activeTp?.id && ev.tahun_pelajaran_id !== activeTp.id) {
-            return false;
-          }
-          if (ev.semester && activeSemUpper) {
-            const evSem = ev.semester.toUpperCase();
-            if (evSem !== 'SEMUA' && !activeSemUpper.includes(evSem) && !evSem.includes(activeSemUpper)) {
-              return false;
-            }
-          }
-          return true;
-        })
-        .map((ev) => ev.id)
+    const activeEventIds = new Set<string>(classExamsMeta.activeEventIds || []);
+    const tokenlessEventIds = new Set<string>(classExamsMeta.tokenlessEventIds || []);
+    const jadwalList: any[] = classExamsMeta.jadwalList || [];
+    const proctorGuruMap = new Map<string, { id: string; nama_guru: string; nip: string | null; foto: string | null }>(
+      classExamsMeta.proctorGuruEntries || []
     );
 
-    const [jadwalList, activeDenahs, allClasses, classGuruMapels] = await Promise.all([
-      prisma.cbtJadwalUjian.findMany({
-        where: {
-          tenant_id: tenantId,
-          status: { in: ['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED'] },
-          target_kelas_ids: { array_contains: [siswa.kelas_id] },
-          ...(activeTp?.id ? { tahun_pelajaran_id: activeTp.id } : {}),
-          ...(activeSem?.id ? { semester_id: activeSem.id } : {}),
-        },
-        orderBy: { tanggal_mulai: 'desc' },
-        take: 100,
-        select: {
-          id: true,
-          nama_sesi: true,
-          tanggal_mulai: true,
-          tanggal_selesai: true,
-          durasi_menit: true,
-          status: true,
-          setting_keamanan: true,
-          TahunPelajaran: { select: { tahun: true } },
-          Semester: { select: { nama_semester: true } },
-          BankSoal: {
-            select: {
-              id: true,
-              event_id: true,
-              mapel_id: true,
-              unit_pengajaran_id: true,
-              kode_bank: true,
-              judul: true,
-              tingkat: true,
-              jumlah_soal: true,
-              Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
-              Guru: { select: { id: true, nama_guru: true } },
-              UnitPengajaran: {
-                select: {
-                  id: true,
-                  nama_unit: true,
-                  guru_id: true,
-                  Guru: { select: { id: true, nama_guru: true } },
-                },
-              },
+    const jadwalIds = jadwalList.map((j) => j.id);
+    const pesertaRecords =
+      jadwalIds.length > 0
+        ? await prisma.cbtPesertaUjian.findMany({
+            where: {
+              tenant_id: tenantId,
+              siswa_id: siswaId,
+              jadwal_ujian_id: { in: jadwalIds },
             },
-          },
-          Peserta: {
-            where: { siswa_id: siswaId },
-            take: 1,
             select: {
+              jadwal_ujian_id: true,
               status: true,
               waktu_mulai: true,
               waktu_selesai: true,
@@ -222,13 +336,9 @@ export class CbtTestEngineService {
               log_pelanggaran_json: true,
               metadata_perangkat: true,
             },
-          },
-        },
-      }),
-      CbtTestEngineService.getCachedDenahs(tenantId),
-      CbtTestEngineService.getCachedClasses(tenantId),
-      CbtTestEngineService.getCachedClassGuruMapels(tenantId, siswa.kelas_id),
-    ]);
+          })
+        : [];
+    const pesertaByJadwalId = new Map(pesertaRecords.map((p) => [p.jadwal_ujian_id, p]));
 
     // 1. Ekstrak pemetaan ruang dari Denah Spasial Kampus (Master Sarpras & Event Ujian)
     const denahRoomByKelasId = new Map<string, { slot_ruang: string; nama_ruang: string }>();
@@ -295,65 +405,6 @@ export class CbtTestEngineService {
     }
 
     // 4. Batch-Fetch Profil & Foto Pengawas Ruang Ujian (Zero N+1)
-    const proctorIdSet = new Set<string>();
-    for (const j of jadwalList) {
-      const sec = (j.setting_keamanan as any) || {};
-      const roomMappings = sec.room_mappings || sec.kelas_room_map || {};
-      const studentRoom = siswa.kelas_id ? roomMappings[siswa.kelas_id] : null;
-      const candidates = [
-        studentRoom?.pengawas_1_id,
-        studentRoom?.pengawas_1_guru_id,
-        studentRoom?.pengawas_2_id,
-        studentRoom?.pengawas_2_guru_id,
-        studentRoom?.proktor_id,
-        sec.pengawas_1_id,
-        sec.pengawas_1_guru_id,
-        sec.pengawas_2_id,
-        sec.pengawas_2_guru_id,
-        sec.proktor_id,
-        sec.pengawas_guru_id,
-        sec.pengawas_id,
-      ];
-      for (const cid of candidates) {
-        if (typeof cid === 'string' && cid.trim()) {
-          proctorIdSet.add(cid.trim());
-        }
-      }
-    }
-
-    const proctorGuruMap = new Map<string, { id: string; nama_guru: string; nip: string | null; foto: string | null }>();
-    if (proctorIdSet.size > 0) {
-      const proctors = await prisma.guru.findMany({
-        where: { id: { in: Array.from(proctorIdSet) }, tenant_id: tenantId },
-        select: {
-          id: true,
-          nama_guru: true,
-          nip: true,
-          foto: true,
-          GuruDocument: {
-            where: { kategori: 'FOTO' },
-            orderBy: { created_at: 'desc' },
-            take: 1,
-            select: { file_storage_path: true },
-          },
-        },
-      });
-      for (const g of proctors) {
-        proctorGuruMap.set(g.id, {
-          id: g.id,
-          nama_guru: g.nama_guru,
-          nip: g.nip,
-          foto: g.foto || g.GuruDocument?.[0]?.file_storage_path || null,
-        });
-      }
-    }
-
-    const tokenlessEvents = await prisma.cbtEvent.findMany({
-      where: { tenant_id: tenantId, tokenless: true },
-      select: { id: true },
-    });
-    const tokenlessEventIds = new Set(tokenlessEvents.map((e) => e.id));
-
     const rawResult = jadwalList
       .filter((j) => {
         const sec = (j.setting_keamanan as any) || {};
@@ -368,7 +419,7 @@ export class CbtTestEngineService {
         return true;
       })
       .map((j) => {
-        const peserta = j.Peserta[0];
+        const peserta = pesertaByJadwalId.get(j.id);
         const showResult = (j.setting_keamanan as any)?.show_result_instant ?? true;
         const isFinished = peserta?.status === 'FINISHED';
         const jawabanArr = Array.isArray(peserta?.jawaban_json) ? (peserta.jawaban_json as any[]) : [];
@@ -1036,33 +1087,58 @@ export class CbtTestEngineService {
     metadataPerangkat?: any
   ) {
     const cleanToken = (tokenMasuk || '').trim().toUpperCase();
+    const entryRedis = getRedisConnection();
+    const entryCacheKey = `cbt:${tenantId}:jadwal-entry:${jadwalId}`;
 
-    const jadwal = await prisma.cbtJadwalUjian.findFirst({
-      where: { id: jadwalId, tenant_id: tenantId },
-      include: {
-        BankSoal: true,
-      },
-    });
+    let jadwal: any = null;
+    let linkedEventTokenless = false;
+    if (entryRedis) {
+      const cachedEntry = await entryRedis.get(entryCacheKey).catch(() => null);
+      if (cachedEntry) {
+        try {
+          const parsedEntry = JSON.parse(cachedEntry);
+          jadwal = parsedEntry.jadwal;
+          linkedEventTokenless = Boolean(parsedEntry.linkedEventTokenless);
+        } catch {}
+      }
+    }
 
     if (!jadwal) {
-      const err: any = new Error('Jadwal ujian tidak ditemukan di sistem.');
-      err.statusCode = 404;
-      err.code = 'SCHEDULE_NOT_FOUND';
-      throw err;
+      jadwal = await prisma.cbtJadwalUjian.findFirst({
+        where: { id: jadwalId, tenant_id: tenantId },
+        include: {
+          BankSoal: true,
+        },
+      });
+
+      if (!jadwal) {
+        const err: any = new Error('Jadwal ujian tidak ditemukan di sistem.');
+        err.statusCode = 404;
+        err.code = 'SCHEDULE_NOT_FOUND';
+        throw err;
+      }
+
+      const linkedEventId = (jadwal.setting_keamanan as any)?.event_id;
+      const linkedEvent = linkedEventId
+        ? await prisma.cbtEvent.findFirst({
+            where: { tenant_id: tenantId, id: String(linkedEventId) },
+            select: { tokenless: true },
+          })
+        : null;
+      linkedEventTokenless = Boolean(linkedEvent?.tokenless);
+
+      if (entryRedis && jadwal.status === 'ACTIVE') {
+        await entryRedis
+          .set(entryCacheKey, JSON.stringify({ jadwal, linkedEventTokenless }), 'EX', 15)
+          .catch(() => null);
+      }
     }
 
     const mapelName = (jadwal.BankSoal as any)?.judul || jadwal.nama_sesi;
     const isRemedial = Boolean((jadwal.setting_keamanan as any)?.is_remedial);
-    const linkedEventId = (jadwal.setting_keamanan as any)?.event_id;
-    const linkedEvent = linkedEventId
-      ? await prisma.cbtEvent.findFirst({
-          where: { tenant_id: tenantId, id: String(linkedEventId) },
-          select: { tokenless: true },
-        })
-      : null;
     const isTokenless =
       (isRemedial && (jadwal.setting_keamanan as any)?.tokenless !== false) ||
-      Boolean(linkedEvent?.tokenless) ||
+      linkedEventTokenless ||
       (jadwal.setting_keamanan as any)?.tokenless === true;
 
     if (!isRemedial && jadwal.status === 'DRAFT') {
