@@ -274,7 +274,7 @@ const Savings: React.FC<SavingsProps> = React.memo(({ hideLayout = false }) => {
               </div>
             )}
 
-            <SavingStatsBanner savings={savings} loading={loading} />
+            <SavingStatsBanner savings={savings} categories={categories} loading={loading} />
 
             {isPersonalMode ? (
               <div className="space-y-4">

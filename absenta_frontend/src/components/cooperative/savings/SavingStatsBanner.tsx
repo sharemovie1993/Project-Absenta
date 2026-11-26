@@ -7,11 +7,12 @@ import {
   ChevronDown, 
   ChevronUp 
 } from 'lucide-react';
-import type { Saving } from './types';
+import type { Saving, SavingCategory } from './types';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 
 interface SavingStatsBannerProps {
   savings: Saving[];
+  categories?: SavingCategory[];
   variant?: 'default' | 'compact-premium';
   mobileCompact?: boolean;
   loading?: boolean;
@@ -36,6 +37,7 @@ const fmtShort = (n: number) => {
 
 export const SavingStatsBanner = React.memo<SavingStatsBannerProps>(({
   savings,
+  categories = [],
   loading = false
 }) => {
   const isMobile = useIsMobile();
@@ -47,14 +49,28 @@ export const SavingStatsBanner = React.memo<SavingStatsBannerProps>(({
     let totalWajib = 0;
     let totalSukarela = 0;
     let totalLainnya = 0;
+    let activeAccountsCount = 0;
 
+    const activeCategoryCodes = new Set(
+      (categories || []).map((c) => String(c.code || '').toUpperCase()).filter(Boolean)
+    );
+    const hasCategoryList = activeCategoryCodes.size > 0;
+    const categoryTotals: Record<string, number> = {};
     const memberMap: Record<string, { hasPokok: boolean; hasWajib: boolean }> = {};
 
     savings?.forEach((s) => {
       const amt = parseFloat(s.amount) || 0;
-      totalBalance += amt;
-
       const code = (s.category?.code || s.type || 'LAINNYA').toUpperCase();
+      const isCatActive = hasCategoryList
+        ? activeCategoryCodes.has(code)
+        : s.category?.isActive !== false;
+
+      if (isCatActive || amt > 0) {
+        activeAccountsCount += 1;
+      }
+
+      totalBalance += amt;
+      categoryTotals[code] = (categoryTotals[code] || 0) + amt;
 
       if (code.includes('POKOK')) totalPokok += amt;
       else if (code.includes('WAJIB')) totalWajib += amt;
@@ -69,6 +85,49 @@ export const SavingStatsBanner = React.memo<SavingStatsBannerProps>(({
       if (code.includes('WAJIB') && amt > 0) memberMap[memKey].hasWajib = true;
     });
 
+    const getShortLabel = (cat: SavingCategory) => {
+      const c = String(cat.code || '').toUpperCase();
+      if (c.includes('POKOK')) return 'Pokok';
+      if (c.includes('WAJIB')) return 'Wajib';
+      if (c.includes('SUKARELA')) return 'Sukarela';
+      if (c.includes('RAYA') || c.includes('THR')) return 'Raya';
+      return String(cat.name || cat.code).replace(/^Simpanan\s+/i, '').trim().split(' ')[0];
+    };
+
+    const getTextColorClass = (code: string, idx: number) => {
+      const c = code.toUpperCase();
+      if (c.includes('POKOK')) return 'text-indigo-600 dark:text-indigo-400';
+      if (c.includes('WAJIB')) return 'text-sky-600 dark:text-sky-400';
+      if (c.includes('SUKARELA')) return 'text-emerald-600 dark:text-emerald-400';
+      if (c.includes('RAYA') || c.includes('THR')) return 'text-amber-600 dark:text-amber-400';
+      const palette = [
+        'text-indigo-600 dark:text-indigo-400',
+        'text-sky-600 dark:text-sky-400',
+        'text-emerald-600 dark:text-emerald-400',
+        'text-amber-600 dark:text-amber-400',
+      ];
+      return palette[idx % palette.length];
+    };
+
+    const compositionItems = hasCategoryList
+      ? [...categories]
+          .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
+          .map((cat, idx) => {
+            const c = String(cat.code || '').toUpperCase();
+            return {
+              key: cat.id || c,
+              label: getShortLabel(cat),
+              amount: categoryTotals[c] || 0,
+              colorClass: getTextColorClass(c, idx),
+            };
+          })
+      : [
+          { key: 'POKOK', label: 'Pokok', amount: totalPokok, colorClass: 'text-indigo-600 dark:text-indigo-400' },
+          { key: 'WAJIB', label: 'Wajib', amount: totalWajib, colorClass: 'text-sky-600 dark:text-sky-400' },
+          { key: 'SUKARELA', label: 'Sukarela', amount: totalSukarela, colorClass: 'text-emerald-600 dark:text-emerald-400' },
+          { key: 'RAYA', label: 'Raya', amount: totalLainnya, colorClass: 'text-amber-600 dark:text-amber-400' },
+        ];
+
     const membersList = Object.values(memberMap);
     const totalMembers = membersList.length || 0;
     const lunasWajibCount = membersList.filter(m => m.hasWajib).length;
@@ -79,18 +138,15 @@ export const SavingStatsBanner = React.memo<SavingStatsBannerProps>(({
 
     return {
       totalBalance,
-      totalPokok,
-      totalWajib,
-      totalSukarela,
-      totalLainnya,
+      compositionItems,
       modalTetapPct,
-      accountsCount: savings?.length || 0,
+      accountsCount: activeAccountsCount,
       totalMembers,
       lunasWajibCount,
       belumWajibCount,
       complianceRate,
     };
-  }, [savings]);
+  }, [savings, categories]);
 
   if (loading) {
     return (
@@ -213,22 +269,17 @@ export const SavingStatsBanner = React.memo<SavingStatsBannerProps>(({
             </div>
 
             <div className="grid grid-cols-2 gap-1.5 my-2">
-              <div className="px-2.5 py-1 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">Pokok</span>
-                <span className="font-mono font-black text-xs text-slate-800 dark:text-slate-200">{fmtShort(stats.totalPokok)}</span>
-              </div>
-              <div className="px-2.5 py-1 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <span className="text-[11px] font-bold text-sky-600 dark:text-sky-400">Wajib</span>
-                <span className="font-mono font-black text-xs text-slate-800 dark:text-slate-200">{fmtShort(stats.totalWajib)}</span>
-              </div>
-              <div className="px-2.5 py-1 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">Sukarela</span>
-                <span className="font-mono font-black text-xs text-slate-800 dark:text-slate-200">{fmtShort(stats.totalSukarela)}</span>
-              </div>
-              <div className="px-2.5 py-1 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400">Raya</span>
-                <span className="font-mono font-black text-xs text-slate-800 dark:text-slate-200">{fmtShort(stats.totalLainnya)}</span>
-              </div>
+              {stats.compositionItems.map((item) => (
+                <div
+                  key={item.key}
+                  className="px-2.5 py-1 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-center justify-between"
+                >
+                  <span className={`text-[11px] font-bold ${item.colorClass}`}>{item.label}</span>
+                  <span className="font-mono font-black text-xs text-slate-800 dark:text-slate-200">
+                    {fmtShort(item.amount)}
+                  </span>
+                </div>
+              ))}
             </div>
 
             <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">

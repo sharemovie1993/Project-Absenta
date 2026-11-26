@@ -140,10 +140,24 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
     return Array.from(map.values());
   }, [savings, isStudent]);
 
-  // Cek apakah ada kategori tambahan di luar POKOK, WAJIB, SUKARELA
-  const hasOtherCategories = useMemo(() => {
-    return categories?.some(c => !['POKOK', 'WAJIB', 'SUKARELA'].includes(c.code.toUpperCase()));
-  }, [categories]);
+  // Cek kategori aktif dari Pengaturan Kategori Simpanan (atau bila ada saldo historis > 0)
+  const { hasPokokCol, hasWajibCol, hasSukarelaCol, hasOtherCategories } = useMemo(() => {
+    const activeCodes = new Set((categories || []).map((c) => c.code.toUpperCase()));
+    const hasCats = activeCodes.size > 0;
+    const anyPokok = groupedList.some((g) => g.pokokAmount > 0);
+    const anyWajib = groupedList.some((g) => g.wajibAmount > 0);
+    const anySukarela = groupedList.some((g) => g.sukarelaAmount > 0);
+    const anyOther = groupedList.some((g) => g.otherAmount > 0);
+
+    return {
+      hasPokokCol: !hasCats || activeCodes.has('POKOK') || anyPokok,
+      hasWajibCol: !hasCats || activeCodes.has('WAJIB') || anyWajib,
+      hasSukarelaCol: !hasCats || activeCodes.has('SUKARELA') || anySukarela,
+      hasOtherCategories:
+        (categories?.some((c) => !['POKOK', 'WAJIB', 'SUKARELA'].includes(c.code.toUpperCase())) ?? false) ||
+        anyOther,
+    };
+  }, [categories, groupedList]);
 
   const finalColumns: Column[] = useMemo(() => {
     if (isStudent) {
@@ -235,11 +249,11 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
           );
         }
       },
-      {
+      ...(hasPokokCol ? [{
         key: 'pokok',
         label: 'Simp. Pokok',
         sortable: true,
-        render: (_, row: any) => {
+        render: (_: any, row: any) => {
           const item = row as GroupedMemberSaving;
           const isLunas = item.pokokAmount > 0;
           return (
@@ -259,12 +273,12 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
             </div>
           );
         }
-      },
-      {
+      }] : []),
+      ...(hasWajibCol ? [{
         key: 'wajib',
         label: 'Simp. Wajib',
         sortable: true,
-        render: (_, row: any) => {
+        render: (_: any, row: any) => {
           const item = row as GroupedMemberSaving;
           const isLunas = item.wajibAmount > 0;
           return (
@@ -284,12 +298,12 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
             </div>
           );
         }
-      },
-      {
+      }] : []),
+      ...(hasSukarelaCol ? [{
         key: 'sukarela',
         label: 'Simp. Sukarela',
         sortable: true,
-        render: (_, row: any) => {
+        render: (_: any, row: any) => {
           const item = row as GroupedMemberSaving;
           return (
             <span className={`font-bold font-mono text-xs ${item.sukarelaAmount > 0 ? 'text-emerald-600 dark:text-emerald-400 font-black' : 'text-slate-400'}`}>
@@ -297,7 +311,7 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
             </span>
           );
         }
-      },
+      }] : []),
       ...(hasOtherCategories ? [{
         key: 'other',
         label: 'Lainnya',

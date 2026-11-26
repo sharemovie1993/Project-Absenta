@@ -137,7 +137,8 @@ const Settings: React.FC<SettingsProps> = React.memo(({ hideLayout = false }) =>
   const loadingCategories = categoriesQuery.isLoading;
   const fetchCategories = useCallback(async () => {
     await categoriesQuery.refetch();
-  }, [categoriesQuery]);
+    await queryClient.invalidateQueries({ queryKey: ['koperasi-saving-categories'] });
+  }, [categoriesQuery, queryClient]);
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const {
       name,
