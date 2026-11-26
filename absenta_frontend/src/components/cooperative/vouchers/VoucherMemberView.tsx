@@ -310,40 +310,40 @@ export const VoucherMemberView = React.memo<VoucherMemberViewProps>(({
   ], [printReceipt, setSelectedSale, setShowReceiptModal]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-5">
       {/* ── Ringkasan Poin & Keanggotaan ───────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
         {/* Kartu Poin Dinamis */}
-        <div className={`lg:col-span-2 relative overflow-hidden rounded-2xl bg-gradient-to-br ${currentTier.color} p-6 shadow-lg shadow-indigo-500/10 text-white flex flex-col justify-between h-48`}>
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-8 -mt-8 pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -ml-8 -mb-8 pointer-events-none" />
+        <div className={`lg:col-span-2 relative overflow-hidden rounded-2xl bg-gradient-to-br ${currentTier.color} p-4 sm:p-5 shadow-sm text-white flex flex-col justify-between gap-3`}>
+          <div className="absolute top-0 right-0 w-28 h-28 bg-white/5 rounded-full -mr-8 -mt-8 pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-20 h-20 bg-white/5 rounded-full -ml-6 -mb-6 pointer-events-none" />
           
-          <div className="flex justify-between items-start z-10">
-            <div>
-              <span className="text-[10px] font-bold tracking-widest uppercase text-white/77">Loyalty Member</span>
-              <h3 className="text-xl font-bold mt-0.5">{user?.full_name || 'Anggota Koperasi'}</h3>
+          <div className="flex justify-between items-start gap-2 z-10">
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold tracking-widest uppercase text-white/75">Loyalty Member</span>
+              <h3 className="text-base sm:text-lg font-extrabold mt-0.5 truncate">{user?.full_name || memberInfo?.name || 'Anggota Koperasi'}</h3>
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-white/15 backdrop-blur-sm rounded-full text-xs font-bold border border-white/10 shadow-sm">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/15 backdrop-blur-sm rounded-full text-[11px] font-bold border border-white/15 shrink-0">
               <Award className="w-3.5 h-3.5" />
               <span>{currentTier.name}</span>
             </div>
           </div>
 
-          <div className="z-10 mt-4 flex items-end justify-between">
+          <div className="z-10 flex flex-wrap items-end justify-between gap-3">
             <div>
               <span className="text-white/75 text-[10px] font-bold uppercase tracking-wider block">Saldo Poin Anda</span>
-              <span className="text-4xl font-extrabold tracking-tight flex items-center gap-1">
+              <span className="text-2xl sm:text-3xl font-black tracking-tight flex items-baseline gap-1.5">
                 {myPoints.toLocaleString('id-ID')}
-                <span className="text-xs font-semibold text-white/80 tracking-normal mb-1">Poin</span>
+                <span className="text-xs font-semibold text-white/85 tracking-normal">Poin</span>
               </span>
             </div>
             
             {nextTierPoints && (
-              <div className="text-right max-w-xs">
-                <span className="text-[10px] text-white/80 font-bold block mb-1">
-                  Kumpulkan {(nextTierPoints - myPoints).toLocaleString('id-ID')} poin lagi ke tier berikutnya
+              <div className="text-left sm:text-right">
+                <span className="text-[10px] text-white/85 font-semibold block mb-1">
+                  Butuh {(nextTierPoints - myPoints).toLocaleString('id-ID')} poin lagi ke tier berikutnya
                 </span>
-                <div className="w-40 bg-white/20 h-1.5 rounded-full overflow-hidden inline-block border border-white/5">
+                <div className="w-40 bg-white/20 h-1.5 rounded-full overflow-hidden border border-white/10">
                   <div 
                     className="bg-white h-full rounded-full transition-all duration-500" 
                     style={{ width: `${Math.min(100, (myPoints / nextTierPoints) * 100)}%` }} 
@@ -355,19 +355,19 @@ export const VoucherMemberView = React.memo<VoucherMemberViewProps>(({
         </div>
 
         {/* Ringkasan Saldo Penjelas */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm flex flex-col justify-between h-48">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 rounded-2xl shadow-2xs flex flex-col justify-between gap-3">
           <div>
-            <h4 className="text-slate-400 text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-blue-500" /> Aturan Perolehan Poin
+            <h4 className="text-slate-500 dark:text-slate-400 text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-500" /> Aturan Perolehan Poin
             </h4>
-            <p className="text-slate-500 dark:text-slate-400 text-xs mt-3 leading-relaxed">
-              Setiap simpanan tabungan aktif kelipatan <strong className="text-slate-700 dark:text-slate-200">Rp 10.000</strong> akan secara otomatis menghasilkan <strong className="text-slate-700 dark:text-slate-200">1 Poin</strong> loyalitas.
+            <p className="text-slate-600 dark:text-slate-400 text-xs mt-2 leading-relaxed">
+              Setiap simpanan tabungan aktif kelipatan <strong className="text-slate-800 dark:text-slate-200">Rp 10.000</strong> menghasilkan <strong className="text-slate-800 dark:text-slate-200">1 Poin</strong> loyalitas.
             </p>
           </div>
           
-          <div className="border-t border-slate-100 dark:border-slate-800 pt-4 flex justify-between items-center text-xs">
-            <span className="text-slate-400 font-bold">Total Tabungan Anda</span>
-            <span className="font-extrabold text-slate-800 dark:text-slate-100">
+          <div className="border-t border-slate-100 dark:border-slate-800 pt-2.5 flex justify-between items-center text-xs">
+            <span className="text-slate-500 font-semibold">Total Tabungan Terhubung</span>
+            <span className="font-extrabold font-mono text-emerald-600 dark:text-emerald-400">
               Rp {mySavingsSum.toLocaleString('id-ID')}
             </span>
           </div>
@@ -376,54 +376,59 @@ export const VoucherMemberView = React.memo<VoucherMemberViewProps>(({
 
       {/* ── Klaim Voucher Belanja ─────────────────────────────────────────── */}
       <div>
-        <div className="flex items-center gap-2 mb-4">
-          <Award className="text-amber-500 w-5 h-5" />
-          <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">Klaim Voucher Belanja</h3>
+        <div className="flex items-center justify-between gap-2 mb-2.5">
+          <div className="flex items-center gap-2">
+            <Award className="text-amber-500 w-4 h-4" />
+            <h3 className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">Klaim Voucher Belanja</h3>
+          </div>
+          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+            Tukar poin loyalitas menjadi potongan belanja kasir
+          </span>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           {[
-            { points: 500, discount: 5000, desc: 'Voucher potongan diskon Rp 5.000 di toko/kasir koperasi.' },
-            { points: 1000, discount: 10000, desc: 'Voucher potongan diskon Rp 10.000 di toko/kasir koperasi.' },
-            { points: 2000, discount: 20000, desc: 'Voucher potongan diskon Rp 20.000 di toko/kasir koperasi.' }
+            { points: 500, discount: 5000, desc: 'Potongan diskon Rp 5.000 di toko/kasir koperasi.' },
+            { points: 1000, discount: 10000, desc: 'Potongan diskon Rp 10.000 di toko/kasir koperasi.' },
+            { points: 2000, discount: 20000, desc: 'Potongan diskon Rp 20.000 di toko/kasir koperasi.' }
           ].map((pkg) => {
             const canRedeem = myPoints >= pkg.points;
+            const lackPoints = Math.max(0, pkg.points - myPoints);
             return (
               <div 
                 key={pkg.points} 
-                className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col justify-between relative overflow-hidden"
+                className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-2xs flex flex-col justify-between gap-3 relative overflow-hidden"
               >
-                <div className="absolute -right-4 -top-4 w-16 h-16 bg-amber-500/5 rounded-full flex items-center justify-center pointer-events-none">
-                  <Award className="text-amber-500/20 w-8 h-8" />
-                </div>
-                
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-black px-2.5 py-1 bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400 rounded-lg">
-                      {pkg.points} Poin
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="inline-block text-[10px] font-black px-2 py-0.5 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200/70 dark:border-amber-800/60 rounded-md">
+                      {pkg.points.toLocaleString('id-ID')} Poin
                     </span>
+                    <h4 className="font-extrabold text-slate-800 dark:text-slate-100 text-base mt-1.5">
+                      Voucher Rp {pkg.discount.toLocaleString('id-ID')}
+                    </h4>
+                    <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5 leading-snug">
+                      {pkg.desc}
+                    </p>
                   </div>
-                  <h4 className="font-extrabold text-slate-800 dark:text-slate-100 text-lg mt-3">
-                    Voucher Rp {pkg.discount.toLocaleString('id-ID')}
-                  </h4>
-                  <p className="text-slate-500 dark:text-slate-400 text-xs mt-1 leading-relaxed">
-                    {pkg.desc}
-                  </p>
+                  <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-500 flex items-center justify-center shrink-0">
+                    <Award className="w-4 h-4" />
+                  </div>
                 </div>
 
-                <div className="mt-5">
-                  <Button
-                    onClick={() => handleRedeemPoints(pkg.points)}
-                    disabled={!canRedeem || redeemLoading}
-                    isLoading={redeemLoading}
-                    className={`w-full py-2 text-xs font-bold rounded-xl transition-all shadow-sm ${
-                      canRedeem 
-                        ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/10' 
-                        : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-650 cursor-not-allowed'
-                    }`}
-                  >
-                    {canRedeem ? 'Tukar Poin' : 'Poin Tidak Cukup'}
-                  </Button>
-                </div>
+                <Button
+                  type="button"
+                  variant={canRedeem ? 'primary' : 'outline'}
+                  onClick={() => handleRedeemPoints(pkg.points)}
+                  disabled={!canRedeem || redeemLoading}
+                  isLoading={redeemLoading}
+                  className={`w-full py-1.5 h-8 text-[11px] font-bold rounded-xl transition-all ${
+                    canRedeem 
+                      ? 'bg-amber-500 hover:bg-amber-600 text-white border-transparent shadow-xs' 
+                      : '!bg-slate-100 !text-slate-500 !border-slate-200 dark:!bg-slate-800/80 dark:!text-slate-400 dark:!border-slate-700 cursor-not-allowed'
+                  }`}
+                >
+                  {canRedeem ? 'Tukar Poin Sekarang' : `Kurang ${lackPoints.toLocaleString('id-ID')} Poin`}
+                </Button>
               </div>
             );
           })}
@@ -431,77 +436,82 @@ export const VoucherMemberView = React.memo<VoucherMemberViewProps>(({
       </div>
 
       {/* ── Katalog Voucher & Promo Aktif ─────────────────────────────────── */}
-      <div>
-        <div className="flex items-center gap-2 mb-4">
-          <Ticket className="text-blue-500 w-5 h-5" />
-          <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">Katalog Promo Voucher</h3>
-        </div>
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <Ticket className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider">Katalog Promo Voucher</h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Salin kode promo aktif untuk digunakan di kasir koperasi</p>
+            </div>
+          </div>
 
-        <div className="mb-4 relative">
-          <input
-            type="text"
-            value={searchVoucher}
-            onChange={(e) => setSearchVoucher(e.target.value)}
-            placeholder="Cari voucher berdasarkan kode atau deskripsi..."
-            className="w-full h-10 pl-10 pr-4 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-            aria-label="Cari voucher"
-          />
-          <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
+          <div className="relative w-full sm:w-64">
+            <input
+              type="text"
+              value={searchVoucher}
+              onChange={(e) => setSearchVoucher(e.target.value)}
+              placeholder="Cari kode / deskripsi..."
+              className="w-full h-8 pl-8 pr-3 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              aria-label="Cari voucher"
+            />
+            <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-slate-400" />
+          </div>
         </div>
 
         {loading ? (
-          <div className="flex justify-center items-center py-12 text-slate-500">Loading vouchers...</div>
+          <div className="flex justify-center items-center py-6 text-xs text-slate-500">Memuat katalog voucher...</div>
         ) : filteredVouchers.length === 0 ? (
-          <div className="bg-slate-50 dark:bg-slate-900/30 border border-slate-150 dark:border-slate-800 rounded-2xl p-8 text-center text-slate-400 max-w-lg mx-auto">
-            <Ticket className="w-12 h-12 mx-auto mb-3 opacity-25" />
-            <p className="font-bold text-sm">Tidak ada promo voucher aktif saat ini.</p>
-            <p className="text-xs mt-1">Nantikan terus promo-promo menarik dari Koperasi Sekolah!</p>
+          <div className="bg-slate-50/70 dark:bg-slate-950/30 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl py-6 px-4 text-center flex flex-col items-center justify-center space-y-1.5">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-500 flex items-center justify-center">
+              <Ticket className="w-5 h-5" />
+            </div>
+            <p className="font-bold text-xs text-slate-700 dark:text-slate-200">Tidak ada promo voucher aktif saat ini</p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">Nantikan terus promo menarik dari Koperasi Sekolah.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {(filteredVouchers || []).map((v) => (
               <div 
                 key={v.id} 
-                className="relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                className="relative overflow-hidden bg-slate-50/50 dark:bg-slate-950/40 border border-slate-200/80 dark:border-slate-800 rounded-xl hover:shadow-sm transition-all flex flex-col justify-between"
               >
-                {/* Desain Kupon Sobek */}
-                <div className="absolute top-1/2 -left-3 w-6 h-6 bg-slate-50 dark:bg-slate-950 border-r border-slate-150 dark:border-slate-800 rounded-full transform -translate-y-1/2 pointer-events-none" />
-                <div className="absolute top-1/2 -right-3 w-6 h-6 bg-slate-50 dark:bg-slate-950 border-l border-slate-150 dark:border-slate-800 rounded-full transform -translate-y-1/2 pointer-events-none" />
-
-                <div className="p-5 flex gap-4 items-start border-b border-dashed border-slate-150 dark:border-slate-800">
-                  <div className="p-3 bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 rounded-xl">
-                    <Ticket size={24} />
+                <div className="p-3.5 flex gap-3 items-start border-b border-dashed border-slate-200 dark:border-slate-800">
+                  <div className="p-2 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 rounded-lg shrink-0">
+                    <Ticket size={18} />
                   </div>
-                  <div>
-                    <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/25 px-2 py-0.5 rounded-full uppercase tracking-wide">
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 rounded-full uppercase tracking-wide">
                       Hemat Rp {Number(v.discount).toLocaleString('id-ID')}
                     </span>
-                    <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm mt-2 font-mono uppercase tracking-tight">{v.code}</h4>
-                    <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-1.5 leading-relaxed">{v.description || 'Gunakan kode promo ini saat checkout belanja di kasir koperasi.'}</p>
+                    <h4 className="font-bold text-slate-800 dark:text-slate-100 text-xs mt-1.5 font-mono uppercase tracking-tight truncate">{v.code}</h4>
+                    <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5 leading-snug line-clamp-2">{v.description || 'Gunakan kode promo ini saat checkout belanja di kasir koperasi.'}</p>
                   </div>
                 </div>
 
-                <div className="px-5 py-4 bg-slate-50/50 dark:bg-slate-900/10 flex justify-between items-center gap-4">
-                  <span className="text-[9px] text-slate-400 font-bold uppercase">
+                <div className="px-3.5 py-2.5 bg-white dark:bg-slate-900 flex justify-between items-center gap-2">
+                  <span className="text-[10px] text-slate-400 font-semibold">
                     {v.validUntil ? `S/D: ${new Date(v.validUntil).toLocaleDateString('id-ID')}` : 'Promo Permanen'}
                   </span>
                   
                   <button
                     onClick={() => handleCopyCode(v.code)}
-                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
                       copiedCode === v.code
-                        ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/20'
-                        : 'bg-slate-100 text-slate-655 hover:bg-slate-200 hover:text-slate-800 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                        ? 'bg-emerald-500 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
                     }`}
                   >
                     {copiedCode === v.code ? (
                       <>
-                        <Check size={13} />
+                        <Check size={12} />
                         <span>Tersalin</span>
                       </>
                     ) : (
                       <>
-                        <Copy size={13} />
+                        <Copy size={12} />
                         <span>Salin Kode</span>
                       </>
                     )}
