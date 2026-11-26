@@ -1457,6 +1457,162 @@ export class CbtJadwalService {
   }
 
   /**
+   * Aksi Monitoring Massal oleh Panitia CBT (untuk Simulasi & Penanganan Serentak):
+   * - RETAKE_ALL: Ulang massal seluruh peserta pada sesi terpilih
+   * - COMPLETE_ALL: Selesaikan massal seluruh sesi yang masih berjalan (DRAFT/ACTIVE/PAUSED)
+   * - UNBLOCK_ALL: Buka blokir massal seluruh peserta berstatus DISQUALIFIED
+   */
+  static async bulkMonitoringAction(
+    tenantId: string,
+    jadwalIds: string[],
+    action: 'RETAKE_ALL' | 'COMPLETE_ALL' | 'UNBLOCK_ALL',
+    currentUser?: any
+  ) {
+    const cleanIds = Array.from(new Set((jadwalIds || []).filter((id) => typeof id === 'string' && id.trim())));
+    if (cleanIds.length === 0) {
+      throw new Error('Tidak ada sesi ujian yang dipilih.');
+    }
+
+    const jadwals = await prisma.cbtJadwalUjian.findMany({
+      where: { tenant_id: tenantId, id: { in: cleanIds } },
+      select: {
+        id: true,
+        status: true,
+        token_ujian: true,
+        target_kelas_ids: true,
+        setting_keamanan: true,
+      },
+    });
+
+    if (jadwals.length === 0) {
+      throw new Error('Jadwal ujian tidak ditemukan.');
+    }
+
+    // Pastikan izin panitia/pengawas terpenuhi
+    this.assertProctorOrPanitiaPermission(jadwals[0], currentUser);
+
+    const redis = getRedisConnection();
+    const validIds = jadwals.map((j) => j.id);
+
+    if (action === 'COMPLETE_ALL') {
+      const targetToComplete = jadwals.filter((j) => j.status !== 'COMPLETED').map((j) => j.id);
+      if (targetToComplete.length > 0) {
+        await prisma.cbtJadwalUjian.updateMany({
+          where: { tenant_id: tenantId, id: { in: targetToComplete } },
+          data: { status: 'COMPLETED' },
+        });
+      }
+
+      const pesertaUpdated = await prisma.cbtPesertaUjian.updateMany({
+        where: {
+          tenant_id: tenantId,
+          jadwal_ujian_id: { in: validIds },
+          status: 'IN_PROGRESS',
+        },
+        data: {
+          status: 'FINISHED',
+          waktu_selesai: new Date(),
+        },
+      });
+
+      if (redis) {
+        const kelasIds = new Set<string>();
+        for (const j of jadwals) {
+          await redis.del(`cbt:${tenantId}:bundle:${j.id}`).catch(() => null);
+          await redis.del(`cbt:${tenantId}:jadwal-entry:${j.id}`).catch(() => null);
+          await redis.del(`cbt:${tenantId}:token:${j.token_ujian}`).catch(() => null);
+          if (Array.isArray(j.target_kelas_ids)) {
+            (j.target_kelas_ids as string[]).forEach((kid) => kelasIds.add(kid));
+          }
+        }
+        for (const kid of kelasIds) {
+          await redis.del(`cbt:${tenantId}:my-exams-meta:${kid}`).catch(() => null);
+        }
+      }
+
+      return {
+        action,
+        affected_schedules: targetToComplete.length,
+        affected_participants: pesertaUpdated.count,
+        message: `${targetToComplete.length} sesi diselesaikan (${pesertaUpdated.count} peserta difinalisasi).`,
+      };
+    }
+
+    if (action === 'RETAKE_ALL') {
+      const pesertaList = await prisma.cbtPesertaUjian.findMany({
+        where: { tenant_id: tenantId, jadwal_ujian_id: { in: validIds } },
+        select: { siswa_id: true },
+      });
+
+      if (redis && pesertaList.length > 0) {
+        const keys = Array.from(new Set(pesertaList.map((p) => `cbt:${tenantId}:session:${p.siswa_id}`)));
+        for (let i = 0; i < keys.length; i += 200) {
+          await redis.del(...keys.slice(i, i + 200)).catch(() => null);
+        }
+      }
+
+      const updated = await prisma.cbtPesertaUjian.updateMany({
+        where: { tenant_id: tenantId, jadwal_ujian_id: { in: validIds } },
+        data: {
+          status: 'STANDBY',
+          status_sinkron: 'IDLE',
+          waktu_mulai: null,
+          waktu_selesai: null,
+          jawaban_json: [],
+          jumlah_benar: 0,
+          jumlah_salah: 0,
+          nilai_akhir: 0,
+          log_pelanggaran_json: [],
+        },
+      });
+
+      return {
+        action,
+        affected_schedules: validIds.length,
+        affected_participants: updated.count,
+        message: `Ulang massal berhasil: ${updated.count} peserta di-reset ke STANDBY.`,
+      };
+    }
+
+    // UNBLOCK_ALL
+    const blockedList = await prisma.cbtPesertaUjian.findMany({
+      where: {
+        tenant_id: tenantId,
+        jadwal_ujian_id: { in: validIds },
+        status: 'DISQUALIFIED',
+      },
+      select: { siswa_id: true },
+    });
+
+    if (redis && blockedList.length > 0) {
+      const keys = Array.from(new Set(blockedList.map((p) => `cbt:${tenantId}:session:${p.siswa_id}`)));
+      for (let i = 0; i < keys.length; i += 200) {
+        await redis.del(...keys.slice(i, i + 200)).catch(() => null);
+      }
+    }
+
+    const unblocked = await prisma.cbtPesertaUjian.updateMany({
+      where: {
+        tenant_id: tenantId,
+        jadwal_ujian_id: { in: validIds },
+        status: 'DISQUALIFIED',
+      },
+      data: {
+        status: 'STANDBY',
+        status_sinkron: 'IDLE',
+        log_pelanggaran_json: [],
+      },
+    });
+
+    return {
+      action,
+      affected_schedules: validIds.length,
+      affected_participants: unblocked.count,
+      message: `Buka blokir massal berhasil: ${unblocked.count} peserta dibuka kembali.`,
+    };
+  }
+
+  /**
    * Beri dispensasi keterlambatan siswa oleh Pengawas
    */
   static async grantDispensasiTerlambat(tenantId: string, jadwalId: string, siswaId: string) {

@@ -301,6 +301,19 @@ export const cbtApi = {
     return res.data?.data as CbtJadwalUjian;
   },
 
+  bulkMonitoringAction: async (payload: {
+    jadwal_ids: string[];
+    action: 'RETAKE_ALL' | 'COMPLETE_ALL' | 'UNBLOCK_ALL';
+  }) => {
+    const res = await api.post('/cbt/jadwal/bulk-monitoring-action', payload);
+    return res.data?.data as {
+      action: string;
+      affected_schedules: number;
+      affected_participants: number;
+      message: string;
+    };
+  },
+
   getPesertaList: async (jadwalId: string, params?: Record<string, any>) => {
     const res = await api.get(`/cbt/jadwal/${jadwalId}/peserta`, { params });
     return res.data?.data as CbtPesertaUjian[];

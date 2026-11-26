@@ -13,6 +13,9 @@ import {
   DoorOpen,
   ArrowLeft,
   RotateCw,
+  RotateCcw,
+  CheckCircle2,
+  Unlock,
   Sparkles,
   Layers,
   ChevronRight,
@@ -171,6 +174,60 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
     });
     if (isConfirmed) {
       deleteJadwalMutation.mutate(j.id);
+    }
+  };
+
+  // Aksi Monitoring Massal (Ulang Massal, Selesaikan Massal, Buka Blokir Massal)
+  const bulkMonitoringMutation = useMutation({
+    mutationFn: (payload: {
+      jadwal_ids: string[];
+      action: 'RETAKE_ALL' | 'COMPLETE_ALL' | 'UNBLOCK_ALL';
+    }) => cbtApi.bulkMonitoringAction(payload),
+    onSuccess: async (res) => {
+      toast.success(res.message || 'Aksi massal berhasil dijalankan.');
+      await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false, refetchType: 'all' });
+      refetchJadwal();
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || 'Gagal menjalankan aksi massal'),
+  });
+
+  const handleBulkMonitoringAction = async (
+    action: 'RETAKE_ALL' | 'COMPLETE_ALL' | 'UNBLOCK_ALL'
+  ) => {
+    const targetIds = effectiveJadwalList.map((j) => j.id);
+    if (targetIds.length === 0) return;
+
+    const configMap = {
+      RETAKE_ALL: {
+        title: 'Ulang Ujian Massal?',
+        description: `Seluruh peserta pada ${targetIds.length} sesi di event ini akan di-reset ke STANDBY (jawaban & nilai dikosongkan agar dapat mengulang simulasi dari awal).`,
+        confirmText: 'Ya, Ulang Massal',
+        variant: 'danger' as const,
+      },
+      COMPLETE_ALL: {
+        title: 'Selesaikan Semua Sesi Massal?',
+        description: `Seluruh sesi aktif/jeda pada ${targetIds.length} ruang akan ditutup (COMPLETED) dan peserta yang masih IN_PROGRESS akan difinalisasi ke FINISHED.`,
+        confirmText: 'Ya, Selesaikan Semua',
+        variant: 'warning' as const,
+      },
+      UNBLOCK_ALL: {
+        title: 'Buka Blokir Peserta Massal?',
+        description: `Seluruh peserta yang terblokir (DISQUALIFIED) pada ${targetIds.length} sesi akan dibuka kembali ke STANDBY agar dapat melanjutkan ujian.`,
+        confirmText: 'Ya, Buka Blokir Semua',
+        variant: 'info' as const,
+      },
+    }[action];
+
+    const isConfirmed = await confirm({
+      title: configMap.title,
+      description: configMap.description,
+      confirmText: configMap.confirmText,
+      cancelText: 'Batal',
+      variant: configMap.variant,
+    });
+
+    if (isConfirmed) {
+      bulkMonitoringMutation.mutate({ jadwal_ids: targetIds, action });
     }
   };
 
@@ -830,6 +887,50 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
                 <Play size={11} className="fill-white" />
                 <span>Aktifkan ({summary.draft})</span>
               </Button>
+            )}
+
+            {/* Aksi Massal Simulasi & Penanganan Panitia */}
+            {effectiveJadwalList.length > 0 && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleBulkMonitoringAction('UNBLOCK_ALL')}
+                  disabled={bulkMonitoringMutation.isPending}
+                  className="text-xs h-7 px-2 font-bold text-sky-700 border-sky-200 bg-white hover:bg-sky-50 dark:text-sky-300 dark:border-sky-800 dark:bg-slate-900 cursor-pointer shadow-2xs flex items-center gap-1 shrink-0"
+                  title="Buka blokir seluruh peserta DISQUALIFIED secara massal"
+                >
+                  <Unlock size={11} />
+                  <span>Buka Blokir</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleBulkMonitoringAction('RETAKE_ALL')}
+                  disabled={bulkMonitoringMutation.isPending}
+                  className="text-xs h-7 px-2 font-bold text-rose-700 border-rose-200 bg-white hover:bg-rose-50 dark:text-rose-300 dark:border-rose-800 dark:bg-slate-900 cursor-pointer shadow-2xs flex items-center gap-1 shrink-0"
+                  title="Ulang massal seluruh peserta pada event ini (reset ke STANDBY)"
+                >
+                  <RotateCcw size={11} />
+                  <span>Ulang Massal</span>
+                </Button>
+                {(summary.active > 0 || summary.paused > 0) && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBulkMonitoringAction('COMPLETE_ALL')}
+                    disabled={bulkMonitoringMutation.isPending}
+                    className="text-xs h-7 px-2 font-bold text-emerald-700 border-emerald-200 bg-white hover:bg-emerald-50 dark:text-emerald-300 dark:border-emerald-800 dark:bg-slate-900 cursor-pointer shadow-2xs flex items-center gap-1 shrink-0"
+                    title="Selesaikan seluruh sesi yang masih aktif/jeda secara massal"
+                  >
+                    <CheckCircle2 size={11} />
+                    <span>Selesaikan ({summary.active + summary.paused})</span>
+                  </Button>
+                )}
+              </>
             )}
 
             {/* Denah Button (1 Kata) */}
