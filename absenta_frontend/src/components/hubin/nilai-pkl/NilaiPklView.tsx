@@ -979,6 +979,61 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
           />
         )}
 
+        {/* Compact Scheme Awareness & Sub-Tab Bar saat hideLocalFilters aktif (misal di Dashboard Pembimbing PKL) */}
+        {!isPengujiOnly && hideLocalFilters && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-2xs">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200/80 dark:border-indigo-800/70 text-[11px] font-bold text-indigo-700 dark:text-indigo-300">
+                <Award size={13} className="shrink-0" />
+                <span>
+                  Skema:{' '}
+                  {effectiveSettings?.assessmentMode === 'COMPOSITE'
+                    ? `Komposit (${effectiveSettings?.weightDudi ?? 70}% DUDI • ${effectiveSettings?.weightLaporan ?? 15}% Laporan • ${effectiveSettings?.weightSidang ?? 15}% Sidang)`
+                    : effectiveSettings?.assessmentMode === 'DUDI_SIDANG'
+                    ? `DUDI + Sidang (${effectiveSettings?.weightDudi ?? 70}% DUDI • ${effectiveSettings?.weightSidang ?? 30}% Sidang)`
+                    : 'Nilai DUDI (100%)'}
+                </span>
+              </span>
+              {canEditScheme && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormMode(effectiveSettings?.assessmentMode || 'DUDI_ONLY');
+                    setFormWeightDudi(effectiveSettings?.weightDudi ?? 70);
+                    setFormWeightLaporan(effectiveSettings?.weightLaporan ?? 15);
+                    setFormWeightSidang(effectiveSettings?.weightSidang ?? 15);
+                    setShowSettingsModal(true);
+                  }}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <Edit3 size={12} />
+                  <span>Ubah Skema</span>
+                </button>
+              )}
+            </div>
+
+            {tabs.length > 1 && (
+              <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl self-start sm:self-auto">
+                {tabs.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setActiveTab(t.id)}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
+                      activeTab === t.id
+                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                    )}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <Suspense fallback={<PklSpreadsheetSkeleton isMobile={isMobile} />}>
           {(activeTab === 'dudi' || activeTab === 'nilai') && (
             <PklNilaiIndustriTab

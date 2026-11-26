@@ -117,6 +117,12 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
   effectiveSettings,
 }) => {
   const hasLaporan = effectiveSettings?.assessmentMode === 'COMPOSITE';
+  const hasSidang =
+    effectiveSettings?.assessmentMode === 'DUDI_SIDANG' ||
+    effectiveSettings?.assessmentMode === 'COMPOSITE';
+  const weightDudi = effectiveSettings?.weightDudi ?? (hasSidang ? 70 : 100);
+  const weightLaporan = effectiveSettings?.weightLaporan ?? 15;
+  const weightSidang = effectiveSettings?.weightSidang ?? (hasLaporan ? 15 : 30);
 
   const { handleKeyDown: handleKeyDownScore } = useSpreadsheetNavigation({
     totalRows: paginatedScores?.length || 0,
@@ -149,11 +155,15 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'evaluasi',
-      title: hasLaporan ? 'Hasil Evaluasi, Laporan & Presensi' : 'Hasil Evaluasi & Presensi',
-      colSpan: hasLaporan ? 4 : 3,
+      title: hasLaporan
+        ? 'Rekap DUDI, Laporan, Sidang & Presensi'
+        : hasSidang
+        ? 'Rekap DUDI, Sidang & Presensi'
+        : 'Hasil Evaluasi & Presensi',
+      colSpan: 4 + (hasLaporan ? 1 : 0) + (hasSidang ? 1 : 0),
       className: 'bg-slate-100/90 dark:bg-slate-800/90',
     },
-  ], [hasLaporan]);
+  ], [hasLaporan, hasSidang]);
 
   const renderVerticalHeader = (title: string) => {
     const words = title.split(' ');
@@ -480,10 +490,36 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
         />
       ),
     },
+    {
+      key: 'dudi_avg_summary',
+      header: 'Rata2 DUDI',
+      subHeader: hasSidang ? `${weightDudi}%` : '100%',
+      width: 56,
+      align: 'center',
+      headerClassName: 'text-[10px] font-bold text-center px-0.5 whitespace-normal leading-tight bg-blue-50/50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-200',
+      renderCell: (score) => {
+        const vals = [
+          score.hard_kompetensi_teknis,
+          score.hard_sop_k3lh,
+          score.hard_alur_bisnis,
+          score.soft_kedisiplinan,
+          score.soft_kerajinan_inisiatif,
+          score.soft_kerjasama,
+          score.soft_kejujuran,
+          score.soft_tanggung_jawab,
+        ].filter((v): v is number => v !== null && v !== undefined && !Number.isNaN(Number(v)));
+        const avg = vals.length > 0 ? (vals.reduce((a, b) => a + Number(b), 0) / vals.length).toFixed(1) : '-';
+        return (
+          <span className={cn('font-mono text-xs font-bold', avg === '-' ? 'text-slate-300 dark:text-slate-600' : 'text-blue-700 dark:text-blue-300')}>
+            {avg}
+          </span>
+        );
+      },
+    },
     ...(hasLaporan ? [{
       key: 'nilai_laporan' as keyof ScoreRow,
       header: 'Laporan',
-      subHeader: `${effectiveSettings?.weightLaporan ?? 15}%`,
+      subHeader: `${weightLaporan}%`,
       width: 58,
       align: 'center' as const,
       headerClassName: 'text-[10px] font-bold text-center px-0.5 whitespace-normal leading-tight bg-purple-50/70 dark:bg-purple-950/40 text-purple-900 dark:text-purple-200',
@@ -504,11 +540,36 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
         />
       ),
     }] : []),
+    ...(hasSidang ? [{
+      key: 'nilai_sidang_summary' as keyof ScoreRow,
+      header: 'Sidang',
+      subHeader: `${weightSidang}%`,
+      width: 52,
+      align: 'center' as const,
+      headerClassName: 'text-[10px] font-bold text-center px-0.5 whitespace-normal leading-tight bg-violet-50/70 dark:bg-violet-950/40 text-violet-900 dark:text-violet-200',
+      renderCell: (score: ScoreRow) => (
+        <span
+          className={cn(
+            'font-mono text-xs font-bold',
+            score.nilai_sidang !== null && score.nilai_sidang !== undefined
+              ? 'text-violet-700 dark:text-violet-300'
+              : 'text-slate-300 dark:text-slate-600'
+          )}
+          title={score.penguji_nama ? `Penguji: ${score.penguji_nama}` : 'Nilai Sidang'}
+        >
+          {score.nilai_sidang ?? '-'}
+        </span>
+      ),
+    }] : []),
     {
       key: 'nilai_akhir_pkl',
       header: 'Nilai Akhir',
-      subHeader: 'Nilai/Pred',
-      width: 58,
+      subHeader: hasLaporan
+        ? `${weightDudi}D+${weightLaporan}L+${weightSidang}S`
+        : hasSidang
+        ? `${weightDudi}D+${weightSidang}S`
+        : '100% DUDI',
+      width: 62,
       align: 'center',
       headerClassName: 'text-[10px] font-bold text-center px-0.5 whitespace-normal leading-tight',
       renderCell: (score) => (
@@ -626,7 +687,10 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     currentPage,
     itemsPerPage,
     hasLaporan,
-    effectiveSettings,
+    hasSidang,
+    weightDudi,
+    weightLaporan,
+    weightSidang,
     handleScoreChange,
     handleApplyToSameMitra,
     handleSyncFromDailyAttendance,
