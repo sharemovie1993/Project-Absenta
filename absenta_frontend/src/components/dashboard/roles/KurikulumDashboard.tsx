@@ -94,6 +94,9 @@ const RapatSosialisasiPanel = React.lazy(() =>
 const MonitoringKbmWidget = React.lazy(() =>
   import('@/components/dashboard/shared/MonitoringKbmWidget').then((m) => ({ default: m.MonitoringKbmWidget }))
 );
+const WhatsAppChatLogView = React.lazy(() =>
+  import('@/components/notifications/chatlog/WhatsAppChatLogView').then((m) => ({ default: m.WhatsAppChatLogView }))
+);
 
 export interface KurikulumDashboardProps {
   user?: {
@@ -718,6 +721,19 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
                   tahunPelajaranId={resolvedTahunPelajaranId}
                   semesterId={resolvedSemesterId}
                 />
+              </Suspense>
+            </div>
+          )}
+
+          {/* TAB 1C: LOG & STATUS PESAN WA */}
+          {visitedTabs.has('log_wa') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'log_wa'}
+              className={cn('w-full min-w-0', activeTab === 'log_wa' ? 'block' : 'hidden')}
+            >
+              <Suspense fallback={<TabFallback label="Memuat Log & Status Pesan WhatsApp..." />}>
+                <WhatsAppChatLogView hideLayout={true} />
               </Suspense>
             </div>
           )}

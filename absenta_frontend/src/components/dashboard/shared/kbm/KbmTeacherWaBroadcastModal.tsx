@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import { WhatsAppChatLogView } from '@/components/notifications/chatlog/WhatsAppChatLogView';
 
 interface KbmTeacherWaBroadcastModalProps {
   isOpen: boolean;
@@ -47,6 +48,7 @@ export const KbmTeacherWaBroadcastModal: React.FC<KbmTeacherWaBroadcastModalProp
     skippedCount: number;
     estimatedSeconds: number;
   } | null>(null);
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -433,6 +435,16 @@ export const KbmTeacherWaBroadcastModal: React.FC<KbmTeacherWaBroadcastModalProp
               type="button"
               variant="outline"
               size="sm"
+              onClick={() => setIsLogModalOpen(true)}
+              className="text-xs font-bold border-sky-300 dark:border-sky-700 text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/40"
+              title="Pantau status pesan WA terkirim / dibaca secara live"
+            >
+              Lihat Status WA
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={onClose}
               disabled={sendMutation.isPending}
               className="text-xs font-bold"
@@ -460,6 +472,17 @@ export const KbmTeacherWaBroadcastModal: React.FC<KbmTeacherWaBroadcastModalProp
           </div>
         </div>
       </div>
+
+      {isLogModalOpen && (
+        <Modal
+          isOpen={isLogModalOpen}
+          onClose={() => setIsLogModalOpen(false)}
+          title="Monitor Live Status Pesan WhatsApp (Terkirim / Dibaca)"
+          size="full"
+        >
+          <WhatsAppChatLogView isModal={true} hideLayout={true} />
+        </Modal>
+      )}
     </Modal>
   );
 };

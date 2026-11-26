@@ -25,6 +25,10 @@ const requireStaffDocumentSender = async (request: any, reply: any) => {
 
 const whatsappController = new WhatsappController();
 
+const waChatLogViewExempt = {
+  exemptRoles: ['ADMIN', 'SUPERADMIN', 'KURIKULUM', 'KEPALA_SEKOLAH', 'KESISWAAN', 'PIKET', 'OPERATOR', 'STAFF'] as any[],
+};
+
 export async function whatsappRoutes(fastify: any) {
   // POST /whatsapp/webhook - Public Webhook Inbound WA Chatbot
   fastify.post('/webhook', {
@@ -33,13 +37,13 @@ export async function whatsappRoutes(fastify: any) {
 
   // GET /whatsapp/chat-logs - Daftar kontak unik chatbot
   fastify.get('/chat-logs', {
-    preHandler: [requireCapability('whatsapp.manage.config'), determineDataScope()],
+    preHandler: [requireCapability('whatsapp.manage.config', waChatLogViewExempt), determineDataScope()],
     handler: waChatLogController.listContacts.bind(waChatLogController),
   });
 
   // GET /whatsapp/chat-logs/:phone - Riwayat percakapan per nomor HP
   fastify.get('/chat-logs/:phone', {
-    preHandler: [requireCapability('whatsapp.manage.config'), determineDataScope()],
+    preHandler: [requireCapability('whatsapp.manage.config', waChatLogViewExempt), determineDataScope()],
     handler: waChatLogController.getChatDetail.bind(waChatLogController),
   });
 

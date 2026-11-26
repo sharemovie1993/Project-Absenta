@@ -18,6 +18,7 @@ import {
   Network,
   QrCode,
   Activity,
+  MessageSquare,
   type LucideIcon,
 } from 'lucide-react';
 import type { KurikulumTabId, KurikulumNavTabItem } from './types';
@@ -70,6 +71,7 @@ export const KURIKULUM_SUBTABS_BASE: KurikulumTabDefinition[] = [
   { id: 'sosialisasi', label: 'Rapat Sosialisasi', shortLabel: 'Sosialisasi', category: 'operasional', icon: QrCode, targetPath: '/dashboard?tab=kurikulum&subtab=sosialisasi', color: 'bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400' },
   { id: 'cbt', label: 'Asesmen', shortLabel: 'Asesmen', category: 'operasional', icon: Laptop, targetPath: '/dashboard?tab=kurikulum&subtab=cbt', color: 'bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400' },
   { id: 'rapor', label: 'Rapor', shortLabel: 'Rapor', category: 'operasional', icon: Award, targetPath: '/dashboard?tab=kurikulum&subtab=rapor', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
+  { id: 'log_wa', label: 'Log WA', shortLabel: 'Log WA', category: 'operasional', icon: MessageSquare, targetPath: '/dashboard?tab=kurikulum&subtab=log_wa', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
 
   // ⚙️ KATEGORI 2: PERSIAPAN
   { id: 'kalender', label: 'Kalender', shortLabel: 'Kalender', category: 'persiapan', icon: CalendarDays, targetPath: '/dashboard?tab=kurikulum&subtab=kalender', color: 'bg-cyan-50 dark:bg-cyan-950/70 text-cyan-600 dark:text-cyan-400' },

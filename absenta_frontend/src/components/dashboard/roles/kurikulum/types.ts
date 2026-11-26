@@ -21,6 +21,7 @@ export type KurikulumTabId =
   | 'piket'
   | 'cbt'
   | 'cetak'
+  | 'log_wa'
   | 'struktur_organisasi';
 
 export interface KurikulumNavTabItem {
