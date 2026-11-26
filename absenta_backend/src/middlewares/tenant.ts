@@ -4,6 +4,9 @@ import { prisma } from '../utils/prisma';
 import * as jwt from 'jsonwebtoken';
 import { getDomainBases } from '../utils/url-helper';
 
+const DOMAIN_TENANT_CACHE_TTL_MS = 5 * 60 * 1000;
+const domainTenantCache = new Map<string, { tenantId: string | undefined; expiresAt: number }>();
+
 export async function tenantMiddleware(
   request: any,
   reply: any
@@ -42,30 +45,34 @@ export async function tenantMiddleware(
     urlPath.startsWith('/uploads/') ||
     urlPath.startsWith('/api/uploads/');
     
-  // Resolve domain tenant (context only; not authoritative)
+  // Resolve domain tenant (context only; not authoritative) — 5-minute in-memory cache per host
   let domainTenantId: string | undefined;
   const isIpAddress = /^[0-9.]+$/.test(hostNoPort);
+  const now = Date.now();
+  const cachedDomain = domainTenantCache.get(hostNoPort);
 
-  try {
-    // 1. Try exact match with custom_domain
-    const trCustom = await prisma.tenant.findFirst({ where: { custom_domain: { equals: hostNoPort, mode: 'insensitive' } } });
-    if (trCustom) {
-      domainTenantId = trCustom.id;
-    } else {
-      // 2. Try subdomain match
-      const hostParts = hostNoPort.split('.');
-      
-      // If we are in dev mode and the host is localhost, we might not have a subdomain in the host header
-      // but the user might be passing it via x-tenant-id or it should be in the JWT.
-      
-      const subdomain = (hostParts.length > 2 && !isIpAddress) ? hostParts[0] : '';
-      if (subdomain) {
-        const trSub = await prisma.tenant.findFirst({ where: { subdomain: { equals: subdomain, mode: 'insensitive' } } });
-        if (trSub) { domainTenantId = trSub.id; }
+  if (cachedDomain && now < cachedDomain.expiresAt) {
+    domainTenantId = cachedDomain.tenantId;
+  } else {
+    try {
+      // 1. Try exact match with custom_domain
+      const trCustom = await prisma.tenant.findFirst({ where: { custom_domain: { equals: hostNoPort, mode: 'insensitive' } }, select: { id: true } });
+      if (trCustom) {
+        domainTenantId = trCustom.id;
+      } else {
+        // 2. Try subdomain match
+        const hostParts = hostNoPort.split('.');
+        const subdomain = (hostParts.length > 2 && !isIpAddress) ? hostParts[0] : '';
+        if (subdomain) {
+          const trSub = await prisma.tenant.findFirst({ where: { subdomain: { equals: subdomain, mode: 'insensitive' } }, select: { id: true } });
+          if (trSub) { domainTenantId = trSub.id; }
+        }
       }
+      if (domainTenantCache.size > 1000) domainTenantCache.clear();
+      domainTenantCache.set(hostNoPort, { tenantId: domainTenantId, expiresAt: now + DOMAIN_TENANT_CACHE_TTL_MS });
+    } catch (e) {
+      console.error('[TenantMiddleware] Resolution Error:', e);
     }
-  } catch (e) {
-    console.error('[TenantMiddleware] Resolution Error:', e);
   }
 
   // Populate context tenantId for all requests

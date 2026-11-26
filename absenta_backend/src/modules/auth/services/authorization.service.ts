@@ -2,7 +2,16 @@ import { prisma } from '@/utils/prisma';
 import { RoleName } from '@/constants/enums';
 import { organizationalAuthorizationEngine } from './organizational-authorization.engine';
 
+const USER_CAPABILITIES_CACHE_TTL_MS = 60 * 1000;
+
 export class AuthorizationService {
+  private capabilitiesCache = new Map<string, { caps: string[]; expiresAt: number }>();
+
+  invalidateUserCapabilities(userId?: string) {
+    if (userId) this.capabilitiesCache.delete(userId);
+    else this.capabilitiesCache.clear();
+  }
+
   private parseCapabilityList(raw: unknown): string[] {
     if (!raw) return [];
     if (Array.isArray(raw)) {
@@ -36,6 +45,14 @@ export class AuthorizationService {
 
     if (roleNameFromUser === RoleName.SUPERADMIN || roleNameFromUser === 'SUPERADMIN') {
       return ['system.platform.full_access'];
+    }
+
+    const now = Date.now();
+    if (userId && directFromUser.length === 0) {
+      const cached = this.capabilitiesCache.get(userId);
+      if (cached && now < cached.expiresAt) {
+        return cached.caps;
+      }
     }
 
     const caps = new Set<string>();
@@ -74,17 +91,23 @@ export class AuthorizationService {
     orgCaps.forEach((c) => caps.add(String(c)));
 
     const resolved = Array.from(caps);
+    let finalCaps = resolved;
     if (roleNameFromUser === 'SISWA') {
       const student = await prisma.siswa.findFirst({
         where: { user_id: userId },
         select: { status: true }
       });
       if (student?.status?.toUpperCase() !== 'LULUS') {
-        return resolved.filter(c => c !== 'hubin.self.tracer' && c !== 'hubin.self.bkk');
+        finalCaps = resolved.filter(c => c !== 'hubin.self.tracer' && c !== 'hubin.self.bkk');
       }
     }
 
-    return resolved;
+    if (userId) {
+      if (this.capabilitiesCache.size > 5000) this.capabilitiesCache.clear();
+      this.capabilitiesCache.set(userId, { caps: finalCaps, expiresAt: Date.now() + USER_CAPABILITIES_CACHE_TTL_MS });
+    }
+
+    return finalCaps;
   }
 
   async isUserAuthorized(
