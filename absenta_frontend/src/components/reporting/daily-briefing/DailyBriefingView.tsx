@@ -86,6 +86,7 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
     early_warning: true,
     kesiswaan: true,
     kurikulum: true,
+    perangkat_ajar: true,
     cbt_kurikulum: true,
     penilaian_rapor: true,
     bpbk: true,

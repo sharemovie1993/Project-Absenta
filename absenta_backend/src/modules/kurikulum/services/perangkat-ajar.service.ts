@@ -453,5 +453,117 @@ export class PerangkatAjarService {
       totalSourceCount: sourceItems.length,
     };
   }
+
+  /**
+   * SSOT Pengumpulan Data Progres Perangkat Ajar terscope ke Konteks Akademik Aktif (TP & Semester Aktif)
+   * Memisahkan aktivitas unggah/review hari ini (1 hari) dengan akumulasi kepatuhan guru & verifikasi semester aktif.
+   */
+  static async getAcademicScopedPerangkatProgress(
+    tenantId: string,
+    options?: { startUTC?: Date; endUTC?: Date }
+  ) {
+    const [activeTp, activeSem] = await Promise.all([
+      prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true, tahun: true },
+      }),
+      prisma.semester.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true, nama_semester: true },
+      }),
+    ]);
+
+    if (!activeTp || !activeSem) {
+      return null;
+    }
+
+    const [jadwalTeachers, fallbackTotalGuru, perangkatList] = await Promise.all([
+      prisma.jadwalKBM.findMany({
+        where: {
+          tenant_id: tenantId,
+          tahun_pelajaran_id: activeTp.id,
+          semester_id: activeSem.id,
+        },
+        select: { guru_id: true },
+        distinct: ['guru_id'],
+      }),
+      prisma.guru.count({ where: { tenant_id: tenantId } }),
+      prisma.perangkatAjar.findMany({
+        where: {
+          tenant_id: tenantId,
+          tahun_pelajaran_id: activeTp.id,
+          semester_id: activeSem.id,
+        },
+        select: {
+          id: true,
+          guru_id: true,
+          jenis: true,
+          status: true,
+          created_at: true,
+          reviewed_at: true,
+        },
+      }),
+    ]);
+
+    const scheduledGuruCount = jadwalTeachers.filter((j) => Boolean(j.guru_id)).length;
+    const totalGuruWajib = scheduledGuruCount > 0 ? scheduledGuruCount : fallbackTotalGuru;
+
+    const uploadedGuruSet = new Set<string>();
+    let approvedCount = 0;
+    let pendingCount = 0;
+    let rejectedCount = 0;
+    let diunggahHariIni = 0;
+    let direviewHariIni = 0;
+    const jenisCountMap = new Map<string, number>();
+
+    for (const p of perangkatList) {
+      if (p.guru_id) uploadedGuruSet.add(p.guru_id);
+      const st = (p.status || 'PENDING').toUpperCase();
+      if (st === 'APPROVED') approvedCount++;
+      else if (st === 'REJECTED') rejectedCount++;
+      else pendingCount++;
+
+      const jKey = (p.jenis || 'LAINNYA').toUpperCase();
+      jenisCountMap.set(jKey, (jenisCountMap.get(jKey) || 0) + 1);
+
+      if (options?.startUTC && options?.endUTC) {
+        if (p.created_at >= options.startUTC && p.created_at <= options.endUTC) {
+          diunggahHariIni++;
+        }
+        if (
+          p.reviewed_at &&
+          p.reviewed_at >= options.startUTC &&
+          p.reviewed_at <= options.endUTC
+        ) {
+          direviewHariIni++;
+        }
+      }
+    }
+
+    const totalDokumen = perangkatList.length;
+    const guruSudahMengumpulkan = uploadedGuruSet.size;
+    const guruBelumMengumpulkan = Math.max(0, totalGuruWajib - guruSudahMengumpulkan);
+    const progresGuruMengumpulkanPct =
+      totalGuruWajib > 0
+        ? Math.min(100, Math.round((guruSudahMengumpulkan / totalGuruWajib) * 100))
+        : 0;
+    const progresApprovalPct =
+      totalDokumen > 0 ? Math.round((approvedCount / totalDokumen) * 100) : 0;
+
+    return {
+      academicContext: `${activeTp.tahun} (${activeSem.nama_semester})`,
+      totalGuruWajib,
+      guruSudahMengumpulkan,
+      guruBelumMengumpulkan,
+      progresGuruMengumpulkanPct,
+      totalDokumen,
+      approvedCount,
+      pendingCount,
+      rejectedCount,
+      progresApprovalPct,
+      diunggahHariIni,
+      direviewHariIni,
+    };
+  }
 }
 

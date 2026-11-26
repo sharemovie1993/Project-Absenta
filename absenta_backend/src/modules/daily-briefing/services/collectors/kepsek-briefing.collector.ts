@@ -22,6 +22,7 @@ import { guruRekapService } from '@/modules/attendance/rekap/services/guru-rekap
 import { PelanggaranService } from '@/modules/kesiswaan/services/pelanggaran.service';
 import { ketarunaanPenilaianService } from '@/modules/kesiswaan/program-ketarunaan/services/ketarunaan-penilaian.service';
 import { DashboardAttendanceStatsService } from '@/modules/dashboard/services/sub/dashboard-attendance-stats.service';
+import { PerangkatAjarService } from '@/modules/kurikulum/services/perangkat-ajar.service';
 
 export class KepsekBriefingCollector implements IBriefingCollector {
   async collect(
@@ -282,6 +283,17 @@ export class KepsekBriefingCollector implements IBriefingCollector {
     const sidangDenominator = pklSidangScheduled > 0 ? pklSidangScheduled : totalPklAll;
     const progresSidangPklPct = sidangDenominator > 0 ? Math.round((pklSidangTerisi / sidangDenominator) * 100) : 0;
 
+    // ── 7b2. Kurikulum: Pengumpulan Perangkat Ajar (SSOT via PerangkatAjarService, Scoped TP & Semester Aktif)
+    let perangkatProgress: Awaited<ReturnType<typeof PerangkatAjarService.getAcademicScopedPerangkatProgress>> = null;
+    try {
+      perangkatProgress = await PerangkatAjarService.getAcademicScopedPerangkatProgress(tenantId, {
+        startUTC,
+        endUTC,
+      });
+    } catch (err) {
+      console.warn('[Briefing:PerangkatAjar] Error querying SSOT Perangkat Ajar progress:', err);
+    }
+
     // ── 7c. Kurikulum: Event CBT Aktif & Pengumpulan Soal (SSOT via CbtSettingsService)
     let cbtProgress: Awaited<ReturnType<typeof CbtSettingsService.getAcademicScopedEventProgress>> | null = null;
     try {
@@ -523,6 +535,48 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       ],
       items: kurikulumItems.length > 0 ? kurikulumItems : undefined,
     });
+
+    // SEKSI 3a2: PROGRES PENGUMPULAN & VERIFIKASI PERANGKAT AJAR (SSOT)
+    if (perangkatProgress) {
+      sections.push({
+        id: 'perangkat_ajar',
+        title: 'Pengumpulan & Verifikasi Perangkat Ajar Guru',
+        category: 'Kurikulum • Perangkat Ajar',
+        badge: `${perangkatProgress.progresGuruMengumpulkanPct}% Guru Kumpul`,
+        summary: `Konteks ${perangkatProgress.academicContext}: ${perangkatProgress.guruSudahMengumpulkan}/${perangkatProgress.totalGuruWajib} guru telah mengumpulkan total ${perangkatProgress.totalDokumen} dokumen perangkat ajar (${perangkatProgress.approvedCount} disetujui, ${perangkatProgress.pendingCount} menunggu review, ${perangkatProgress.rejectedCount} revisi).`,
+        todayStats: [
+          { label: 'Diunggah Hari Ini', value: `${perangkatProgress.diunggahHariIni} Dokumen` },
+          { label: 'Direview Hari Ini', value: `${perangkatProgress.direviewHariIni} Dokumen` },
+        ],
+        rangeStats: [
+          { label: 'Guru Sudah Kumpul', value: `${perangkatProgress.guruSudahMengumpulkan} / ${perangkatProgress.totalGuruWajib}` },
+          { label: 'Guru Belum Kumpul', value: perangkatProgress.guruBelumMengumpulkan },
+          { label: 'Total Dokumen', value: perangkatProgress.totalDokumen },
+          { label: 'Disetujui (Approved)', value: perangkatProgress.approvedCount },
+          { label: 'Menunggu Review', value: perangkatProgress.pendingCount },
+          { label: 'Perlu Revisi', value: perangkatProgress.rejectedCount },
+        ],
+        progressBars: [
+          {
+            label: '[Rentang Semester] Kepatuhan Guru Mengumpulkan Perangkat Ajar',
+            value: perangkatProgress.progresGuruMengumpulkanPct,
+            detail: `${perangkatProgress.guruSudahMengumpulkan} dari ${perangkatProgress.totalGuruWajib} Guru Pengampu (${perangkatProgress.guruBelumMengumpulkan} belum mengumpulkan)`,
+            color:
+              perangkatProgress.progresGuruMengumpulkanPct >= 85
+                ? 'emerald'
+                : perangkatProgress.progresGuruMengumpulkanPct >= 50
+                ? 'indigo'
+                : 'amber',
+          },
+          {
+            label: '[Rentang Semester] Progres Verifikasi & Approval Perangkat Ajar',
+            value: perangkatProgress.progresApprovalPct,
+            detail: `${perangkatProgress.approvedCount} Disetujui • ${perangkatProgress.pendingCount} Pending • ${perangkatProgress.rejectedCount} Revisi (Total ${perangkatProgress.totalDokumen} dokumen)`,
+            color: perangkatProgress.progresApprovalPct >= 80 ? 'emerald' : 'blue',
+          },
+        ],
+      });
+    }
 
     // SEKSI 3b: EVENT CBT & PENGUMPULAN SOAL (SSOT)
     if (cbtProgress && (cbtProgress.activeEvent || cbtProgress.totalBank > 0)) {
