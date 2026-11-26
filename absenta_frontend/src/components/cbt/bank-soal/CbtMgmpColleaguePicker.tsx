@@ -145,7 +145,8 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
   // Pada pembuatan baru: hanya centang rekan yang BELUM memiliki bank soal mandiri.
   const autoSelectedKeyRef = useRef<string>('');
   useEffect(() => {
-    const currentKey = `${mapelId}_${tingkat}_${targetJurusanTokens.join('-')}_${guruOwnBankSet.size}`;
+    if (isLoading || !mapelId) return;
+    const currentKey = `${mapelId}_${tingkat}_${targetJurusanTokens.join('-')}_${parallelColleagues.length}_${guruOwnBankSet.size}`;
     if (autoSelectedKeyRef.current !== currentKey) {
       autoSelectedKeyRef.current = currentKey;
       if (!isEditMode) {
@@ -167,7 +168,23 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
         }
       }
     }
-  }, [parallelColleagues, mapelId, tingkat, targetJurusanTokens, onChangeSelectedIds, isEditMode, selectedIds, guruOwnBankSet]);
+  }, [isLoading, parallelColleagues, colleagueKelasMap, mapelId, tingkat, targetJurusanTokens, onChangeSelectedIds, onChangeSelectedKelasIds, isEditMode, selectedIds, guruOwnBankSet]);
+
+  // Sinkronisasi dua arah: jika ada kelas rekan pada selectedKelasIds tetapi ID guru belum masuk ke selectedIds,
+  // otomatis masukkan guru tersebut agar counter "X dari Y guru dipilih" dan contributor_guru_ids ke backend selalu konsisten.
+  useEffect(() => {
+    if (isLoading || colleagueKelasMap.size === 0 || selectedKelasIds.length === 0) return;
+    const missingGuruIds: string[] = [];
+    colleagueKelasMap.forEach((kelasList, gId) => {
+      const hasSelectedKelas = kelasList.some((k) => selectedKelasIds.includes(k.kelasId));
+      if (hasSelectedKelas && !selectedIds.includes(gId)) {
+        missingGuruIds.push(gId);
+      }
+    });
+    if (missingGuruIds.length > 0) {
+      onChangeSelectedIds(Array.from(new Set([...selectedIds, ...missingGuruIds])));
+    }
+  }, [isLoading, colleagueKelasMap, selectedKelasIds, selectedIds, onChangeSelectedIds]);
 
   // Fallback 1 kali untuk bank soal lama (legacy) saat mode Edit:
   // Jika Kontributor guru sudah ada tetapi target_kelas_ids masih kosong/null, centang semua kelas guru tsb pada konteks akademik aktif

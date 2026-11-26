@@ -1058,6 +1058,24 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         .map((j) => j.id)
         .filter(Boolean);
 
+      const effectiveColleagueIds = isShared
+        ? Array.from(
+            new Set([
+              ...selectedColleagueIds,
+              ...(selectedColleagueKelasIds.length > 0
+                ? parallelRows
+                    .filter(
+                      (gm: any) =>
+                        gm?.guru_id &&
+                        gm.guru_id !== guruId &&
+                        selectedColleagueKelasIds.includes(gm.Kelas?.id || gm.kelas_id)
+                    )
+                    .map((gm: any) => gm.guru_id as string)
+                : []),
+            ])
+          )
+        : [];
+
       const payload = {
         kode_bank: kodeBank.trim().toUpperCase(),
         judul: judul.trim(),
@@ -1078,19 +1096,19 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         acak_opsi: acakOpsi,
         status: (scope === 'TERPUSAT_MASSAL' || isShared ? 'PUBLISHED' : 'DRAFT') as 'PUBLISHED' | 'DRAFT',
         is_shared: isShared,
-        contributor_guru_ids: isShared ? selectedColleagueIds : [],
+        contributor_guru_ids: effectiveColleagueIds,
         auto_sync_kolaborasi: isShared && !unitPengajaranId,
       };
 
       if (bankSoalToEdit) {
         await cbtApi.updateBankSoal(bankSoalToEdit.id, payload);
-        setMgmpSharedTeacherIds(bankSoalToEdit.id, isShared ? selectedColleagueIds : [], user?.tenant_id);
+        setMgmpSharedTeacherIds(bankSoalToEdit.id, effectiveColleagueIds, user?.tenant_id);
         toast.success('Bank soal berhasil diperbarui');
       } else {
         const createRes = await cbtApi.createBankSoal(payload);
         const newBankId = (createRes as any)?.data?.id || (createRes as any)?.id;
         if (newBankId) {
-          setMgmpSharedTeacherIds(newBankId, isShared ? selectedColleagueIds : [], user?.tenant_id);
+          setMgmpSharedTeacherIds(newBankId, effectiveColleagueIds, user?.tenant_id);
         }
         toast.success(
           scope === 'TERPUSAT_MASSAL'
