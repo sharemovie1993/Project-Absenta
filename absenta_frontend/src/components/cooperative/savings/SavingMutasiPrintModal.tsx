@@ -8,6 +8,7 @@ import { CoopDocumentKop } from '../shared/CoopDocumentKop';
 import { useDocumentSigners } from '@/hooks/useDocumentSigners';
 import toast from 'react-hot-toast';
 import { formatIndonesianDate, formatIndonesianDateTime } from '../../../utils/cooperative/coopDocUtils';
+import { exportPrintSheetsToPdf } from '../../../utils/print/exportPrintSheetsToPdf';
 import { cleanMemoDescription, exportTransactions, type FlatTransaction } from './savingsExportUtils';
 
 export interface SavingMutasiPrintModalProps {
@@ -76,45 +77,11 @@ export const SavingMutasiPrintModal: React.FC<SavingMutasiPrintModalProps> = ({
     const toastId = toast.loading('Mempersiapkan PDF Rekap Mutasi Kas...');
     try {
       setIsExportingPdf(true);
-      const html2canvas = (await import('html2canvas-pro')).default;
-      const { jsPDF } = await import('jspdf');
-
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-        compress: true,
-      });
-
-      const pdfWidth = 210;
-      const pdfHeight = 297;
-
-      for (let i = 0; i < sheets.length; i++) {
-        const sheet = sheets[i];
-        if (i > 0) pdf.addPage('a4', 'portrait');
-
-        const canvas = await html2canvas(sheet, {
-          scale: 2.5,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#ffffff',
-          logging: false,
-          onclone: (clonedDoc) => {
-            clonedDoc.querySelectorAll<HTMLElement>('.print-sheet').forEach((s) => {
-              s.style.border = 'none';
-              s.style.boxShadow = 'none';
-              s.style.outline = 'none';
-            });
-          },
-        });
-
-        const imgData = canvas.toDataURL('image/jpeg', 0.9);
-        const canvasRatio = canvas.height / canvas.width;
-        const imgHeight = pdfWidth * canvasRatio;
-        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, Math.min(imgHeight, pdfHeight), undefined, 'FAST');
-      }
-
-      pdf.save(`REKAP_MUTASI_KAS_KOPERASI_${startDate}_sd_${endDate}.pdf`);
+      await exportPrintSheetsToPdf(
+        container,
+        `REKAP_MUTASI_KAS_KOPERASI_${startDate}_sd_${endDate}.pdf`,
+        'portrait'
+      );
       toast.success('File PDF Rekap Mutasi Kas berhasil diunduh', { id: toastId });
     } catch (err) {
       console.error('[SavingMutasi True WYSIWYG Error, fallback to Vector Engine]', err);

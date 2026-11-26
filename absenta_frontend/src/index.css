@@ -829,7 +829,7 @@ html[data-theme="dark"] .glass-morphism {
 /* ============================================================================ */
 @media print {
   @page {
-    size: auto;
+    size: A4;
     margin: 0mm;
   }
 
@@ -859,10 +859,11 @@ html[data-theme="dark"] .glass-morphism {
     display: none !important;
   }
 
-  /* 2. Jika ada modal cetak aktif (.print-sheet di portal/body), sembunyikan background app #root */
+  /* 2. Jika ada modal cetak aktif (.print-sheet di portal/body), sembunyikan background app #root & modal lain */
   body:has(> * [role="dialog"] .print-sheet) > #root,
   body:has(> [role="dialog"] .print-sheet) > #root,
-  body.universal-document-printing:has([role="dialog"] .print-sheet) > #root {
+  body.universal-document-printing:has([role="dialog"] .print-sheet) > #root,
+  div[role="dialog"]:not(:has(.print-sheet)) {
     display: none !important;
   }
 
@@ -904,7 +905,7 @@ html[data-theme="dark"] .glass-morphism {
     flex: none !important;
   }
 
-  /* 5. Aturan Lembar Kertas A4 Fisik */
+  /* 5. Aturan Lembar Kertas A4 Fisik (True WYSIWYG, dukung multi-halaman tanpa memotong konten) */
   .print-sheet {
     box-shadow: none !important;
     border: none !important;
@@ -914,8 +915,6 @@ html[data-theme="dark"] .glass-morphism {
     color: #000000 !important;
     page-break-after: always !important;
     break-after: page !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
     box-sizing: border-box !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
