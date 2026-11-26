@@ -436,4 +436,361 @@ export class PelanggaranService {
 
     return analyticsPayload;
   }
+
+  /**
+   * SSOT Pengumpulan Data Divisi Kesiswaan terscope ke Konteks Akademik Aktif (TP & Semester Aktif)
+   * Menghitung kehadiran siswa unik di KBM, tren vs kemarin, gerbang terlambat, izin keluar piket,
+   * rombel 100% hadir vs alpa, early warning alpa berturut-turut, dan tren penurunan pelanggaran.
+   */
+  static async getAcademicScopedKesiswaanSummary(tenantId: string, tanggal: string) {
+    const tz = await getTenantTimezone(tenantId);
+    const { startUTC, endUTC } = getTenantDayRangeUTC(tanggal, tz);
+
+    const dateObj = new Date(`${tanggal}T12:00:00+07:00`);
+    const prevDate = new Date(dateObj);
+    prevDate.setDate(prevDate.getDate() - 1);
+    const prevDateStr = prevDate.toISOString().slice(0, 10);
+    const { startUTC: prevStartUTC, endUTC: prevEndUTC } = getTenantDayRangeUTC(prevDateStr, tz);
+
+    const [activeTp, activeSem] = await Promise.all([
+      prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true, tahun: true },
+      }),
+      prisma.semester.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true, nama_semester: true },
+      }),
+    ]);
+
+    const academicContext = activeTp
+      ? `${activeTp.tahun}${activeSem ? ` (${activeSem.nama_semester})` : ''}`
+      : 'Konteks Aktif';
+
+    const activeSiswaFilter: any = activeTp
+      ? {
+          status: 'AKTIF',
+          SiswaAkademik: {
+            some: {
+              tahun_pelajaran_id: activeTp.id,
+              ...(activeSem ? { semester_id: activeSem.id } : {}),
+              status: 'AKTIF',
+            },
+          },
+        }
+      : { status: 'AKTIF' };
+
+    const sesiAcademicScope: any = {
+      ...(activeTp ? { tahun_pelajaran_id: activeTp.id } : {}),
+      ...(activeSem ? { semester_id: activeSem.id } : {}),
+    };
+
+    const week1Start = new Date(startUTC.getTime() - 6 * 24 * 3600 * 1000);
+    const week2End = new Date(week1Start.getTime() - 1);
+    const week2Start = new Date(week1Start.getTime() - 7 * 24 * 3600 * 1000);
+
+    const violationAcademicScope: any = activeTp
+      ? {
+          OR: [
+            { tahun_pelajaran_id: activeTp.id, ...(activeSem ? { semester_id: activeSem.id } : {}) },
+            { tahun_pelajaran_id: null, Siswa: activeSiswaFilter },
+          ],
+        }
+      : {};
+
+    const [
+      scopedSiswaCount,
+      fallbackSiswaCount,
+      todayAbsenList,
+      prevAbsenList,
+      siswaTerlambat,
+      ikList,
+      pelanggaranMingguIni,
+      pelanggaranMingguLalu,
+      pelanggaranSemesterTotal,
+      pelanggaranSemesterSelesai,
+    ] = await Promise.all([
+      prisma.siswa.count({ where: { tenant_id: tenantId, ...activeSiswaFilter } }),
+      prisma.siswa.count({ where: { tenant_id: tenantId, status: 'AKTIF' } }),
+      prisma.absenSiswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          created_at: { gte: startUTC, lte: endUTC },
+          ...(activeTp ? { SesiAbsensi: sesiAcademicScope } : {}),
+        },
+        select: {
+          siswa_id: true,
+          status: true,
+          kelas_nama_snapshot: true,
+          Siswa: { select: { nama_siswa: true } },
+          SiswaAkademik: {
+            select: {
+              siswa: { select: { nama_siswa: true } },
+              kelas: { select: { nama_kelas: true } },
+            },
+          },
+        },
+      }),
+      prisma.absenSiswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          created_at: { gte: prevStartUTC, lte: prevEndUTC },
+          status: { in: ['HADIR', 'TERLAMBAT'] },
+          ...(activeTp ? { SesiAbsensi: sesiAcademicScope } : {}),
+        },
+        select: { siswa_id: true },
+        distinct: ['siswa_id'],
+      }),
+      prisma.absenGerbangSiswa.count({
+        where: {
+          tenant_id: tenantId,
+          is_terlambat: true,
+          created_at: { gte: startUTC, lte: endUTC },
+          Siswa: activeSiswaFilter,
+        },
+      }),
+      prisma.izinKeluarSiswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          created_at: { gte: startUTC, lte: endUTC },
+          ...(activeTp
+            ? {
+                SiswaAkademik: {
+                  tahun_pelajaran_id: activeTp.id,
+                  ...(activeSem ? { semester_id: activeSem.id } : {}),
+                },
+              }
+            : {}),
+        },
+        include: {
+          SiswaAkademik: {
+            include: {
+              siswa: { select: { nama_siswa: true } },
+              kelas: { select: { nama_kelas: true } },
+            },
+          },
+        },
+        orderBy: { jam_keluar: 'desc' },
+      }),
+      prisma.pelanggaranSiswa.count({
+        where: {
+          tenant_id: tenantId,
+          tanggal: { gte: week1Start, lte: endUTC },
+          ...violationAcademicScope,
+        },
+      }),
+      prisma.pelanggaranSiswa.count({
+        where: {
+          tenant_id: tenantId,
+          tanggal: { gte: week2Start, lte: week2End },
+          ...violationAcademicScope,
+        },
+      }),
+      prisma.pelanggaranSiswa.count({
+        where: {
+          tenant_id: tenantId,
+          ...violationAcademicScope,
+        },
+      }),
+      prisma.pelanggaranSiswa.count({
+        where: {
+          tenant_id: tenantId,
+          status: 'SELESAI',
+          ...violationAcademicScope,
+        },
+      }),
+    ]);
+
+    const totalSiswaAktif = scopedSiswaCount > 0 ? scopedSiswaCount : fallbackSiswaCount;
+
+    // Deduplicate status kehadiran per siswa unik (prioritas: HADIR > SAKIT > IZIN > ALPA)
+    const statusPriority: Record<string, number> = { HADIR: 4, TERLAMBAT: 4, SAKIT: 3, IZIN: 2, ALPA: 1 };
+    const siswaStatusMap = new Map<
+      string,
+      { status: 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA'; nama: string; kelas: string }
+    >();
+
+    for (const row of todayAbsenList) {
+      if (!row.siswa_id) continue;
+      const raw = (row.status || '').toUpperCase();
+      const normalized: 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA' =
+        raw === 'HADIR' || raw === 'TERLAMBAT'
+          ? 'HADIR'
+          : raw === 'SAKIT'
+          ? 'SAKIT'
+          : raw === 'IZIN'
+          ? 'IZIN'
+          : 'ALPA';
+      const prio = statusPriority[normalized] || 1;
+      const existing = siswaStatusMap.get(row.siswa_id);
+      if (!existing || prio > (statusPriority[existing.status] || 0)) {
+        const nama =
+          row.Siswa?.nama_siswa || row.SiswaAkademik?.siswa?.nama_siswa || 'Siswa';
+        const kelas =
+          row.kelas_nama_snapshot || row.SiswaAkademik?.kelas?.nama_kelas || 'Kelas';
+        siswaStatusMap.set(row.siswa_id, { status: normalized, nama, kelas });
+      }
+    }
+
+    let siswaHadir = 0;
+    let siswaSakit = 0;
+    let siswaIzin = 0;
+    let siswaAlpa = 0;
+    const mapKelas = new Map<string, { hadir: number; alpa: number; sakitIzin: number }>();
+    const todayAlpaStudents: Array<{ siswaId: string; nama: string; kelas: string }> = [];
+
+    siswaStatusMap.forEach((val, siswaId) => {
+      if (val.status === 'HADIR') siswaHadir++;
+      else if (val.status === 'SAKIT') siswaSakit++;
+      else if (val.status === 'IZIN') siswaIzin++;
+      else if (val.status === 'ALPA') {
+        siswaAlpa++;
+        todayAlpaStudents.push({ siswaId, nama: val.nama, kelas: val.kelas });
+      }
+
+      if (val.kelas) {
+        if (!mapKelas.has(val.kelas)) {
+          mapKelas.set(val.kelas, { hadir: 0, alpa: 0, sakitIzin: 0 });
+        }
+        const kObj = mapKelas.get(val.kelas)!;
+        if (val.status === 'HADIR') kObj.hadir++;
+        else if (val.status === 'ALPA') kObj.alpa++;
+        else kObj.sakitIzin++;
+      }
+    });
+
+    const persentaseSiswa =
+      totalSiswaAktif > 0
+        ? Math.min(100, Math.round((siswaHadir / totalSiswaAktif) * 100))
+        : siswaHadir > 0
+        ? 100
+        : 0;
+
+    const kemarinHadir = prevAbsenList.length;
+    const kemarinKehadiranPct =
+      totalSiswaAktif > 0
+        ? Math.min(100, Math.round((kemarinHadir / totalSiswaAktif) * 100))
+        : null;
+    const kehadiranDeltaPct =
+      kemarinKehadiranPct !== null
+        ? Math.round((persentaseSiswa - kemarinKehadiranPct) * 10) / 10
+        : null;
+
+    let topRombelAlpa: Array<{ kelasNama: string; alpaCount: number }> = [];
+    let rombelSempurna: string[] = [];
+    mapKelas.forEach((val, kName) => {
+      if (val.hadir > 0 && val.alpa === 0 && val.sakitIzin === 0) {
+        rombelSempurna.push(kName);
+      }
+      if (val.alpa > 0) {
+        topRombelAlpa.push({ kelasNama: kName, alpaCount: val.alpa });
+      }
+    });
+    topRombelAlpa.sort((a, b) => b.alpaCount - a.alpaCount);
+    topRombelAlpa = topRombelAlpa.slice(0, 4);
+    rombelSempurna = rombelSempurna.slice(0, 4);
+
+    // Early Warning: Siswa Alpa Berturut-turut (7 hari terakhir pada TP/Semester aktif)
+    const consecutiveAlpaItems: Array<{ nama: string; kelas: string; count: number }> = [];
+    if (todayAlpaStudents.length > 0) {
+      const candidateAlpa = todayAlpaStudents.slice(0, 15);
+      const pastAlpaRows = await prisma.absenSiswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          siswa_id: { in: candidateAlpa.map((s) => s.siswaId) },
+          status: 'ALPA',
+          created_at: { gte: week1Start, lt: startUTC },
+          ...(activeTp ? { SesiAbsensi: sesiAcademicScope } : {}),
+        },
+        select: { siswa_id: true, created_at: true },
+      });
+
+      const distinctDaysBySiswa = new Map<string, Set<string>>();
+      for (const r of pastAlpaRows) {
+        if (!r.siswa_id) continue;
+        const dKey = r.created_at.toISOString().slice(0, 10);
+        if (!distinctDaysBySiswa.has(r.siswa_id)) {
+          distinctDaysBySiswa.set(r.siswa_id, new Set());
+        }
+        distinctDaysBySiswa.get(r.siswa_id)!.add(dKey);
+      }
+
+      for (const cand of candidateAlpa) {
+        const pastDays = distinctDaysBySiswa.get(cand.siswaId)?.size || 0;
+        const totalAlpaDays = pastDays + 1;
+        if (totalAlpaDays >= 2) {
+          consecutiveAlpaItems.push({
+            nama: cand.nama,
+            kelas: cand.kelas,
+            count: totalAlpaDays,
+          });
+        }
+      }
+      consecutiveAlpaItems.sort((a, b) => b.count - a.count);
+    }
+
+    const siswaIzinKeluar = ikList.length;
+    const izinKeluarItems = ikList.slice(0, 5).map((ik) => {
+      const jamK = ik.jam_keluar
+        ? new Date(ik.jam_keluar).toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: tz,
+          })
+        : '-';
+      const jamB = ik.jam_kembali
+        ? new Date(ik.jam_kembali).toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: tz,
+          })
+        : undefined;
+      return {
+        nama: ik.SiswaAkademik?.siswa?.nama_siswa || 'Siswa',
+        kelas: ik.SiswaAkademik?.kelas?.nama_kelas || 'Kelas',
+        alasan: ik.alasan,
+        status: ik.status === 'KEMBALI' ? 'Sudah Kembali' : 'Masih di Luar',
+        jamKeluar: jamK,
+        jamKembali: jamB,
+      };
+    });
+
+    let pelanggaranDeltaPct: number | null = null;
+    if (pelanggaranMingguLalu > 0) {
+      pelanggaranDeltaPct = Math.round(
+        ((pelanggaranMingguIni - pelanggaranMingguLalu) / pelanggaranMingguLalu) * 100
+      );
+    } else if (pelanggaranMingguIni === 0) {
+      pelanggaranDeltaPct = 0;
+    }
+
+    const progresPenangananPelanggaranPct =
+      pelanggaranSemesterTotal > 0
+        ? Math.round((pelanggaranSemesterSelesai / pelanggaranSemesterTotal) * 100)
+        : 100;
+
+    return {
+      academicContext,
+      totalSiswaAktif,
+      siswaHadir,
+      siswaSakit,
+      siswaIzin,
+      siswaAlpa,
+      persentaseSiswa,
+      kemarinKehadiranPct,
+      kehadiranDeltaPct,
+      siswaTerlambat,
+      siswaIzinKeluar,
+      izinKeluarItems,
+      topRombelAlpa,
+      rombelSempurna,
+      consecutiveAlpaItems,
+      pelanggaranMingguIni,
+      pelanggaranMingguLalu,
+      pelanggaranDeltaPct,
+      pelanggaranSemesterTotal,
+      pelanggaranSemesterSelesai,
+      progresPenangananPelanggaranPct,
+    };
+  }
 }

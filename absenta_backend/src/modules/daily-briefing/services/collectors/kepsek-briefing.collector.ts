@@ -19,6 +19,7 @@ import { BpbkAnalyticsService } from '@/modules/bpbk/services/sub/bpbk-analytics
 import { NilaiMonitoringService } from '@/modules/rapor/services/sub/nilai-monitoring.service';
 import { CbtSettingsService } from '@/modules/cbt/services/cbt-settings.service';
 import { guruRekapService } from '@/modules/attendance/rekap/services/guru-rekap.service';
+import { PelanggaranService } from '@/modules/kesiswaan/services/pelanggaran.service';
 
 export class KepsekBriefingCollector implements IBriefingCollector {
   async collect(
@@ -68,89 +69,53 @@ export class KepsekBriefingCollector implements IBriefingCollector {
     const sekolahNama = sekolahData?.nama || tenant?.name || 'Sekolah';
     const targetName = sekolahData?.kepala_sekolah || 'Bapak/Ibu Kepala Sekolah';
 
-    // ── 2. Kesiswaan: Kehadiran Siswa Hari Ini ──────────────────────────────────
+    // ── 2. Kesiswaan (SSOT via PelanggaranService, Scoped Konteks Akademik Aktif)
     let totalSiswaAktif = 0;
     let siswaHadir = 0;
     let siswaSakit = 0;
     let siswaIzin = 0;
     let siswaAlpa = 0;
-
-    try {
-      totalSiswaAktif = await prisma.siswa.count({
-        where: { tenant_id: tenantId, status: 'AKTIF' },
-      });
-
-      const absenSiswaStats = await prisma.absenSiswa.groupBy({
-        by: ['status'],
-        where: {
-          tenant_id: tenantId,
-          created_at: { gte: startUTC, lte: endUTC },
-        },
-        _count: { id: true },
-      });
-
-      for (const stat of absenSiswaStats) {
-        const count = stat._count.id;
-        const s = (stat.status || '').toUpperCase();
-        if (s === 'HADIR') siswaHadir += count;
-        else if (s === 'SAKIT') siswaSakit += count;
-        else if (s === 'IZIN') siswaIzin += count;
-        else if (s === 'ALPA') siswaAlpa += count;
-      }
-    } catch (err) {
-      console.warn('[Briefing:Siswa] Error querying student attendance:', err);
-    }
-
-    const persentaseSiswa = totalSiswaAktif > 0
-      ? Math.round((siswaHadir / totalSiswaAktif) * 100)
-      : (siswaHadir > 0 ? 100 : 0);
-
-    // ── 2.1 Perhitungan Tren Kehadiran Siswa vs Kemarin ────────────────────────
-    let kemarinHadir = 0;
-    try {
-      const prevDate = new Date(dateObj);
-      prevDate.setDate(prevDate.getDate() - 1);
-      const prevDateStr = prevDate.toISOString().slice(0, 10);
-      const { startUTC: prevStartUTC, endUTC: prevEndUTC } = getTenantDayRangeUTC(prevDateStr, tz);
-
-      const prevStats = await prisma.absenSiswa.groupBy({
-        by: ['status'],
-        where: {
-          tenant_id: tenantId,
-          created_at: { gte: prevStartUTC, lte: prevEndUTC },
-        },
-        _count: { id: true },
-      });
-      for (const p of prevStats) {
-        if ((p.status || '').toUpperCase() === 'HADIR') kemarinHadir += p._count.id;
-      }
-    } catch {}
-
-    const kemarinKehadiranPct = totalSiswaAktif > 0 ? Math.round((kemarinHadir / totalSiswaAktif) * 100) : null;
-    const kehadiranDeltaPct = kemarinKehadiranPct !== null ? Math.round((persentaseSiswa - kemarinKehadiranPct) * 10) / 10 : null;
-
-    // Kedisiplinan: Gerbang & Piket
+    let persentaseSiswa = 0;
+    let kemarinKehadiranPct: number | null = null;
+    let kehadiranDeltaPct: number | null = null;
     let siswaTerlambat = 0;
     let siswaIzinKeluar = 0;
+    let consecutiveAlpaItems: Array<{ nama: string; kelas: string; count: number }> = [];
+    let izinKeluarItems: Array<{ nama: string; kelas: string; alasan: string; status: string; jamKeluar: string; jamKembali?: string }> = [];
+    let topRombelAlpa: Array<{ kelasNama: string; alpaCount: number }> = [];
+    let rombelSempurna: string[] = [];
+    let pelanggaranMingguIni = 0;
+    let pelanggaranMingguLalu = 0;
+    let pelanggaranDeltaPct: number | null = null;
+    let pelanggaranSemesterTotal = 0;
+    let pelanggaranSemesterSelesai = 0;
+    let progresPenangananPelanggaranPct = 100;
 
     try {
-      siswaTerlambat = await prisma.absenGerbangSiswa.count({
-        where: {
-          tenant_id: tenantId,
-          is_terlambat: true,
-          created_at: { gte: startUTC, lte: endUTC },
-        },
-      });
-    } catch {}
-
-    try {
-      siswaIzinKeluar = await prisma.izinKeluarSiswa.count({
-        where: {
-          tenant_id: tenantId,
-          created_at: { gte: startUTC, lte: endUTC },
-        },
-      });
-    } catch {}
+      const kesiswaan = await PelanggaranService.getAcademicScopedKesiswaanSummary(tenantId, dateStr);
+      totalSiswaAktif = kesiswaan.totalSiswaAktif;
+      siswaHadir = kesiswaan.siswaHadir;
+      siswaSakit = kesiswaan.siswaSakit;
+      siswaIzin = kesiswaan.siswaIzin;
+      siswaAlpa = kesiswaan.siswaAlpa;
+      persentaseSiswa = kesiswaan.persentaseSiswa;
+      kemarinKehadiranPct = kesiswaan.kemarinKehadiranPct;
+      kehadiranDeltaPct = kesiswaan.kehadiranDeltaPct;
+      siswaTerlambat = kesiswaan.siswaTerlambat;
+      siswaIzinKeluar = kesiswaan.siswaIzinKeluar;
+      consecutiveAlpaItems = kesiswaan.consecutiveAlpaItems;
+      izinKeluarItems = kesiswaan.izinKeluarItems;
+      topRombelAlpa = kesiswaan.topRombelAlpa;
+      rombelSempurna = kesiswaan.rombelSempurna;
+      pelanggaranMingguIni = kesiswaan.pelanggaranMingguIni;
+      pelanggaranMingguLalu = kesiswaan.pelanggaranMingguLalu;
+      pelanggaranDeltaPct = kesiswaan.pelanggaranDeltaPct;
+      pelanggaranSemesterTotal = kesiswaan.pelanggaranSemesterTotal;
+      pelanggaranSemesterSelesai = kesiswaan.pelanggaranSemesterSelesai;
+      progresPenangananPelanggaranPct = kesiswaan.progresPenangananPelanggaranPct;
+    } catch (err) {
+      console.warn('[Briefing:Kesiswaan] Error querying SSOT Kesiswaan summary:', err);
+    }
 
     // ── 3. Kurikulum: Kedisiplinan Guru & KBM (SSOT via GuruRekapService, Scoped TP & Semester Aktif)
     let totalGuru = 0;
@@ -179,126 +144,6 @@ export class KepsekBriefingCollector implements IBriefingCollector {
     } catch (err) {
       console.warn('[Briefing:Kurikulum] Error querying SSOT Guru KBM discipline:', err);
     }
-
-    // ── 4. Early Warning System: Siswa Alpa Berturut-turut ─────────────────────
-    let consecutiveAlpaItems: Array<{ nama: string; kelas: string; count: number }> = [];
-    try {
-      const todayAlpaRecords = await prisma.absenSiswa.findMany({
-        where: {
-          tenant_id: tenantId,
-          status: 'ALPA',
-          created_at: { gte: startUTC, lte: endUTC },
-        },
-        select: {
-          siswa_id: true,
-          kelas_nama_snapshot: true,
-          Siswa: { select: { nama_siswa: true } },
-          SiswaAkademik: { select: { siswa: { select: { nama_siswa: true } } } },
-        },
-        take: 15,
-      });
-
-      const sevenDaysAgo = new Date(startUTC);
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-      for (const rec of todayAlpaRecords) {
-        if (!rec.siswa_id) continue;
-        const pastAlpa = await prisma.absenSiswa.count({
-          where: {
-            tenant_id: tenantId,
-            siswa_id: rec.siswa_id,
-            status: 'ALPA',
-            created_at: { gte: sevenDaysAgo, lt: startUTC },
-          },
-        });
-        const totalAlpaRecent = pastAlpa + 1;
-        if (totalAlpaRecent >= 2) {
-          const studentName = rec.Siswa?.nama_siswa || rec.SiswaAkademik?.siswa?.nama_siswa || 'Siswa';
-          consecutiveAlpaItems.push({
-            nama: studentName,
-            kelas: rec.kelas_nama_snapshot || 'Kelas',
-            count: totalAlpaRecent,
-          });
-        }
-      }
-      consecutiveAlpaItems.sort((a, b) => b.count - a.count);
-    } catch (err) {
-      console.warn('[Briefing:EarlyWarning] Error checking consecutive alpa:', err);
-    }
-
-    // ── 4.1 Siswa Izin Keluar Sekolah (Buku Piket) ─────────────────────────────
-    let izinKeluarItems: Array<{ nama: string; kelas: string; alasan: string; status: string; jamKeluar: string; jamKembali?: string }> = [];
-    try {
-      const ikList = await prisma.izinKeluarSiswa.findMany({
-        where: {
-          tenant_id: tenantId,
-          created_at: { gte: startUTC, lte: endUTC },
-        },
-        include: {
-          SiswaAkademik: {
-            include: {
-              siswa: { select: { nama_siswa: true } },
-              kelas: { select: { nama_kelas: true } },
-            },
-          },
-        },
-        take: 5,
-        orderBy: { jam_keluar: 'desc' },
-      });
-
-      izinKeluarItems = ikList.map(ik => {
-        const jamK = ik.jam_keluar ? new Date(ik.jam_keluar).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: tz }) : '-';
-        const jamB = ik.jam_kembali ? new Date(ik.jam_kembali).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: tz }) : undefined;
-        return {
-          nama: ik.SiswaAkademik?.siswa?.nama_siswa || 'Siswa',
-          kelas: ik.SiswaAkademik?.kelas?.nama_kelas || 'Kelas',
-          alasan: ik.alasan,
-          status: ik.status === 'KEMBALI' ? 'Sudah Kembali' : 'Masih di Luar',
-          jamKeluar: jamK,
-          jamKembali: jamB,
-        };
-      });
-    } catch {}
-
-    // ── 5. Wali Kelas: Rombel dengan Alpa Terbanyak vs Kehadiran 100% ──────────
-    let topRombelAlpa: Array<{ kelasNama: string; alpaCount: number }> = [];
-    let rombelSempurna: string[] = [];
-
-    try {
-      const kelasGroup = await prisma.absenSiswa.groupBy({
-        by: ['kelas_nama_snapshot', 'status'],
-        where: {
-          tenant_id: tenantId,
-          created_at: { gte: startUTC, lte: endUTC },
-        },
-        _count: { id: true },
-      });
-
-      const mapKelas = new Map<string, { hadir: number; alpa: number; sakitIzin: number }>();
-      for (const kg of kelasGroup) {
-        const kName = kg.kelas_nama_snapshot;
-        if (!kName) continue;
-        if (!mapKelas.has(kName)) mapKelas.set(kName, { hadir: 0, alpa: 0, sakitIzin: 0 });
-        const obj = mapKelas.get(kName)!;
-        const st = (kg.status || '').toUpperCase();
-        if (st === 'HADIR') obj.hadir += kg._count.id;
-        else if (st === 'ALPA') obj.alpa += kg._count.id;
-        else obj.sakitIzin += kg._count.id;
-      }
-
-      mapKelas.forEach((val, kName) => {
-        if (val.hadir > 0 && val.alpa === 0 && val.sakitIzin === 0) {
-          rombelSempurna.push(kName);
-        }
-        if (val.alpa > 0) {
-          topRombelAlpa.push({ kelasNama: kName, alpaCount: val.alpa });
-        }
-      });
-
-      topRombelAlpa.sort((a, b) => b.alpaCount - a.alpaCount);
-      topRombelAlpa = topRombelAlpa.slice(0, 4);
-      rombelSempurna = rombelSempurna.slice(0, 4);
-    } catch {}
 
     // ── 6. BP/BK & Pembinaan (SSOT via BpbkAnalyticsService, Scoped Konteks Akademik Aktif)
     let bpbkProgress: Awaited<ReturnType<typeof BpbkAnalyticsService.getAcademicScopedProgress>> | null = null;
@@ -441,35 +286,6 @@ export class KepsekBriefingCollector implements IBriefingCollector {
     }
     const biodataSiapPct = raporReadiness?.biodataSiapPct ?? 0;
     const nilaiSumatifPct = raporReadiness?.nilaiSumatifPct ?? 0;
-
-    // ── 7e. Kesiswaan: Tren Penurunan Pelanggaran Siswa (7 Hari vs 7 Hari Lalu)
-    let pelanggaranMingguIni = 0;
-    let pelanggaranMingguLalu = 0;
-    let pelanggaranDeltaPct: number | null = null;
-    try {
-      const nowEnd = endUTC;
-      const week1Start = new Date(startUTC.getTime() - 6 * 24 * 3600 * 1000);
-      const week2End = new Date(week1Start.getTime() - 1);
-      const week2Start = new Date(week1Start.getTime() - 7 * 24 * 3600 * 1000);
-
-      const [c1, c2] = await Promise.all([
-        prisma.pelanggaranSiswa.count({
-          where: { tenant_id: tenantId, tanggal: { gte: week1Start, lte: nowEnd } },
-        }),
-        prisma.pelanggaranSiswa.count({
-          where: { tenant_id: tenantId, tanggal: { gte: week2Start, lte: week2End } },
-        }),
-      ]);
-      pelanggaranMingguIni = c1;
-      pelanggaranMingguLalu = c2;
-      if (c2 > 0) {
-        pelanggaranDeltaPct = Math.round(((c1 - c2) / c2) * 100);
-      } else if (c1 === 0) {
-        pelanggaranDeltaPct = 0;
-      }
-    } catch (err) {
-      console.warn('[Briefing:Pelanggaran] Error querying violation trend:', err);
-    }
 
     // ── 8. Indeks Kesehatan Sekolah (Traffic Light Status) ─────────────────────
     const healthScore = Math.round(persentaseSiswa * 0.45 + persentaseGuru * 0.35 + persentaseJurnal * 0.20);
@@ -641,7 +457,7 @@ export class KepsekBriefingCollector implements IBriefingCollector {
         {
           label: 'Indeks Penurunan Pelanggaran (7 Hari vs Sebelumnya)',
           value: pelanggaranDeltaPct === null ? 100 : Math.max(0, Math.min(100, 100 - Math.max(0, pelanggaranDeltaPct))),
-          detail: `${pelanggaranMingguIni} kasus minggu ini vs ${pelanggaranMingguLalu} minggu lalu`,
+          detail: `${pelanggaranMingguIni} kasus minggu ini vs ${pelanggaranMingguLalu} minggu lalu (Penanganan semester: ${pelanggaranSemesterSelesai}/${pelanggaranSemesterTotal} selesai • ${progresPenangananPelanggaranPct}%)`,
           color: pelanggaranDeltaPct !== null && pelanggaranDeltaPct <= 0 ? 'emerald' : 'amber',
         },
       ],
