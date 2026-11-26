@@ -454,7 +454,22 @@ export class SesiQueryService {
         Guru: { select: { id: true, nama_guru: true, nip: true, no_hp: true, foto: true } },
         GuruPelaksana: { select: { id: true, nama_guru: true, nip: true, no_hp: true } },
         AbsenGuru: { select: { status: true, is_terlambat: true, waktu_tap: true, catatan: true } },
-        ProgresMateri: { select: { id: true, judul_materi: true, deskripsi: true, pencapaian_persen: true, kendala: true, updated_at: true } }
+        ProgresMateri: {
+          select: {
+            id: true,
+            judul_materi: true,
+            deskripsi: true,
+            pencapaian_persen: true,
+            kendala: true,
+            mode_pelaksanaan: true,
+            perangkat_ajar_id: true,
+            instruksi_tugas: true,
+            file_tugas_url: true,
+            referensi_json: true,
+            meeting_room_id: true,
+            updated_at: true
+          }
+        }
       },
       orderBy: { waktu_mulai: 'desc' }
     });
@@ -608,7 +623,8 @@ export class SesiQueryService {
       ];
     }
 
-    const [rawSchedulesFetched, activeLeavesToday] = await Promise.all([
+    const targetDateUtc = new Date(`${dateStr}T00:00:00.000Z`);
+    const [rawSchedulesFetched, activeLeavesToday, pjjEventsToday] = await Promise.all([
       (prisma as any).jadwalKBM.findMany({
         where: scheduleWhere,
         include: {
@@ -629,6 +645,13 @@ export class SesiQueryService {
         },
         include: {
           GuruInval: { select: { id: true, nama_guru: true, nip: true } }
+        }
+      }),
+      prisma.absensiKejadianKhusus.findMany({
+        where: {
+          tenant_id: tenantId,
+          tanggal: targetDateUtc,
+          mode_kejadian: 'PJJ_DARING'
         }
       })
     ]);
@@ -974,7 +997,38 @@ export class SesiQueryService {
       
       const absenGuru = item.absenGuru || (Array.isArray(item.AbsenGuru) ? item.AbsenGuru[0] : null);
       const isPlaceholderAbsenGuru = !absenGuru || (!absenGuru.waktu_tap && (!absenGuru.status || String(absenGuru.status).toUpperCase().includes('BELUM')));
-      const hasTeacherCheckInOrPhoto = Boolean(item.foto_kegiatan) || (item.guru_status && item.guru_status !== 'BELUM_TAP' && item.guru_status !== 'BELUM_HADIR' && item.guru_status !== 'ALPA') || !isPlaceholderAbsenGuru;
+
+      // 🌐 Konsolidasi Mode PJJ / KBM Daring dari KejadianKhusus & ProgresMateri
+      const matchingPjjEvent = (pjjEventsToday as any[])?.find((ev: any) => !ev.kelas_id || String(ev.kelas_id) === String(item.kelas_id));
+      const pm = item.ProgresMateri || item.progres || null;
+      const isDaringFromProgres = Boolean(
+        pm && (
+          pm.mode_pelaksanaan === 'DARING_LIVE' ||
+          pm.mode_pelaksanaan === 'DARING_TUGAS' ||
+          pm.instruksi_tugas ||
+          pm.perangkat_ajar_id ||
+          pm.meeting_room_id
+        )
+      );
+      const isPjjDaring = Boolean(matchingPjjEvent || isDaringFromProgres);
+
+      if (pm) {
+        if (pm.instruksi_tugas && !item.instruksi_tugas) item.instruksi_tugas = pm.instruksi_tugas;
+        if (pm.file_tugas_url && !item.file_tugas_url) item.file_tugas_url = pm.file_tugas_url;
+        if (pm.perangkat_ajar_id && !item.perangkat_ajar_id) item.perangkat_ajar_id = pm.perangkat_ajar_id;
+        if (pm.referensi_json && !item.referensi_json) item.referensi_json = pm.referensi_json;
+        if (pm.meeting_room_id && !item.meeting_room_id) item.meeting_room_id = pm.meeting_room_id;
+        if (pm.mode_pelaksanaan && !item.mode_pelaksanaan) item.mode_pelaksanaan = pm.mode_pelaksanaan;
+      }
+      if (isPjjDaring) {
+        item.is_pjj_daring = true;
+        item.pjj_keterangan = matchingPjjEvent?.keterangan || null;
+        if (!item.meeting_room_id && item.id) {
+          item.meeting_room_id = `kbm-sesi-${String(item.id).replace(/^sched_/, '')}`;
+        }
+      }
+
+      const hasTeacherCheckInOrPhoto = Boolean(item.foto_kegiatan) || isDaringFromProgres || (item.guru_status && item.guru_status !== 'BELUM_TAP' && item.guru_status !== 'BELUM_HADIR' && item.guru_status !== 'ALPA') || !isPlaceholderAbsenGuru;
 
       // 1. isLive:
       // - HANYA bernilai TRUE jika sesi fisik sudah resmi dibuka/dimulai oleh guru (ada foto / check-in guru)
@@ -1048,7 +1102,9 @@ export class SesiQueryService {
         else if (absenGuru.status === 'PENUGASAN') teacherStatus = 'PENUGASAN';
         else if (absenGuru.status === 'ALPA') teacherStatus = 'ALPA';
         else teacherStatus = 'TEPAT_WAKTU';
-      } else if (item.guru_status === 'HADIR' && Boolean(item.foto_kegiatan)) {
+      } else if (item.guru_status === 'HADIR' && (Boolean(item.foto_kegiatan) || isDaringFromProgres)) {
+        teacherStatus = 'TEPAT_WAKTU';
+      } else if (isDaringFromProgres) {
         teacherStatus = 'TEPAT_WAKTU';
       } else if (isFinished || isOverdue) {
         teacherStatus = 'ALPA';

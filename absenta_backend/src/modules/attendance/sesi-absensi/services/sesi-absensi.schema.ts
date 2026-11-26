@@ -93,3 +93,25 @@ export const tapSiswaSchema = z.object({
   device_id: z.string().optional().nullable(),
   catatan: z.string().optional().nullable(),
 });
+
+export const upsertProgresMateriSchema = z.object({
+  judul_materi: z.string().max(500).optional().nullable(),
+  materiPokok: z.string().max(500).optional().nullable(),
+  deskripsi: z.string().max(10000).optional().nullable(),
+  capaianPembelajaran: z.string().max(10000).optional().nullable(),
+  pencapaian_persen: z.union([z.number(), z.string()]).transform((v) => Math.min(100, Math.max(0, Number(v) || 0))).optional(),
+  kendala: z.string().max(5000).optional().nullable(),
+  catatanKelas: z.string().max(5000).optional().nullable(),
+  mode_pelaksanaan: z.enum(['TATAP_MUKA', 'DARING_LIVE', 'DARING_TUGAS']).optional().default('TATAP_MUKA'),
+  perangkat_ajar_id: z.string().max(150).optional().nullable(),
+  instruksi_tugas: z.string().max(15000).optional().nullable(),
+  file_tugas_url: z.string().max(2000).optional().nullable(),
+  referensi_json: z.array(
+    z.object({
+      judul: z.string().max(300),
+      url: z.string().max(2000),
+    })
+  ).max(20).optional().nullable(),
+  meeting_room_id: z.string().max(100).optional().nullable(),
+  tanggal: z.string().max(30).optional().nullable(),
+});

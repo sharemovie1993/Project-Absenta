@@ -553,12 +553,23 @@ export const RekapSesiKbmPrintModal: React.FC<RekapSesiKbmPrintModalProps> = ({
                       const siswaRatioText =
                         totalSiswa > 0 ? `${hadirSiswa}/${totalSiswa}` : '-';
 
+                      const pm = sesi.ProgresMateri || sesi.session?.ProgresMateri || null;
+                      const isDaring = Boolean(
+                        sesi.is_pjj_daring ||
+                        pm?.mode_pelaksanaan === 'DARING_LIVE' ||
+                        pm?.mode_pelaksanaan === 'DARING_TUGAS'
+                      );
                       const jurnalMateriText =
-                        sesi.session?.ProgresMateri?.judul_bab ||
-                        sesi.session?.ProgresMateri?.topik ||
+                        pm?.judul_materi ||
+                        pm?.judul_bab ||
+                        pm?.topik ||
+                        sesi.instruksi_tugas ||
                         sesi.session?.materi ||
                         sesi.session?.catatan ||
                         (sesi.status.isFinished ? 'KBM Selesai' : '-');
+                      const displayJurnalWithMode = isDaring && jurnalMateriText !== '-'
+                        ? `[PJJ/Daring] ${jurnalMateriText}`
+                        : jurnalMateriText;
 
                       return (
                         <tr
@@ -612,8 +623,8 @@ export const RekapSesiKbmPrintModal: React.FC<RekapSesiKbmPrintModalProps> = ({
                           <td className="border border-black p-1 text-center font-mono text-[8pt]">
                             {siswaRatioText}
                           </td>
-                          <td className="border border-black p-1 text-left text-[7.5pt] truncate max-w-[130px]" title={String(jurnalMateriText)}>
-                            {jurnalMateriText}
+                          <td className="border border-black p-1 text-left text-[7.5pt] truncate max-w-[130px]" title={String(displayJurnalWithMode)}>
+                            {displayJurnalWithMode}
                           </td>
                         </tr>
                       );

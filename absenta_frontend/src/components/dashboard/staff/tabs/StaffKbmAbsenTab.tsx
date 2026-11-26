@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { 
   BookOpen, Clock, Camera, CheckCircle2, AlertCircle, X, 
-  ChevronDown, ChevronUp, PlayCircle, FileText, Users, Sparkles, RefreshCw, LogIn, Volume2, Layers, Eye
+  ChevronDown, ChevronUp, PlayCircle, FileText, Users, Sparkles, RefreshCw, LogIn, Volume2, Layers, Eye, Laptop
 } from 'lucide-react';
 
 import { 
@@ -106,7 +106,7 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
 
   // Jurnal Modal State
   const [journalModalOpen, setJournalModalOpen] = useState<boolean>(false);
-  const [targetJournalSesi, setTargetJournalSesi] = useState<{ id: string; progres?: any } | null>(null);
+  const [targetJournalSesi, setTargetJournalSesi] = useState<{ id: string; progres?: any; sesi?: any } | null>(null);
 
   // Photo Preview Lightbox State
   const [previewPhotoData, setPreviewPhotoData] = useState<{
@@ -255,7 +255,7 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
     openSessionMutation.mutate({ jadwal: targetJadwal, fotoDataUrl: capturedPhotoUrl });
   }, [targetJadwal, openSessionMutation]);
 
-  const handleOpenJournalModal = (sesi: { id: string; progres?: any }) => {
+  const handleOpenJournalModal = (sesi: { id: string; progres?: any; sesi?: any }) => {
     setTargetJournalSesi(sesi);
     setJournalModalOpen(true);
   };
@@ -413,6 +413,29 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
         <>
       {/* 2. MAIN ACCORDION SECTION: DAFTAR JADWAL KBM HARI INI */}
       <div className="space-y-3">
+        {mergedTimelineItems.some((it: any) => it.is_pjj_daring || it.session?.is_pjj_daring) && (
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-700 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shrink-0">
+                <Laptop size={20} className="text-white animate-pulse" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-rose-500 text-white">
+                    ⚡ Instruksi PJJ / KBM Daring Aktif
+                  </span>
+                  <h4 className="text-xs sm:text-sm font-black text-white truncate">
+                    Pelaksanaan KBM Hari Ini Dialihkan ke Mode Daring (PJJ)
+                  </h4>
+                </div>
+                <p className="text-[11px] text-violet-100/90 font-medium mt-0.5">
+                  Klik tombol <strong>&ldquo;Ruang &amp; Jurnal PJJ&rdquo;</strong> pada kartu jadwal Anda untuk menyematkan Modul, Uraian Tugas, Referensi, atau membuka <strong>Live Virtual Class</strong> agar tercatat hadir mengajar.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-between px-1 flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
@@ -474,7 +497,11 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
                       });
                     }
                   }}
-                  onOpenJournalModal={() => handleOpenJournalModal({ id: sesi?.id || item.id })}
+                  onOpenJournalModal={() => handleOpenJournalModal({
+                    id: sesi?.id || item.id,
+                    progres: (item as any).ProgresMateri || (sesi as any)?.ProgresMateri || (item as any).progres,
+                    sesi: item
+                  })}
                   onTestAlert={handleTestAlertForSession}
                   expandedContent={canExpand ? (
                     <div className="space-y-4">
@@ -586,7 +613,11 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
           isOpen={journalModalOpen}
           onClose={() => { setJournalModalOpen(false); setTargetJournalSesi(null); }}
           sesiId={targetJournalSesi.id}
+          sesi={targetJournalSesi.sesi}
           initialData={targetJournalSesi.progres}
+          onSuccess={() => {
+            if (onRefreshTimeline) onRefreshTimeline();
+          }}
         />
       )}
 

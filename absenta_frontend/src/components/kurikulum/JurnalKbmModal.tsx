@@ -2,9 +2,10 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Modal, Button, Input, Textarea, Label } from '../ui';
-import { BookOpen, AlertCircle, CheckCircle2, Info, Sparkles, Percent } from 'lucide-react';
+import { BookOpen, AlertCircle, CheckCircle2, Info, Sparkles, Percent, Laptop, Video, Link2, Plus, Trash2, FileText } from 'lucide-react';
 import { upsertProgresMateri } from '../../api/attendanceGerbang.api';
 import { getActiveTpForSesi, TujuanPembelajaranItem } from '../../api/atp.api';
+import { getReaderContent, type AvailableModulItem, type AttachedFileItem } from '../../api/bahan-ajar.api';
 import { toast } from 'react-hot-toast';
 import { ConfirmModal } from '../ui/Modal';
 import { cn } from '../../lib/utils';
@@ -39,26 +40,53 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
   const [atpInfo, setAtpInfo] = useState<any>(null);
   const [isLoadingTp, setIsLoadingTp] = useState(false);
   const [atpModalOpen, setAtpModalOpen] = useState(false);
+  const [availableModuls, setAvailableModuls] = useState<AvailableModulItem[]>([]);
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFileItem[]>([]);
+  const [newRefJudul, setNewRefJudul] = useState('');
+  const [newRefUrl, setNewRefUrl] = useState('');
   const [formData, setFormData] = useState({
     judul_materi: '',
     deskripsi: '',
     pencapaian_persen: 100,
-    kendala: ''
+    kendala: '',
+    mode_pelaksanaan: 'TATAP_MUKA' as 'TATAP_MUKA' | 'DARING_LIVE' | 'DARING_TUGAS',
+    perangkat_ajar_id: '',
+    instruksi_tugas: '',
+    file_tugas_url: '',
+    referensi_json: [] as Array<{ judul: string; url: string }>
   });
 
   const unitNama = sesi?.unit_nama || sesi?.UnitPengajaran?.nama_unit || sesi?._raw?.unit_nama || initialData?.unit_nama || null;
   const mapelNama = sesi?.mapel_nama || sesi?.Mapel?.nama_mapel || sesi?.kegiatan || initialData?.mapel_nama || null;
   const kelasNama = sesi?.kelas_nama || sesi?.Kelas?.nama_kelas || initialData?.kelas_nama || null;
+  const mapelId = sesi?.mapel_id || sesi?.Mapel?.id || sesi?._raw?.mapel_id || initialData?.mapel_id || undefined;
+  const isPjjDay = Boolean(sesi?.is_pjj_daring || sesi?._raw?.is_pjj_daring);
 
   // Reset or set initial data when modal opens
   useEffect(() => {
     if (isOpen) {
+      const defaultMode = initialData?.mode_pelaksanaan
+        || sesi?.mode_pelaksanaan
+        || (isPjjDay ? 'DARING_TUGAS' : 'TATAP_MUKA');
+      const initRefs = Array.isArray(initialData?.referensi_json)
+        ? initialData.referensi_json
+        : Array.isArray(sesi?.referensi_json)
+        ? sesi.referensi_json
+        : [];
+
       setFormData({
         judul_materi: initialData?.judul_materi || initialData?.materi || '',
         deskripsi: initialData?.deskripsi || '',
         pencapaian_persen: typeof initialData?.pencapaian_persen === 'number' ? initialData.pencapaian_persen : 100,
-        kendala: initialData?.kendala || ''
+        kendala: initialData?.kendala || '',
+        mode_pelaksanaan: defaultMode,
+        perangkat_ajar_id: initialData?.perangkat_ajar_id || sesi?.perangkat_ajar_id || '',
+        instruksi_tugas: initialData?.instruksi_tugas || sesi?.instruksi_tugas || '',
+        file_tugas_url: initialData?.file_tugas_url || sesi?.file_tugas_url || '',
+        referensi_json: initRefs
       });
+      setNewRefJudul('');
+      setNewRefUrl('');
 
       // Fetch active TP list for this session
       if (sesiId && !readOnly) {
@@ -74,8 +102,24 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
           })
           .finally(() => setIsLoadingTp(false));
       }
+
+      // Fetch available PerangkatAjar & BahanAjarPreset for this subject
+      if ((mapelId || mapelNama) && !readOnly) {
+        getReaderContent(mapelId || 'auto', {
+          mapel_id: mapelId,
+          mapel_nama: mapelNama || undefined,
+        })
+          .then((res) => {
+            setAvailableModuls(res?.available_moduls || []);
+            setAttachedFiles(res?.attached_files || []);
+          })
+          .catch(() => {
+            setAvailableModuls([]);
+            setAttachedFiles([]);
+          });
+      }
     }
-  }, [isOpen, initialData, sesiId, readOnly]);
+  }, [isOpen, initialData, sesiId, readOnly, mapelId, mapelNama, isPjjDay, sesi]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,10 +132,15 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
       toast.error('Judul materi wajib diisi');
       return;
     }
+    const isDaring = formData.mode_pelaksanaan === 'DARING_LIVE' || formData.mode_pelaksanaan === 'DARING_TUGAS';
+    if (isDaring && !formData.instruksi_tugas.trim() && !formData.perangkat_ajar_id && !formData.file_tugas_url && formData.referensi_json.length === 0) {
+      toast.error('Untuk KBM Daring/PJJ, wajib menyematkan minimal Modul, Uraian Tugas, atau Referensi belajar bagi siswa.');
+      return;
+    }
     setLoading(true);
     try {
       await upsertProgresMateri(sesiId, formData);
-      toast.success('Jurnal KBM berhasil disimpan! ✨');
+      toast.success(isDaring ? 'Ruang KBM Daring & Laporan Mengajar berhasil dipublikasikan! ✨' : 'Jurnal KBM berhasil disimpan! ✨');
       queryClient.invalidateQueries({ queryKey: ['rekapJurnalSesiList'] });
       queryClient.invalidateQueries({ queryKey: ['sesiAbsensiList'] });
       queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi'] });
@@ -129,10 +178,10 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
             </div>
             <div>
               <span className="font-black text-slate-800 dark:text-white text-base">
-                {readOnly ? 'Detail Jurnal Mengajar' : 'Isi Jurnal KBM Guru'}
+                {readOnly ? 'Detail Jurnal & Ruang KBM' : 'Isi Jurnal & Ruang KBM Daring'}
               </span>
               <p className="text-[11px] text-slate-400 font-medium">
-                {readOnly ? 'Catatan jurnal KBM resmi' : 'Catat ringkasan pembelajaran & capaian materi'}
+                {readOnly ? 'Catatan jurnal & materi KBM resmi' : 'Catat ringkasan pembelajaran, sematkan modul & tugas siswa'}
               </p>
             </div>
           </div>
@@ -361,6 +410,207 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* 5. KONSOLIDASI RUANG KBM DARING / PJJ (MODUL, TUGAS, REFERENSI & LIVE WEBRTC) */}
+            <div className="p-4 rounded-2xl bg-violet-50/70 dark:bg-violet-950/25 border border-violet-200/80 dark:border-violet-800/60 space-y-3.5">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-violet-600 text-white">
+                    <Laptop size={14} />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-black text-violet-950 dark:text-violet-100">
+                      Mode Pelaksanaan &amp; Ruang KBM Daring (PJJ)
+                    </h5>
+                    <p className="text-[10px] text-violet-700/80 dark:text-violet-300/80 font-medium">
+                      Sematkan modul, uraian tugas, referensi &amp; ruang kelas virtual untuk diakses siswa
+                    </p>
+                  </div>
+                </div>
+                {isPjjDay && (
+                  <span className="px-2 py-0.5 rounded-md bg-rose-600 text-white text-[10px] font-black uppercase tracking-wider animate-pulse">
+                    ⚡ Instruksi PJJ Aktif
+                  </span>
+                )}
+              </div>
+
+              {/* Pilihan Mode Pelaksanaan */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {[
+                  { id: 'TATAP_MUKA', label: '🏫 Tatap Muka', desc: 'KBM Reguler di Kelas' },
+                  { id: 'DARING_TUGAS', label: '📚 Daring (Modul & Tugas)', desc: 'Sematkan Modul & Tugas' },
+                  { id: 'DARING_LIVE', label: '🎥 Daring + Live Virtual', desc: 'Live WebRTC + Modul' },
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    disabled={readOnly}
+                    onClick={() => setFormData({ ...formData, mode_pelaksanaan: m.id as any })}
+                    className={cn(
+                      "p-2.5 rounded-xl border text-left transition-all cursor-pointer",
+                      formData.mode_pelaksanaan === m.id
+                        ? "bg-violet-600 border-violet-600 text-white shadow-sm"
+                        : "bg-white dark:bg-slate-900 border-violet-200 dark:border-violet-800/60 text-slate-700 dark:text-slate-200 hover:bg-violet-100/50"
+                    )}
+                  >
+                    <div className="text-[11px] font-black">{m.label}</div>
+                    <div className={cn("text-[9px] font-medium", formData.mode_pelaksanaan === m.id ? "text-violet-100" : "text-slate-400")}>
+                      {m.desc}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Sematkan Modul dari Perangkat Ajar / Bahan Ajar */}
+              <div className="space-y-1.5">
+                <Label className="text-violet-950 dark:text-violet-200 font-extrabold text-xs flex items-center gap-1.5">
+                  <BookOpen size={13} className="text-violet-600 dark:text-violet-400" />
+                  <span>Sematkan Modul Ajar / Lembar Kerja Siswa (Opsional)</span>
+                </Label>
+                {!readOnly && (availableModuls.length > 0 || attachedFiles.length > 0) && (
+                  <select
+                    className="w-full h-10 px-3 bg-white dark:bg-slate-900 border border-violet-200 dark:border-violet-800 rounded-xl font-bold text-xs text-slate-800 dark:text-slate-100 outline-none cursor-pointer"
+                    value={formData.perangkat_ajar_id || formData.file_tugas_url || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const matchedFile = attachedFiles.find((f) => f.file_url === val || f.id === val);
+                      const matchedModul = availableModuls.find((m) => m.id === val);
+                      if (matchedFile) {
+                        setFormData({
+                          ...formData,
+                          perangkat_ajar_id: matchedFile.id,
+                          file_tugas_url: matchedFile.file_url,
+                          judul_materi: formData.judul_materi || matchedFile.judul,
+                        });
+                      } else if (matchedModul) {
+                        setFormData({
+                          ...formData,
+                          perangkat_ajar_id: matchedModul.id,
+                          judul_materi: formData.judul_materi || matchedModul.judul,
+                        });
+                      } else {
+                        setFormData({ ...formData, perangkat_ajar_id: '', file_tugas_url: '' });
+                      }
+                    }}
+                  >
+                    <option value="">-- Pilih dari Perangkat Ajar / Modul Kurikulum Anda --</option>
+                    {availableModuls.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        📘 [Modul Interaktif] {m.judul} (Fase {m.fase})
+                      </option>
+                    ))}
+                    {attachedFiles.map((f) => (
+                      <option key={f.id} value={f.file_url}>
+                        📄 [Berkas {f.jenis}] {f.judul}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <Input
+                  placeholder={readOnly ? '-' : "Atau tempel tautan langsung Modul / PDF / Google Drive..."}
+                  value={formData.file_tugas_url}
+                  onChange={(e) => setFormData({ ...formData, file_tugas_url: e.target.value })}
+                  disabled={readOnly}
+                  className="rounded-xl h-10 bg-white dark:bg-slate-900 border-violet-200 dark:border-violet-800 text-xs font-medium"
+                />
+              </div>
+
+              {/* Uraian Tugas Siswa */}
+              <div className="space-y-1.5">
+                <Label className="text-violet-950 dark:text-violet-200 font-extrabold text-xs flex items-center gap-1.5">
+                  <FileText size={13} className="text-violet-600 dark:text-violet-400" />
+                  <span>Uraian Tugas &amp; Instruksi Pembelajaran Siswa</span>
+                </Label>
+                <Textarea
+                  placeholder={readOnly ? '-' : "Uraikan langkah belajar mandiri, soal tugas, atau instruksi pengumpulan tugas bagi siswa di ruang KBM daring..."}
+                  value={formData.instruksi_tugas}
+                  onChange={(e) => setFormData({ ...formData, instruksi_tugas: e.target.value })}
+                  rows={3}
+                  disabled={readOnly}
+                  className="rounded-xl bg-white dark:bg-slate-900 border-violet-200 dark:border-violet-800 text-xs font-medium"
+                />
+              </div>
+
+              {/* Lampiran Referensi (Video / Artikel / Link) */}
+              <div className="space-y-2">
+                <Label className="text-violet-950 dark:text-violet-200 font-extrabold text-xs flex items-center gap-1.5">
+                  <Link2 size={13} className="text-violet-600 dark:text-violet-400" />
+                  <span>Lampiran Referensi Belajar (Video YouTube / Artikel / Sumber Belajar)</span>
+                </Label>
+                {!readOnly && (
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Input
+                      placeholder="Judul Referensi (mis: Video Tutorial Bab 1)"
+                      value={newRefJudul}
+                      onChange={(e) => setNewRefJudul(e.target.value)}
+                      className="rounded-xl h-9 bg-white dark:bg-slate-900 border-violet-200 dark:border-violet-800 text-xs flex-1"
+                    />
+                    <Input
+                      placeholder="https://youtube.com/..."
+                      value={newRefUrl}
+                      onChange={(e) => setNewRefUrl(e.target.value)}
+                      className="rounded-xl h-9 bg-white dark:bg-slate-900 border-violet-200 dark:border-violet-800 text-xs flex-1"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        if (!newRefUrl.trim()) {
+                          toast.error('Masukkan URL referensi terlebih dahulu');
+                          return;
+                        }
+                        setFormData({
+                          ...formData,
+                          referensi_json: [
+                            ...formData.referensi_json,
+                            { judul: newRefJudul.trim() || newRefUrl.trim(), url: newRefUrl.trim() }
+                          ]
+                        });
+                        setNewRefJudul('');
+                        setNewRefUrl('');
+                      }}
+                      className="h-9 px-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold shrink-0"
+                    >
+                      <Plus size={13} className="mr-1" /> Tambah
+                    </Button>
+                  </div>
+                )}
+
+                {formData.referensi_json.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    {formData.referensi_json.map((refItem, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-violet-200/70 dark:border-violet-800/60 text-xs"
+                      >
+                        <a
+                          href={refItem.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-bold text-violet-700 dark:text-violet-300 hover:underline truncate"
+                        >
+                          🔗 {refItem.judul}
+                        </a>
+                        {!readOnly && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormData({
+                                ...formData,
+                                referensi_json: formData.referensi_json.filter((_, i) => i !== idx)
+                              })
+                            }
+                            className="text-slate-400 hover:text-rose-600 cursor-pointer shrink-0"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

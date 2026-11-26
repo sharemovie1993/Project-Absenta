@@ -5,7 +5,7 @@ export interface KejadianKhusus {
   tanggal: string; // YYYY-MM-DD
   keterangan: string;
   abaikan_terlambat: boolean;
-  mode_kejadian: 'NORMAL' | 'LIBUR' | 'DISPEN';
+  mode_kejadian: 'NORMAL' | 'LIBUR' | 'DISPEN' | 'PJJ_DARING';
   tenant_id: string;
   kelas_id?: string | null;
   Kelas?: { id: string; nama_kelas: string };
@@ -17,7 +17,7 @@ export interface CreateKejadianKhususPayload {
   tanggal: string;
   keterangan: string;
   abaikan_terlambat: boolean;
-  mode_kejadian?: 'NORMAL' | 'LIBUR' | 'DISPEN';
+  mode_kejadian?: 'NORMAL' | 'LIBUR' | 'DISPEN' | 'PJJ_DARING';
   kelas_id?: string | null;
 }
 

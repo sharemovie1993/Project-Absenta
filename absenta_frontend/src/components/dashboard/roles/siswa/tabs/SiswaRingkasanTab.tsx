@@ -476,8 +476,13 @@ export const SiswaRingkasanTab: React.FC<SiswaRingkasanTabProps> = ({
                 <Calendar size={18} />
               </div>
               <div>
-                <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">
-                  Jadwal KBM Hari Ini
+                <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
+                  <span>Jadwal KBM Hari Ini</span>
+                  {todayKbmSchedule.some((s: any) => s.is_pjj_daring || s._raw?.is_pjj_daring) && (
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-violet-600 text-white animate-pulse">
+                      💻 Mode PJJ Daring
+                    </span>
+                  )}
                 </h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                   {todayKbmSchedule.length} Sesi Terjadwal
@@ -492,6 +497,18 @@ export const SiswaRingkasanTab: React.FC<SiswaRingkasanTabProps> = ({
               <ChevronRight size={14} />
             </button>
           </div>
+
+          {todayKbmSchedule.some((s: any) => s.is_pjj_daring || s._raw?.is_pjj_daring) && (
+            <div className="p-3 rounded-2xl bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800/70 flex items-start gap-2.5 text-xs text-violet-950 dark:text-violet-200">
+              <Laptop size={16} className="text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <span className="font-black block">Instruksi Pembelajaran Jarak Jauh (PJJ / Daring) Aktif Hari Ini</span>
+                <p className="text-[11px] text-violet-700 dark:text-violet-300 font-medium leading-snug">
+                  Klik tombol <strong>&ldquo;💻 Ruang KBM Daring&rdquo;</strong> pada setiap mata pelajaran untuk membuka Modul, Referensi, Tugas, atau Kelas Virtual Live. Kehadiran Anda tercatat otomatis saat memasuki ruang KBM.
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-3 overflow-y-auto max-h-[360px] custom-scrollbar pr-1">
             {isLoadingSchedule ? (

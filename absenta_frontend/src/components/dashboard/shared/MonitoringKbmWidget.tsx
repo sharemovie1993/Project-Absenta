@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getSesiAbsensiList, getSesiAbsenSiswa, sendKbmReminderApi, updateAbsenGuru } from '../../../api/attendanceGerbang.api';
@@ -7,9 +7,13 @@ import { toLocalDate, formatLocalTimeFromISO, getTimezoneLabel } from '../../../
 import { useSocket } from '../../../hooks/useSocket';
 import { Button } from '../../ui';
 import { Modal, ModalFooter } from '../../ui/Modal';
-import { BookOpen, ShieldAlert, ArrowRight, ArrowLeft, AlertTriangle, CheckCircle2, Sparkles, Activity, HeartPulse, Clock, UserCheck, MessageSquare, Send, UserX, Printer, LayoutGrid } from 'lucide-react';
+import { BookOpen, ShieldAlert, ArrowRight, ArrowLeft, AlertTriangle, CheckCircle2, Sparkles, Activity, HeartPulse, Clock, UserCheck, MessageSquare, Send, UserX, Printer, LayoutGrid, Laptop } from 'lucide-react';
 import { JurnalKbmModal } from '../../kurikulum/JurnalKbmModal';
 import { RekapSesiKbmPrintModal } from '../../kurikulum/rekap-kbm/RekapSesiKbmPrintModal';
+
+const KejadianKhususPanel = lazy(() =>
+  import('../../attendance/settings/KejadianKhususPanel').then((m) => ({ default: m.KejadianKhususPanel }))
+);
 import { useAuthStore } from '../../../store/authStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
@@ -161,6 +165,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
   const [journalModalOpen, setJournalModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isWaBroadcastModalOpen, setIsWaBroadcastModalOpen] = useState(false);
+  const [isKejadianKhususModalOpen, setIsKejadianKhususModalOpen] = useState(false);
 
   // Status Modal State (Inval / Izin / Sakit)
   const [statusModalOpen, setStatusModalOpen] = useState(false);
@@ -680,6 +685,20 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 type="button"
+                onClick={() => setIsKejadianKhususModalOpen((prev) => !prev)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1 rounded-2xl text-[11px] font-bold shadow-2xs transition-colors cursor-pointer",
+                  isKejadianKhususModalOpen
+                    ? "bg-slate-900 text-white"
+                    : "bg-violet-600 hover:bg-violet-700 text-white"
+                )}
+                title="Saklar Komando PJJ / KBM Daring Mendadak, Dispensasi, atau Libur Insidental (Inline)"
+              >
+                <Laptop size={13} />
+                <span>{isKejadianKhususModalOpen ? '🔼 Tutup Saklar PJJ' : '💻 Saklar Mode PJJ / Darurat'}</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setIsWaBroadcastModalOpen(true)}
                 className="flex items-center gap-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-[11px] font-bold shadow-2xs transition-colors cursor-pointer"
                 title="Kirim pengumuman dadakan via WA Gateway ke guru yang mengajar pada jam KBM ke-n"
@@ -701,6 +720,15 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Inline Panel Saklar Mode PJJ / Darurat */}
+          {isKejadianKhususModalOpen && (
+            <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+              <Suspense fallback={<div className="p-6 text-center text-xs text-slate-400">Memuat panel komando PJJ...</div>}>
+                <KejadianKhususPanel />
+              </Suspense>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
             <div
@@ -976,7 +1004,17 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
             handleExport={handleExport}
             onOpenPrint={() => setIsPrintModalOpen(true)}
             onOpenWaBroadcast={() => setIsWaBroadcastModalOpen(true)}
+            onOpenPjjSwitch={() => setIsKejadianKhususModalOpen((prev) => !prev)}
           />
+
+          {/* Inline Panel Saklar Mode PJJ / Darurat pada Mode Command Center */}
+          {isKejadianKhususModalOpen && (
+            <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+              <Suspense fallback={<div className="p-6 text-center text-xs text-slate-400">Memuat panel komando PJJ...</div>}>
+                <KejadianKhususPanel />
+              </Suspense>
+            </div>
+          )}
 
           {/* 3. Session List/Grid/Table */}
           <div className="min-h-[400px]">

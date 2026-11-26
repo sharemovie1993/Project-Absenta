@@ -54,7 +54,8 @@ export class SesiTapEngineService {
       where: { id: sesi_id, tenant_id: tenantId },
       include: {
         JadwalKBM: { select: { id: true, jam_mulai: true, jam_selesai: true } },
-        AbsenGuru: { select: { id: true, status: true } }
+        AbsenGuru: { select: { id: true, status: true } },
+        ProgresMateri: { select: { id: true, mode_pelaksanaan: true, instruksi_tugas: true, perangkat_ajar_id: true } }
       }
     });
 
@@ -100,10 +101,23 @@ export class SesiTapEngineService {
             include: { GuruInval: true }
           }) : null;
 
+          const todayUtc = new Date(`${todayDateStr}T00:00:00.000Z`);
+          const activePjjToday = await prisma.absensiKejadianKhusus.findFirst({
+            where: {
+              tenant_id: tenantId,
+              tanggal: todayUtc,
+              mode_kejadian: 'PJJ_DARING',
+              OR: [
+                { kelas_id: null },
+                { kelas_id: jadwal.kelas_id }
+              ]
+            }
+          });
+
           const isSystemOp = ['GATE_PROPAGATION', 'SYSTEM_AUTO_PULL', 'RECONCILIATION'].includes(_userId);
-          // 🛡️ Sesi virtual yang belum pernah dibuka oleh Guru maupun Petugas TIDAK BOLEH menerima tap presensi siswa
-          if (!activeLeave && !isSystemOp) {
-            throw new Error('Sesi KBM belum dibuka oleh Guru atau Petugas Kelas. Silakan buka sesi terlebih dahulu (ambil Foto Guru).');
+          // 🛡️ Sesi virtual yang belum pernah dibuka oleh Guru maupun Petugas TIDAK BOLEH menerima tap presensi siswa (kecuali ada Izin Guru atau Mode PJJ Daring aktif)
+          if (!activeLeave && !activePjjToday && !isSystemOp) {
+            throw new Error('Sesi KBM belum dibuka oleh Guru atau Petugas Kelas. Silakan buka sesi terlebih dahulu (ambil Foto Guru / isi Jurnal KBM Daring).');
           }
 
           const initialGuruStatus = activeLeave 
@@ -194,6 +208,7 @@ export class SesiTapEngineService {
       const hasTeacherCheckInOrPhoto = Boolean(
         sesi.status === 'BERLANGSUNG' ||
         sesi.foto_kegiatan ||
+        sesi.ProgresMateri ||
         sesi.AbsenGuru?.some((ag: any) => 
           ag.status && ag.status !== 'BELUM_TAP' && ag.status !== 'BELUM_HADIR' && ag.status !== 'ALPA' && ag.status !== 'MENDATANG'
         )

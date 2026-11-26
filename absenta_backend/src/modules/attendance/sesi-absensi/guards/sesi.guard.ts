@@ -286,13 +286,23 @@ export class SesiGuard {
             return;
         }
 
-        // Regular student: allow READ only for their own class
+        // Regular student: allow READ only for their own class, OR self-presence tap on /:id/tap-siswa for their own class
         if (method === 'GET') {
            if (validKelasIds.has(String(sesi.kelas_id))) {
              return; // Allowed to view their own class session
            }
            reply.status(403).send({ success: false, message: 'Forbidden: Anda hanya dapat melihat sesi kelas Anda sendiri.' });
            return;
+        }
+
+        const isTapSiswaRoute = url.includes('/tap-siswa');
+        if (method === 'POST' && isTapSiswaRoute && validKelasIds.has(String(sesi.kelas_id))) {
+          if (!request.body) request.body = {};
+          // Kunci penuh ke identitas siswa yang sedang login (mencegah siswa mengabsenkan siswa lain)
+          request.body.siswa_id = siswa.id;
+          request.body.siswa_akademik_id = siswa.SiswaAkademik?.[0]?.id || undefined;
+          request.body.status = 'HADIR';
+          return; // Allowed for Student Self-Presence in Ruang KBM Daring / Tugas
         }
 
         reply.status(403).send({ success: false, message: 'Forbidden: Akses ditolak.' });

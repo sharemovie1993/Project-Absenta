@@ -2826,6 +2826,15 @@ model ProgresMateri {
   deskripsi         String?  @db.Text
   pencapaian_persen Int      @default(0)
   kendala           String?  @db.Text
+
+  // ── Konsolidasi Ruang KBM Daring / PJJ (Selaras dengan UniversalKbmCard) ──
+  mode_pelaksanaan  String   @default("TATAP_MUKA") // TATAP_MUKA | DARING_LIVE | DARING_TUGAS
+  perangkat_ajar_id String?  // ID Modul dari PerangkatAjar / BahanAjarPreset yang disematkan
+  instruksi_tugas   String?  @db.Text // Uraian tugas terstruktur (selaras dengan item.instruksi_tugas di UniversalKbmCard)
+  file_tugas_url    String?  @db.Text // URL berkas modul/LKPD (selaras dengan item.file_tugas_url di UniversalKbmCard)
+  referensi_json    Json?    // Array<{ judul: string, url: string }> untuk lampiran link/video referensi
+  meeting_room_id   String?  @db.VarChar(100) // Room ID untuk VirtualMeetingModal ("kbm-sesi-{sesi_id}")
+
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
 

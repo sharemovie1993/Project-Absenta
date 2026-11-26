@@ -56,7 +56,6 @@ export const KepsekKbmTab: React.FC<KepsekKbmTabProps> = React.memo(({
             subtitle: 'Kehadiran hari ini',
             icon: Users,
             color: 'blue',
-            onClick: () => navigate('/attendance/rekap'),
           },
           {
             label: 'Hadir Guru',
@@ -78,7 +77,6 @@ export const KepsekKbmTab: React.FC<KepsekKbmTabProps> = React.memo(({
             subtitle: supervisionList.length > 0 ? 'Pendidik terjadwal' : 'Jam efektif tercapai',
             icon: Award,
             color: 'amber',
-            onClick: () => navigate('/kurikulum/supervisi'),
           },
         ]}
       />

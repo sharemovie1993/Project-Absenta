@@ -5,7 +5,7 @@ import { getSesiAbsensiList } from '../../../api/attendanceGerbang.api';
 import { Button, Input, Card, Label, Badge } from '../../ui';
 import ConfirmDialog from '../../ui/ConfirmDialog';
 import { toast } from 'react-hot-toast';
-import { Trash2, Plus, AlertCircle, ShieldAlert, XCircle, CheckCircle2, Users, BookOpen, RefreshCw } from 'lucide-react';
+import { Trash2, Plus, AlertCircle, ShieldAlert, XCircle, CheckCircle2, Users, BookOpen, RefreshCw, Laptop } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { toLocalDate } from '../../../utils/attendance/time';
@@ -29,11 +29,12 @@ const KejadianKhususPanelComponent: React.FC = () => {
     tanggal: toLocalDate(),
     keterangan: '',
     abaikan_terlambat: true,
-    mode_kejadian: 'NORMAL' as 'NORMAL' | 'LIBUR' | 'DISPEN',
+    mode_kejadian: 'NORMAL' as 'NORMAL' | 'LIBUR' | 'DISPEN' | 'PJJ_DARING',
     kelas_id: null as string | null
   });
 
   const PRESET_REASONS = [
+    'Instruksi KBM PJJ / Daring Mendadak',
     'Bencana Alam (Banjir/Gempa)',
     'Instruksi Libur Mendadak (Dinas)',
     'Cuaca Ekstrem',
@@ -217,7 +218,8 @@ const KejadianKhususPanelComponent: React.FC = () => {
                     setNewEvent(prev => {
                       let newMode = prev.mode_kejadian;
                       const lowerVal = val.toLowerCase();
-                      if (lowerVal.includes('libur')) newMode = 'LIBUR';
+                      if (lowerVal.includes('pjj') || lowerVal.includes('daring') || lowerVal.includes('online')) newMode = 'PJJ_DARING';
+                      else if (lowerVal.includes('libur')) newMode = 'LIBUR';
                       else if (lowerVal.includes('dispen')) newMode = 'DISPEN';
                       else if (lowerVal.includes('kunjungan') || lowerVal.includes('studi')) newMode = 'DISPEN';
                       
@@ -242,7 +244,11 @@ const KejadianKhususPanelComponent: React.FC = () => {
                   <button
                     key={reason}
                     type="button"
-                    onClick={() => setNewEvent(prev => ({ ...prev, keterangan: reason }))}
+                    onClick={() => setNewEvent(prev => ({
+                      ...prev,
+                      keterangan: reason,
+                      mode_kejadian: reason.toLowerCase().includes('pjj') ? 'PJJ_DARING' : prev.mode_kejadian
+                    }))}
                     className="text-[9px] px-2 py-1 rounded-full bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 border border-slate-200 transition-colors"
                   >
                     {reason}
@@ -254,7 +260,7 @@ const KejadianKhususPanelComponent: React.FC = () => {
 
           <div className="space-y-3 mb-6">
             <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Pilih Aksi Sistem (PENTING)</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div 
                 onClick={() => setNewEvent(prev => ({ ...prev, mode_kejadian: 'NORMAL' }))}
                 className={`cursor-pointer p-4 rounded-xl border-2 transition-all flex flex-col gap-2 ${newEvent.mode_kejadian === 'NORMAL' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' : 'border-slate-100 dark:border-slate-800 hover:border-slate-300'}`}
@@ -265,6 +271,18 @@ const KejadianKhususPanelComponent: React.FC = () => {
                 </div>
                 <span className="text-xs font-bold uppercase tracking-tight">Normal (Bypass)</span>
                 <span className="text-[9px] text-slate-500 leading-tight">Hanya mengabaikan keterlambatan. Sesi tetap berjalan.</span>
+              </div>
+
+              <div 
+                onClick={() => setNewEvent(prev => ({ ...prev, mode_kejadian: 'PJJ_DARING', abaikan_terlambat: true }))}
+                className={`cursor-pointer p-4 rounded-xl border-2 transition-all flex flex-col gap-2 ${newEvent.mode_kejadian === 'PJJ_DARING' ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/30' : 'border-slate-100 dark:border-slate-800 hover:border-slate-300'}`}
+              >
+                <div className="flex items-center justify-between">
+                   <Laptop className={`w-5 h-5 ${newEvent.mode_kejadian === 'PJJ_DARING' ? 'text-violet-600' : 'text-slate-400'}`} />
+                   {newEvent.mode_kejadian === 'PJJ_DARING' && <div className="w-2 h-2 rounded-full bg-violet-500 animate-ping" />}
+                </div>
+                <span className="text-xs font-bold uppercase tracking-tight">KBM PJJ / Daring</span>
+                <span className="text-[9px] text-slate-500 leading-tight">Alihkan KBM ke Ruang Daring (Modul, Tugas, Referensi & Live Meeting).</span>
               </div>
 
               <div 
@@ -323,6 +341,9 @@ const KejadianKhususPanelComponent: React.FC = () => {
                           )}
                           {newEvent.mode_kejadian === 'NORMAL' && s.status !== 'SELESAI' && (
                             <Badge variant="success" className="text-[6px] px-1 py-0 animate-pulse">BYPASS TELAT</Badge>
+                          )}
+                          {newEvent.mode_kejadian === 'PJJ_DARING' && (
+                            <Badge variant="info" className="text-[6px] px-1 py-0 animate-pulse">MODE PJJ DARING</Badge>
                           )}
                         </div>
                       </div>
@@ -397,6 +418,7 @@ const KejadianKhususPanelComponent: React.FC = () => {
                   <td className="py-4 px-6">
                     <div className="flex gap-2">
                       {ev.abaikan_terlambat && <Badge variant="success" className="text-[8px] uppercase tracking-tighter">Bypass Telat</Badge>}
+                      {ev.mode_kejadian === 'PJJ_DARING' && <Badge variant="info" className="text-[8px] uppercase tracking-tighter">KBM PJJ / Daring</Badge>}
                       {ev.mode_kejadian === 'LIBUR' && <Badge variant="destructive" className="text-[8px] uppercase tracking-tighter">Sekolah Libur</Badge>}
                       {ev.mode_kejadian === 'DISPEN' && <Badge variant="warning" className="text-[8px] uppercase tracking-tighter">Dispen Masal</Badge>}
                     </div>

@@ -80,12 +80,12 @@ export async function sesiAbsensiRoutes(fastify: any) {
     handler: sesiAbsensiController.updateAbsenGuru,
   });
 
-  // 7. Scan Siswa - OPERATOR ONLY
-  // Butuh elevatedScopeMiddleware agar operator dapat mencari siswa lintas kelas saat absensi
+  // 7. Scan Siswa & Self-Presence Ruang KBM Daring
+  // Butuh elevatedScopeMiddleware agar operator dapat mencari siswa lintas kelas saat absensi, dan SISWA diizinkan mencatat kehadiran dirinya sendiri di kelasnya via SesiGuard
   fastify.post('/:id/tap-siswa', {
     preHandler: [
         requireMultiSesiMode, 
-        requireCapability(['attendance.sessions.tap', 'attendance.sessions.update.attendance']), 
+        requireCapability(['attendance.sessions.tap', 'attendance.sessions.update.attendance'], { exemptRoles: [RoleName.SISWA, RoleName.GURU, RoleName.ADMIN] }), 
         elevatedScopeMiddleware, 
         determineDataScope(),
         SesiGuard.validateSessionAccess

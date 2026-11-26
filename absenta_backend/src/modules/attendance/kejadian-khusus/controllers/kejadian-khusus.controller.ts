@@ -7,8 +7,8 @@ export const createKejadianKhususSchema = z.object({
   keterangan: z.string().min(1, 'keterangan wajib diisi'),
   tanggal: z.string().min(1, 'tanggal wajib diisi'),
   abaikan_terlambat: z.boolean().optional().default(false),
-  mode_kejadian: z.enum(['NORMAL', 'LIBUR', 'DISPEN']).optional().default('NORMAL'),
-  kelas_id: z.string().optional(),
+  mode_kejadian: z.enum(['NORMAL', 'LIBUR', 'DISPEN', 'PJJ_DARING']).optional().default('NORMAL'),
+  kelas_id: z.string().optional().nullable(),
 });
 
 export const kejadianKhususController = {

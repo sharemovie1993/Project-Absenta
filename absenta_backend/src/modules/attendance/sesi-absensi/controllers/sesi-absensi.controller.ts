@@ -1,6 +1,6 @@
 import { prisma } from '@/utils/prisma';
 import { sesiService } from '../services/sesi.service';
-import { createSesiAbsensiSchema, updateSesiAbsensiSchema, updateSesiStatusSchema, updateAbsenGuruSchema, tapSiswaSchema } from '../services/sesi-absensi.schema';
+import { createSesiAbsensiSchema, updateSesiAbsensiSchema, updateSesiStatusSchema, updateAbsenGuruSchema, tapSiswaSchema, upsertProgresMateriSchema } from '../services/sesi-absensi.schema';
 import { systemConfigService } from '@/modules/system-config/services/system-config.service';
 import { getTenantLocalTime, generateSessionsForTenant, generateSessionsForTenantDirect } from '@/jobs/attendanceAutoSession.job';
 import { sesiReminderService } from '../services/sesi-reminder.service';
@@ -346,7 +346,7 @@ export const sesiAbsensiController = {
       const scope = (request as any).organizationalScope;
       const tenantId = request.tenantId;
       const { id } = request.params;
-      const data = request.body || {};
+      const data = upsertProgresMateriSchema.parse(request.body || {});
 
       if (!tenantId) {
         reply.status(401);
@@ -359,6 +359,10 @@ export const sesiAbsensiController = {
       return { success: true, message: 'Progres materi tersimpan', data: upserted };
     } catch (error: any) {
       console.error('Upsert progres materi error:', error);
+      if (error?.name === 'ZodError' || error?.issues) {
+        reply.status(400);
+        return { success: false, message: 'Validasi input jurnal/ruang daring tidak valid' };
+      }
       if (error.message.includes('Forbidden')) reply.status(403);
       else if (error.message.includes('tidak ditemukan')) reply.status(404);
       else reply.status(500);

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, lazy, Suspense, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Clock, 
@@ -21,10 +21,15 @@ import {
   MessageSquare,
   Send,
   ExternalLink,
-  ShieldCheck
+  ShieldCheck,
+  Laptop,
+  Video,
+  Link2
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'react-hot-toast';
 import { getJadwalKegiatan } from '@/api/attendance/jadwalKegiatan.api';
+import { tapSiswaSesi } from '@/api/attendanceGerbang.api';
 import { Button, PersonPhoto } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { 
@@ -33,6 +38,13 @@ import {
   type SessionStatusMeta, 
   type TeacherStatusMeta 
 } from '@/utils/kbm-normalizer';
+
+const VirtualMeetingModal = lazy(() =>
+  import('@/components/communication/meeting/VirtualMeetingModal').then((m) => ({ default: m.VirtualMeetingModal }))
+);
+const BahanAjarReaderModal = lazy(() =>
+  import('@/components/kurikulum/bahan-ajar/BahanAjarReaderModal').then((m) => ({ default: m.BahanAjarReaderModal }))
+);
 
 export type KbmCardMode = 'GURU' | 'SISWA' | 'PETUGAS' | 'MONITORING';
 
@@ -97,8 +109,29 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
   expandedContent,
 }) => {
   // 1. Resolve Session Status & Teacher Status via SSOT
-  const [isTaskModalOpen, setIsTaskModalOpen] = React.useState(false);
-  
+  const queryClient = useQueryClient();
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [isInlineDaringOpen, setIsInlineDaringOpen] = useState(false);
+  const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
+  const [isDaringReaderOpen, setIsDaringReaderOpen] = useState(false);
+  const [isRecordingDaringPresence, setIsRecordingDaringPresence] = useState(false);
+  const [localDaringAttended, setLocalDaringAttended] = useState(false);
+
+  const pm = item.ProgresMateri || item.progres || item.session?.ProgresMateri || item.session?.progres || null;
+  const modePelaksanaan = item.mode_pelaksanaan || pm?.mode_pelaksanaan || item.session?.mode_pelaksanaan || 'TATAP_MUKA';
+  const isPjjDaring = Boolean(
+    item.is_pjj_daring ||
+    item.session?.is_pjj_daring ||
+    modePelaksanaan === 'DARING_LIVE' ||
+    modePelaksanaan === 'DARING_TUGAS'
+  );
+  const perangkatAjarId = item.perangkat_ajar_id || pm?.perangkat_ajar_id || item.session?.perangkat_ajar_id || null;
+  const referensiList: Array<{ judul: string; url: string }> = useMemo(() => {
+    const rawRefs = item.referensi_json || pm?.referensi_json || item.session?.referensi_json;
+    return Array.isArray(rawRefs) ? rawRefs : [];
+  }, [item, pm]);
+  const meetingRoomId = item.meeting_room_id || pm?.meeting_room_id || item.session?.meeting_room_id || `kbm-sesi-${String(item.session?.id || item.id || 'default').replace(/^sched_/, '')}`;
+
   const classSpecificTask = React.useMemo(() => {
     const tpk = item.tugas_per_kelas || item.session?.tugas_per_kelas || item.permohonan_izin?.tugas_per_kelas;
     if (!tpk || typeof tpk !== 'object') return null;
@@ -119,14 +152,57 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
   }, [item]);
 
   const generalTask = item.instruksi_tugas 
+    || pm?.instruksi_tugas
     || item.session?.instruksi_tugas 
     || item.permohonan_izin?.instruksi_tugas 
     || item.tugas 
     || null;
 
   const taskText = classSpecificTask || generalTask || '';
-  const taskFileUrl = item.file_tugas_url || item.session?.file_tugas_url || item.permohonan_izin?.file_tugas_url || item.attachment_url || '';
-  const hasTask = Boolean(taskText && taskText.trim().length > 0);
+  const taskFileUrl = item.file_tugas_url || pm?.file_tugas_url || item.session?.file_tugas_url || item.permohonan_izin?.file_tugas_url || item.attachment_url || '';
+  const hasTask = Boolean(
+    (taskText && taskText.trim().length > 0) ||
+    taskFileUrl ||
+    perangkatAjarId ||
+    referensiList.length > 0 ||
+    isPjjDaring
+  );
+
+  const effectiveSesiIdForTap = item.session?.id || item.id;
+  const effectiveStudentStatus = localDaringAttended ? 'HADIR' : studentStatus;
+
+  const handleStudentEnterDaringSpace = useCallback(async (openAction?: 'TASK_MODAL' | 'INLINE_TOGGLE' | 'LIVE_MEET' | 'READER') => {
+    if (openAction === 'TASK_MODAL') setIsTaskModalOpen(true);
+    if (openAction === 'INLINE_TOGGLE') setIsInlineDaringOpen((prev) => !prev);
+    if (openAction === 'LIVE_MEET') setIsMeetingModalOpen(true);
+    if (openAction === 'READER') setIsDaringReaderOpen(true);
+
+    // Auto-record student attendance when entering active/daring KBM space
+    if (
+      mode === 'SISWA' &&
+      effectiveSesiIdForTap &&
+      effectiveStudentStatus !== 'HADIR' &&
+      effectiveStudentStatus !== 'TEPAT_WAKTU' &&
+      !isRecordingDaringPresence
+    ) {
+      try {
+        setIsRecordingDaringPresence(true);
+        await tapSiswaSesi(String(effectiveSesiIdForTap), {
+          status: 'HADIR',
+          catatan: 'Hadir Ruang KBM Daring'
+        });
+        setLocalDaringAttended(true);
+        toast.success('Kehadiran KBM Daring Anda otomatis tercatat! ✅');
+        queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-siswa-unified'] });
+        queryClient.invalidateQueries({ queryKey: ['rekap-harian-siswa-me'] });
+        queryClient.invalidateQueries({ queryKey: ['sesiAbsensiList'] });
+      } catch (_) {
+        // Silent if session not yet open
+      } finally {
+        setIsRecordingDaringPresence(false);
+      }
+    }
+  }, [mode, effectiveSesiIdForTap, effectiveStudentStatus, isRecordingDaringPresence, queryClient]);
 
   const isLive = Boolean(item.isLive ?? item.status?.isLive ?? item.is_live ?? (item.status === 'BERLANGSUNG' || item.session?.status === 'BERLANGSUNG'));
   const isReadyToOpen = Boolean(item.isReadyToOpen ?? item.status?.isReadyToOpen ?? false);
@@ -776,13 +852,18 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setIsTaskModalOpen(true);
+                      handleStudentEnterDaringSpace('INLINE_TOGGLE');
                     }}
-                    title="Lihat petunjuk/tugas yang dititipkan guru"
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-bold bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/70 dark:hover:bg-blue-900/70 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 cursor-pointer shadow-xs transition-all active:scale-95 shrink-0"
+                    title={isPjjDaring ? "Buka Ruang KBM Daring Inline (Modul, Tugas, Referensi & Kelas Virtual)" : "Lihat petunjuk/tugas yang dititipkan guru"}
+                    className={cn(
+                      "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] sm:text-xs font-black border cursor-pointer shadow-xs transition-all active:scale-95 shrink-0",
+                      isPjjDaring
+                        ? "bg-violet-600 hover:bg-violet-500 text-white border-violet-500 shadow-violet-600/20"
+                        : "bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/70 dark:hover:bg-blue-900/70 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                    )}
                   >
-                    <BookOpen size={11} className="text-blue-600 dark:text-blue-400" />
-                    <span>📝 Tugas Guru</span>
+                    {isPjjDaring ? <Laptop size={11} /> : <BookOpen size={11} className="text-blue-600 dark:text-blue-400" />}
+                    <span>{isPjjDaring ? (isInlineDaringOpen ? '🔼 Tutup Ruang Daring' : '💻 Ruang KBM Daring') : (isInlineDaringOpen ? '🔼 Tutup Tugas' : '📝 Tugas Guru')}</span>
                   </button>
                 )}
               </div>
@@ -802,18 +883,18 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
           <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Presensi Saya:</span>
-              {studentStatus ? (
+              {effectiveStudentStatus ? (
                 <span className={cn(
                   "px-2.5 py-0.5 rounded-md text-xs font-black uppercase tracking-wider shadow-xs",
-                  studentStatus === 'HADIR' || studentStatus === 'TEPAT_WAKTU' 
+                  effectiveStudentStatus === 'HADIR' || effectiveStudentStatus === 'TEPAT_WAKTU' 
                     ? "bg-emerald-600 text-white"
-                    : studentStatus === 'TERLAMBAT'
+                    : effectiveStudentStatus === 'TERLAMBAT'
                     ? "bg-amber-500 text-white"
-                    : studentStatus === 'IZIN' || studentStatus === 'SAKIT'
+                    : effectiveStudentStatus === 'IZIN' || effectiveStudentStatus === 'SAKIT'
                     ? "bg-blue-600 text-white"
                     : "bg-rose-600 text-white"
                 )}>
-                  {studentStatus === 'HADIR' ? 'Hadir' : studentStatus === 'TERLAMBAT' ? 'Terlambat' : studentStatus === 'IZIN' ? 'Izin' : studentStatus === 'SAKIT' ? 'Sakit' : 'Alpa'}
+                  {effectiveStudentStatus === 'HADIR' ? 'Hadir' : effectiveStudentStatus === 'TERLAMBAT' ? 'Terlambat' : effectiveStudentStatus === 'IZIN' ? 'Izin' : effectiveStudentStatus === 'SAKIT' ? 'Sakit' : 'Alpa'}
                 </span>
               ) : (
                 <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
@@ -1192,8 +1273,8 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                 </Button>
               )}
 
-              {/* Isi Jurnal Button */}
-              {(isLive || isFinished) && !isOverdue && onOpenJournalModal && (
+              {/* Isi Jurnal / Ruang KBM Daring Button */}
+              {(isLive || isFinished || isPjjDaring || isReadyToOpen) && !isOverdue && onOpenJournalModal && (
                 <Button
                   type="button"
                   size="sm"
@@ -1201,17 +1282,48 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                     e.stopPropagation();
                     onOpenJournalModal(item);
                   }}
-                  className="h-8 px-3.5 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-500 text-white border-none flex items-center gap-1.5 cursor-pointer shadow-sm shadow-blue-900/20"
+                  className={cn(
+                    "h-8 px-3.5 rounded-xl text-xs font-black text-white border-none flex items-center gap-1.5 cursor-pointer shadow-sm",
+                    isPjjDaring
+                      ? "bg-violet-600 hover:bg-violet-500 shadow-violet-900/20"
+                      : "bg-blue-600 hover:bg-blue-500 shadow-blue-900/20"
+                  )}
                 >
-                  <FileText size={13} />
-                  <span>Jurnal</span>
+                  {isPjjDaring ? <Laptop size={13} /> : <FileText size={13} />}
+                  <span>{isPjjDaring ? 'Ruang & Jurnal PJJ' : 'Jurnal'}</span>
+                </Button>
+              )}
+
+              {/* Tombol Kelas Virtual Live WebRTC (Guru POV) */}
+              {(isPjjDaring || modePelaksanaan === 'DARING_LIVE' || isLive) && !isFinished && !isOverdue && (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsMeetingModalOpen(true);
+                  }}
+                  title="Buka Kelas Virtual Live WebRTC (Video, Share Screen & Papan Tulis Interaktif)"
+                  className="h-8 px-3 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-500 text-white border-none flex items-center gap-1.5 cursor-pointer shadow-sm shadow-rose-900/20"
+                >
+                  <Video size={13} />
+                  <span>🎥 Live Virtual</span>
                 </Button>
               )}
 
               {hasJournal && (
-                <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
-                  <BookOpen size={11} /> Jurnal Terisi
-                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsInlineDaringOpen((prev) => !prev);
+                  }}
+                  className="px-2 py-0.5 rounded-md text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1 cursor-pointer"
+                >
+                  <BookOpen size={11} />
+                  <span>{isPjjDaring ? 'Ruang PJJ Terisi' : 'Jurnal Terisi'}</span>
+                  {isInlineDaringOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                </button>
               )}
             </div>
 
@@ -1311,9 +1423,18 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
               )}
 
               {hasJournal && (
-                <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
-                  <BookOpen size={11} /> Jurnal Terisi
-                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsInlineDaringOpen((prev) => !prev);
+                  }}
+                  className="px-2 py-0.5 rounded-md text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1 cursor-pointer"
+                >
+                  <BookOpen size={11} />
+                  <span>{isPjjDaring ? 'Lihat Ruang PJJ' : 'Lihat Jurnal'}</span>
+                  {isInlineDaringOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                </button>
               )}
             </div>
 
@@ -1327,6 +1448,131 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
         )}
         </div>
       </div>
+
+      {/* ── INLINE RUANG KBM DARING / JURNAL & TUGAS PANEL (MUNCUL LANGSUNG DI DALAM CARD TANPA POPUP) ── */}
+      {(isInlineDaringOpen || (mode === 'SISWA' && isPjjDaring && (Boolean(pm?.judul_materi) || Boolean(taskText) || referensiList.length > 0))) && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="border-t border-violet-200/80 dark:border-violet-800/60 bg-violet-50/40 dark:bg-violet-950/20 p-3.5 sm:p-4 space-y-3"
+        >
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded-md bg-violet-600 text-white font-black text-[10px] flex items-center gap-1">
+                <Laptop size={11} />
+                <span>{isPjjDaring ? 'Ruang KBM Daring (Inline View)' : 'Rincian Materi & Tugas Sesi'}</span>
+              </span>
+              {mode === 'SISWA' && (effectiveStudentStatus === 'HADIR' || effectiveStudentStatus === 'TEPAT_WAKTU') && (
+                <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-200 font-black text-[10px] border border-emerald-300 dark:border-emerald-800">
+                  ✅ Tercatat Hadir
+                </span>
+              )}
+            </div>
+            {isInlineDaringOpen && (
+              <button
+                type="button"
+                onClick={() => setIsInlineDaringOpen(false)}
+                className="text-[10px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                Sembunyikan
+              </button>
+            )}
+          </div>
+
+          {/* 1. Pokok Bahasan / Materi */}
+          {pm?.judul_materi && (
+            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-0.5">
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Pokok Bahasan / Materi</span>
+              <p className="text-xs font-extrabold text-slate-900 dark:text-white">{pm.judul_materi}</p>
+              {pm.deskripsi && (
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">{pm.deskripsi}</p>
+              )}
+            </div>
+          )}
+
+          {/* 2. Uraian Tugas */}
+          {taskText && (
+            <div className="p-2.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/60 space-y-0.5">
+              <span className="text-[9px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 block">📝 Uraian Tugas &amp; Instruksi</span>
+              <p className="text-xs text-blue-950 dark:text-blue-200 leading-relaxed font-medium whitespace-pre-wrap">{taskText}</p>
+            </div>
+          )}
+
+          {/* 3. Referensi Terlampir */}
+          {referensiList.length > 0 && (
+            <div className="space-y-1">
+              <span className="text-[9px] font-black uppercase tracking-wider text-violet-600 dark:text-violet-400 block">
+                🔗 Referensi Belajar Terlampir ({referensiList.length})
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {referensiList.map((refItem, idx) => (
+                  <a
+                    key={idx}
+                    href={refItem.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => handleStudentEnterDaringSpace()}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 hover:bg-violet-50 dark:hover:bg-violet-900/40 border border-violet-200 dark:border-violet-800 text-[11px] font-bold text-violet-700 dark:text-violet-300 transition-colors"
+                  >
+                    <Link2 size={11} className="shrink-0" />
+                    <span className="truncate max-w-[200px]">{refItem.judul}</span>
+                    <ExternalLink size={10} className="shrink-0 opacity-70" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 4. Baris Tombol Aksi Inline (Modul Digital, Unduh LKPD, Live Virtual WebRTC, & Konfirmasi Hadir Siswa) */}
+          <div className="flex items-center gap-2 flex-wrap pt-1">
+            {(perangkatAjarId || item.mapel_id || item.Mapel?.id) && (
+              <button
+                type="button"
+                onClick={() => handleStudentEnterDaringSpace('READER')}
+                className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs cursor-pointer shadow-2xs flex items-center gap-1.5"
+              >
+                <BookOpen size={13} />
+                <span>📘 Buka Modul Digital</span>
+              </button>
+            )}
+
+            {taskFileUrl && (
+              <a
+                href={taskFileUrl}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => handleStudentEnterDaringSpace()}
+                className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 font-bold text-xs border border-blue-200 dark:border-blue-800 hover:underline flex items-center gap-1.5"
+              >
+                <FileText size={13} />
+                <span>Unduh Berkas / LKPD</span>
+              </a>
+            )}
+
+            {(isPjjDaring || modePelaksanaan === 'DARING_LIVE' || isLive) && !isFinished && (
+              <button
+                type="button"
+                onClick={() => handleStudentEnterDaringSpace('LIVE_MEET')}
+                className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs cursor-pointer shadow-2xs flex items-center gap-1.5"
+              >
+                <Video size={13} />
+                <span>🎥 {mode === 'GURU' ? 'Buka Kelas Virtual Live' : 'Gabung Kelas Virtual Live'}</span>
+              </button>
+            )}
+
+            {mode === 'SISWA' && effectiveStudentStatus !== 'HADIR' && effectiveStudentStatus !== 'TEPAT_WAKTU' && (
+              <button
+                type="button"
+                disabled={isRecordingDaringPresence}
+                onClick={() => handleStudentEnterDaringSpace()}
+                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs cursor-pointer shadow-2xs flex items-center gap-1.5 ml-auto"
+              >
+                <CheckCircle2 size={13} />
+                <span>{isRecordingDaringPresence ? 'Mencatat...' : '✅ Catat Kehadiran Daring Saya'}</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── ACCORDION EXPANDED CONTENT ── */}
       <AnimatePresence>
@@ -1342,7 +1588,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
         )}
       </AnimatePresence>
 
-      {/* ── MODAL INSTRUKSI TUGAS GURU ── */}
+      {/* ── MODAL RUANG KBM DARING & INSTRUKSI TUGAS GURU (KONSOLIDASI SATU KABEL) ── */}
       {isTaskModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-fadeIn"
@@ -1352,40 +1598,56 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
           }}
         >
           <div
-            className="relative w-full max-w-md rounded-2xl shadow-2xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 p-5 space-y-3.5"
+            className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto custom-scrollbar rounded-2xl shadow-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 p-5 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
-                  <BookOpen size={16} />
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className={cn(
+                  "w-9 h-9 rounded-xl flex items-center justify-center font-bold",
+                  isPjjDaring
+                    ? "bg-violet-600 text-white"
+                    : "bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400"
+                )}>
+                  {isPjjDaring ? <Laptop size={18} /> : <BookOpen size={18} />}
                 </div>
                 <div>
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-white">Instruksi Tugas dari Guru</h4>
-                  <p className="text-[11px] text-slate-400 font-medium">{guruNama} • {mapelNama}</p>
+                  <h4 className="font-black text-sm text-slate-900 dark:text-white">
+                    {isPjjDaring ? 'Ruang KBM Daring & Penugasan (PJJ)' : 'Instruksi Tugas & Materi dari Guru'}
+                  </h4>
+                  <p className="text-[11px] text-slate-400 font-medium">{guruNama} • {mapelNama} {kelasNama ? `(${kelasNama})` : ''}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsTaskModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"
               >
                 <X size={16} />
               </button>
             </div>
 
-            {/* Badges Info */}
+            {/* Badges Status Ruang KBM & Kehadiran */}
             <div className="flex items-center gap-1.5 flex-wrap">
+              {isPjjDaring && (
+                <span className="px-2 py-0.5 rounded-md bg-violet-100 dark:bg-violet-950/70 text-violet-800 dark:text-violet-200 font-black text-[10px] border border-violet-300 dark:border-violet-800">
+                  💻 Mode KBM Daring ({modePelaksanaan === 'DARING_LIVE' ? 'Live Virtual + Modul' : 'Modul & Penugasan'})
+                </span>
+              )}
               {classSpecificTask ? (
                 <span className="px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold text-[10px] border border-purple-200 dark:border-purple-800">
-                  📌 Tugas Khusus Kelas {kelasNama}
+                  📌 Khusus Kelas {kelasNama}
                 </span>
               ) : (
                 <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-bold text-[10px] border border-blue-200 dark:border-blue-800">
-                  🌐 Tugas Bersama / Global
+                  🌐 Materi &amp; Tugas Kelas
                 </span>
               )}
-
+              {mode === 'SISWA' && (effectiveStudentStatus === 'HADIR' || effectiveStudentStatus === 'TEPAT_WAKTU') && (
+                <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-200 font-black text-[10px] border border-emerald-300 dark:border-emerald-800">
+                  ✅ Kehadiran Tercatat (HADIR)
+                </span>
+              )}
               {item.guru_inval_nama && (
                 <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] border border-emerald-200 dark:border-emerald-800">
                   👥 Guru Inval: {item.guru_inval_nama}
@@ -1393,33 +1655,168 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
               )}
             </div>
 
-            <div className="p-3.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 text-xs text-blue-950 dark:text-blue-200 leading-relaxed font-medium whitespace-pre-wrap">
-              {taskText}
-            </div>
-
-            {taskFileUrl && (
-              <a
-                href={taskFileUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold text-xs border border-slate-200 dark:border-slate-700 hover:underline w-full justify-center"
-              >
-                <FileText size={14} />
-                <span>Unduh Lembar Kerja / Modul Tugas</span>
-              </a>
+            {/* Pokok Bahasan / Judul Materi dari Jurnal Guru */}
+            {pm?.judul_materi && (
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700 space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Pokok Bahasan / Materi Sesi Ini</span>
+                <p className="text-xs font-extrabold text-slate-900 dark:text-white">{pm.judul_materi}</p>
+                {pm.deskripsi && (
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">{pm.deskripsi}</p>
+                )}
+              </div>
             )}
 
-            <div className="pt-2 flex justify-end">
+            {/* Uraian Tugas */}
+            {taskText ? (
+              <div className="space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 block">
+                  📝 Uraian Tugas &amp; Instruksi Pembelajaran
+                </span>
+                <div className="p-3.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 text-xs text-blue-950 dark:text-blue-200 leading-relaxed font-medium whitespace-pre-wrap">
+                  {taskText}
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-dashed border-slate-200 dark:border-slate-700 text-center text-xs text-slate-400">
+                Guru belum menguraikan instruksi tugas tertulis pada sesi ini.
+              </div>
+            )}
+
+            {/* Modul yang Disematkan (BahanAjarReaderModal & File Link) */}
+            {(perangkatAjarId || taskFileUrl || item.mapel_id || item.Mapel?.id) && (
+              <div className="space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block">
+                  📘 Modul &amp; Bahan Ajar Tersemat
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleStudentEnterDaringSpace('READER')}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs cursor-pointer shadow-sm transition-all"
+                  >
+                    <BookOpen size={14} />
+                    <span>Buka Modul Belajar Digital</span>
+                  </button>
+                  {taskFileUrl && (
+                    <a
+                      href={taskFileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={() => handleStudentEnterDaringSpace()}
+                      className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold text-xs border border-slate-200 dark:border-slate-700 hover:underline"
+                    >
+                      <FileText size={14} />
+                      <span>Unduh Berkas / LKPD</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Lampiran Referensi Belajar */}
+            {referensiList.length > 0 && (
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-violet-600 dark:text-violet-400 block">
+                  🔗 Lampiran Referensi &amp; Sumber Belajar ({referensiList.length})
+                </span>
+                <div className="space-y-1.5">
+                  {referensiList.map((refItem, idx) => (
+                    <a
+                      key={idx}
+                      href={refItem.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={() => handleStudentEnterDaringSpace()}
+                      className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-violet-50/70 hover:bg-violet-100/80 dark:bg-violet-950/40 dark:hover:bg-violet-900/50 border border-violet-200 dark:border-violet-800/70 text-xs font-bold text-violet-800 dark:text-violet-200 transition-colors"
+                    >
+                      <span className="flex items-center gap-1.5 truncate">
+                        <Link2 size={13} className="text-violet-600 dark:text-violet-400 shrink-0" />
+                        <span className="truncate">{refItem.judul}</span>
+                      </span>
+                      <ExternalLink size={12} className="shrink-0 opacity-70" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Kelas Virtual Live WebRTC (Native VirtualMeetingModal) */}
+            {(isPjjDaring || modePelaksanaan === 'DARING_LIVE' || isLive) && !isFinished && (
+              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-rose-500/10 via-violet-500/10 to-indigo-500/10 border border-rose-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5 text-xs font-black text-rose-600 dark:text-rose-400">
+                    <Video size={14} className="animate-pulse" />
+                    <span>Ruang Tatap Muka Virtual (Live WebRTC)</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                    Dilengkapi Video/Audio, Screen Share &amp; Papan Tulis Interaktif
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleStudentEnterDaringSpace('LIVE_MEET')}
+                  className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs cursor-pointer shadow-sm flex items-center justify-center gap-1.5 shrink-0"
+                >
+                  <Video size={13} />
+                  <span>Gabung Kelas Live</span>
+                </button>
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+              {mode === 'SISWA' && effectiveStudentStatus !== 'HADIR' && effectiveStudentStatus !== 'TEPAT_WAKTU' ? (
+                <button
+                  type="button"
+                  disabled={isRecordingDaringPresence}
+                  onClick={() => handleStudentEnterDaringSpace()}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs cursor-pointer shadow-xs flex items-center gap-1.5"
+                >
+                  <CheckCircle2 size={14} />
+                  <span>{isRecordingDaringPresence ? 'Mencatat...' : 'Konfirmasi Hadir Belajar Daring'}</span>
+                </button>
+              ) : (
+                <span className="text-[11px] text-slate-400 font-medium">
+                  {mode === 'SISWA' ? 'Administrasi kehadiran Anda tercatat otomatis.' : 'Ruang KBM Daring Terpadu Absenta'}
+                </span>
+              )}
               <button
                 type="button"
                 onClick={() => setIsTaskModalOpen(false)}
-                className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs cursor-pointer shadow-xs transition-colors"
+                className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-xs transition-colors ml-auto"
               >
                 Tutup
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── NATIVE WEBRTC VIRTUAL MEETING MODAL (LAZY LOADED) ── */}
+      {isMeetingModalOpen && (
+        <Suspense fallback={null}>
+          <VirtualMeetingModal
+            isOpen={isMeetingModalOpen}
+            onClose={() => setIsMeetingModalOpen(false)}
+            roomId={meetingRoomId}
+            roomTitle={`KBM Daring: ${mapelNama} (${kelasNama || 'Kelas'}) - ${guruNama}`}
+          />
+        </Suspense>
+      )}
+
+      {/* ── BAHAN AJAR DIGITAL READER MODAL (LAZY LOADED) ── */}
+      {isDaringReaderOpen && (
+        <Suspense fallback={null}>
+          <BahanAjarReaderModal
+            isOpen={isDaringReaderOpen}
+            onClose={() => setIsDaringReaderOpen(false)}
+            perangkatId={perangkatAjarId || item.mapel_id || item.Mapel?.id}
+            mapelId={item.mapel_id || item.Mapel?.id || item.session?.mapel_id}
+            mapelNama={mapelNama}
+            kelasNama={kelasNama}
+            tingkat={item.tingkat}
+            fase={item.fase}
+          />
+        </Suspense>
       )}
     </div>
   );

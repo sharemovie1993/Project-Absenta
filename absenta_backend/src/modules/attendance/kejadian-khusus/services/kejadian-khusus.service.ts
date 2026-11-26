@@ -7,8 +7,8 @@ export interface CreateKejadianKhususInput {
   tanggal: string; // YYYY-MM-DD
   keterangan: string;
   abaikan_terlambat: boolean;
-  mode_kejadian?: 'NORMAL' | 'LIBUR' | 'DISPEN';
-  kelas_id?: string;
+  mode_kejadian?: 'NORMAL' | 'LIBUR' | 'DISPEN' | 'PJJ_DARING';
+  kelas_id?: string | null;
 }
 
 export class KejadianKhususService {
@@ -56,7 +56,7 @@ export class KejadianKhususService {
     return created;
   }
 
-  private async applyGlobalAction(tenantId: string, tanggalStr: string, mode: 'NORMAL' | 'LIBUR' | 'DISPEN', keterangan: string, abaikanTerlambat: boolean, kelasId?: string) {
+  private async applyGlobalAction(tenantId: string, tanggalStr: string, mode: 'NORMAL' | 'LIBUR' | 'DISPEN' | 'PJJ_DARING', keterangan: string, abaikanTerlambat: boolean, kelasId?: string | null) {
     const tgl = new Date(tanggalStr);
     const startOfDay = new Date(tgl.setHours(0, 0, 0, 0));
     const endOfDay = new Date(tgl.setHours(23, 59, 59, 999));
@@ -146,8 +146,9 @@ export class KejadianKhususService {
           });
         }
       }
-    } else if (mode === 'NORMAL' && abaikanTerlambat) {
-      // Retroaktif NORMAL + Abaikan Terlambat: Putihkan semua keterlambatan dan kembalikan poin penuh
+    } else if (mode === 'PJJ_DARING' || (mode === 'NORMAL' && abaikanTerlambat)) {
+      // Retroaktif PJJ_DARING atau NORMAL + Abaikan Terlambat: Putihkan semua keterlambatan dan kembalikan poin penuh
+      const notePrefix = mode === 'PJJ_DARING' ? '[PJJ DARING]' : '[BYPASS LATE]';
       await prisma.absenSiswa.updateMany({
         where: { 
           SesiAbsensi: whereClause,
@@ -157,7 +158,7 @@ export class KejadianKhususService {
           is_terlambat: false, 
           menit_keterlambatan: 0, 
           poin_kehadiran: ATTENDANCE_POINTS.HADIR_TEPAT_WAKTU,
-          catatan: `[BYPASS LATE] ${keterangan}` 
+          catatan: `${notePrefix} ${keterangan}` 
         }
       });
 
@@ -170,7 +171,7 @@ export class KejadianKhususService {
           is_terlambat: false, 
           menit_keterlambatan: 0, 
           poin_kehadiran: ATTENDANCE_POINTS.HADIR_TEPAT_WAKTU,
-          catatan: `[BYPASS LATE] ${keterangan}` 
+          catatan: `${notePrefix} ${keterangan}` 
         }
       });
     }
