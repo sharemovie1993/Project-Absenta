@@ -86,6 +86,7 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
     cbt_kurikulum: true,
     penilaian_rapor: true,
     bpbk: true,
+    ketarunaan: true,
     hubin_pkl: true,
   });
 

@@ -1300,6 +1300,191 @@ export class KetarunaanPenilaianService {
       students: exportRows,
     };
   }
+
+  /**
+   * SSOT Pengumpulan Data Progres Program Ketarunaan terscope ke Konteks Akademik Aktif (TP & Semester Aktif)
+   * Menghitung progres penilaian 4 pilar (Samapta, PBB, Disiplin, Mental), finalisasi nilai, rata-rata capaian,
+   * distribusi predikat (A/B/C/D), serta sesi & kehadiran kegiatan latihan ketarunaan.
+   */
+  async getAcademicScopedKetarunaanProgress(
+    tenantId: string,
+    options?: { startUTC?: Date; endUTC?: Date }
+  ) {
+    const [activeTp, activeSem] = await Promise.all([
+      prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true, tahun: true },
+      }),
+      prisma.semester.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true, nama_semester: true },
+      }),
+    ]);
+
+    if (!activeTp || !activeSem) {
+      return null;
+    }
+
+    const [
+      skemaConfig,
+      totalTarunaTarget,
+      nilaiRows,
+      sesiKetarunaanList,
+    ] = await Promise.all([
+      this.getSkemaConfig(tenantId, {
+        tahun_pelajaran_id: activeTp.id,
+        semester_id: activeSem.id,
+      }),
+      prisma.siswaAkademik.count({
+        where: {
+          tahun_pelajaran_id: activeTp.id,
+          semester_id: activeSem.id,
+          status: 'AKTIF',
+          siswa: { tenant_id: tenantId, status: 'AKTIF' },
+        },
+      }),
+      prisma.ketarunaanNilaiSiswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          tahun_pelajaran_id: activeTp.id,
+          semester_id: activeSem.id,
+        },
+        select: {
+          nilai_samapta: true,
+          nilai_pbb: true,
+          nilai_disiplin: true,
+          nilai_mental: true,
+          nilai_akhir: true,
+          predikat: true,
+          is_locked: true,
+        },
+      }),
+      prisma.sesiAbsensi.findMany({
+        where: {
+          tenant_id: tenantId,
+          tahun_pelajaran_id: activeTp.id,
+          semester_id: activeSem.id,
+          jenis_kegiatan: { contains: 'TARUNA', mode: 'insensitive' },
+        },
+        select: {
+          id: true,
+          tanggal: true,
+          status: true,
+        },
+      }),
+    ]);
+
+    let tarunaDinilai = 0;
+    let tarunaFinalLocked = 0;
+    let sumNilaiAkhir = 0;
+    let sumSamapta = 0;
+    let sumPbb = 0;
+    let sumDisiplin = 0;
+    let sumMental = 0;
+    const predikatCount: Record<string, number> = { A: 0, B: 0, C: 0, D: 0 };
+
+    for (const r of nilaiRows) {
+      const hasScore =
+        (r.nilai_akhir || 0) > 0 ||
+        (r.nilai_samapta || 0) > 0 ||
+        (r.nilai_pbb || 0) > 0 ||
+        (r.nilai_disiplin || 0) > 0 ||
+        (r.nilai_mental || 0) > 0;
+      if (hasScore) {
+        tarunaDinilai++;
+        sumNilaiAkhir += Number(r.nilai_akhir || 0);
+        sumSamapta += Number(r.nilai_samapta || 0);
+        sumPbb += Number(r.nilai_pbb || 0);
+        sumDisiplin += Number(r.nilai_disiplin || 0);
+        sumMental += Number(r.nilai_mental || 0);
+        const p = (r.predikat || 'B').toUpperCase();
+        if (predikatCount[p] !== undefined) predikatCount[p]++;
+      }
+      if (r.is_locked) {
+        tarunaFinalLocked++;
+      }
+    }
+
+    const totalSesiSemester = sesiKetarunaanList.length;
+    const sesiHariIniIds: string[] = [];
+    const allSesiIds: string[] = [];
+    for (const s of sesiKetarunaanList) {
+      allSesiIds.push(s.id);
+      if (
+        options?.startUTC &&
+        options?.endUTC &&
+        s.tanggal >= options.startUTC &&
+        s.tanggal <= options.endUTC
+      ) {
+        sesiHariIniIds.push(s.id);
+      }
+    }
+
+    let kehadiranLatihanPct = 0;
+    let hadirLatihanCount = 0;
+    let totalPresensiLatihan = 0;
+    const targetSesiForAttendance = sesiHariIniIds.length > 0 ? sesiHariIniIds : allSesiIds.slice(-10);
+
+    if (targetSesiForAttendance.length > 0) {
+      const presensiStats = await prisma.absenSiswa.groupBy({
+        by: ['status'],
+        where: {
+          tenant_id: tenantId,
+          sesi_id: { in: targetSesiForAttendance },
+        },
+        _count: { id: true },
+      });
+      for (const ps of presensiStats) {
+        const c = ps._count.id;
+        totalPresensiLatihan += c;
+        const st = (ps.status || '').toUpperCase();
+        if (st === 'HADIR' || st === 'TERLAMBAT') {
+          hadirLatihanCount += c;
+        }
+      }
+      if (totalPresensiLatihan > 0) {
+        kehadiranLatihanPct = Math.round((hadirLatihanCount / totalPresensiLatihan) * 100);
+      }
+    }
+
+    const progresInputNilaiPct =
+      totalTarunaTarget > 0 ? Math.round((tarunaDinilai / totalTarunaTarget) * 100) : 0;
+    const progresFinalisasiPct =
+      totalTarunaTarget > 0 ? Math.round((tarunaFinalLocked / totalTarunaTarget) * 100) : 0;
+    const rataRataNilaiAkhir =
+      tarunaDinilai > 0 ? Number((sumNilaiAkhir / tarunaDinilai).toFixed(1)) : 0;
+    const rataRataSamapta =
+      tarunaDinilai > 0 ? Number((sumSamapta / tarunaDinilai).toFixed(1)) : 0;
+    const rataRataPbb =
+      tarunaDinilai > 0 ? Number((sumPbb / tarunaDinilai).toFixed(1)) : 0;
+    const rataRataDisiplin =
+      tarunaDinilai > 0 ? Number((sumDisiplin / tarunaDinilai).toFixed(1)) : 0;
+    const rataRataMental =
+      tarunaDinilai > 0 ? Number((sumMental / tarunaDinilai).toFixed(1)) : 0;
+
+    return {
+      academicContext: `${activeTp.tahun} (${activeSem.nama_semester})`,
+      modePelatihan:
+        (skemaConfig as any)?.mode_pelatihan === 'FULL_TARUNA' ? 'Full Taruna' : 'Semi Taruna',
+      isConfigured: !(skemaConfig as any)?.is_default,
+      totalTarunaTarget,
+      tarunaDinilai,
+      tarunaFinalLocked,
+      progresInputNilaiPct,
+      progresFinalisasiPct,
+      rataRataNilaiAkhir,
+      rataRataSamapta,
+      rataRataPbb,
+      rataRataDisiplin,
+      rataRataMental,
+      predikatCount,
+      totalSesiSemester,
+      sesiHariIniCount: sesiHariIniIds.length,
+      kehadiranLatihanPct,
+      hadirLatihanCount,
+      totalPresensiLatihan,
+    };
+  }
 }
 
 export const ketarunaanPenilaianService = new KetarunaanPenilaianService();

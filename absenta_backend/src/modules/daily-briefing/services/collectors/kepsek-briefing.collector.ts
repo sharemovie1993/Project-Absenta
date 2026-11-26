@@ -20,6 +20,7 @@ import { NilaiMonitoringService } from '@/modules/rapor/services/sub/nilai-monit
 import { CbtSettingsService } from '@/modules/cbt/services/cbt-settings.service';
 import { guruRekapService } from '@/modules/attendance/rekap/services/guru-rekap.service';
 import { PelanggaranService } from '@/modules/kesiswaan/services/pelanggaran.service';
+import { ketarunaanPenilaianService } from '@/modules/kesiswaan/program-ketarunaan/services/ketarunaan-penilaian.service';
 
 export class KepsekBriefingCollector implements IBriefingCollector {
   async collect(
@@ -163,6 +164,17 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       ];
     } catch (err) {
       console.warn('[Briefing:BPBK] Error querying SSOT BPBK progress:', err);
+    }
+
+    // ── 6b. Program Ketarunaan (SSOT via KetarunaanPenilaianService, Scoped TP & Semester Aktif)
+    let ketarunaanProgress: Awaited<ReturnType<typeof ketarunaanPenilaianService.getAcademicScopedKetarunaanProgress>> = null;
+    try {
+      ketarunaanProgress = await ketarunaanPenilaianService.getAcademicScopedKetarunaanProgress(
+        tenantId,
+        { startUTC, endUTC }
+      );
+    } catch (err) {
+      console.warn('[Briefing:Ketarunaan] Error querying SSOT Ketarunaan progress:', err);
     }
 
     // ── 7. Konteks Akademik Aktif & Hubin PKL / Sidang ────────────────────────
@@ -642,6 +654,53 @@ export class KepsekBriefingCollector implements IBriefingCollector {
           : 'text-amber-700 bg-amber-100 border border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800',
       })),
     });
+
+    // SEKSI 4b: PROGRAM KETARUNAAN (SSOT & Scoped Konteks Akademik Aktif)
+    if (
+      ketarunaanProgress &&
+      (ketarunaanProgress.isConfigured ||
+        ketarunaanProgress.tarunaDinilai > 0 ||
+        ketarunaanProgress.totalSesiSemester > 0)
+    ) {
+      sections.push({
+        id: 'ketarunaan',
+        title: 'Program Ketarunaan & Pembinaan Fisik/Disiplin',
+        category: 'Ketarunaan',
+        badge: `${ketarunaanProgress.modePelatihan} • Nilai ${ketarunaanProgress.progresInputNilaiPct}%`,
+        summary: `Konteks ${ketarunaanProgress.academicContext} (${ketarunaanProgress.modePelatihan}): Progres penilaian 4 pilar (Samapta, PBB, Disiplin, Mental) mencapai ${ketarunaanProgress.progresInputNilaiPct}% (${ketarunaanProgress.tarunaDinilai}/${ketarunaanProgress.totalTarunaTarget} taruna, rata-rata ${ketarunaanProgress.rataRataNilaiAkhir}). Tercatat ${ketarunaanProgress.totalSesiSemester} sesi latihan ketarunaan semester ini.`,
+        stats: [
+          { label: 'Taruna Dinilai', value: `${ketarunaanProgress.tarunaDinilai} / ${ketarunaanProgress.totalTarunaTarget}` },
+          { label: 'Rata-Rata Nilai', value: ketarunaanProgress.rataRataNilaiAkhir },
+          { label: 'Samapta / PBB', value: `${ketarunaanProgress.rataRataSamapta} / ${ketarunaanProgress.rataRataPbb}` },
+          { label: 'Disiplin / Mental', value: `${ketarunaanProgress.rataRataDisiplin} / ${ketarunaanProgress.rataRataMental}` },
+          { label: 'Finalisasi Rapor', value: `${ketarunaanProgress.progresFinalisasiPct}%` },
+          { label: 'Sesi Latihan', value: `${ketarunaanProgress.totalSesiSemester} Sesi` },
+        ],
+        progressBars: [
+          {
+            label: 'Progres Penilaian 4 Pilar Ketarunaan',
+            value: ketarunaanProgress.progresInputNilaiPct,
+            detail: `${ketarunaanProgress.tarunaDinilai} / ${ketarunaanProgress.totalTarunaTarget} Taruna (Predikat A: ${ketarunaanProgress.predikatCount.A}, B: ${ketarunaanProgress.predikatCount.B}, C: ${ketarunaanProgress.predikatCount.C}, D: ${ketarunaanProgress.predikatCount.D})`,
+            color: ketarunaanProgress.progresInputNilaiPct >= 90 ? 'emerald' : ketarunaanProgress.progresInputNilaiPct >= 50 ? 'indigo' : 'amber',
+          },
+          {
+            label:
+              ketarunaanProgress.totalPresensiLatihan > 0
+                ? 'Tingkat Kehadiran Sesi Latihan Ketarunaan'
+                : 'Progres Kunci & Sinkronisasi Rapor Ketarunaan',
+            value:
+              ketarunaanProgress.totalPresensiLatihan > 0
+                ? ketarunaanProgress.kehadiranLatihanPct
+                : ketarunaanProgress.progresFinalisasiPct,
+            detail:
+              ketarunaanProgress.totalPresensiLatihan > 0
+                ? `${ketarunaanProgress.hadirLatihanCount} / ${ketarunaanProgress.totalPresensiLatihan} Kehadiran Latihan (${ketarunaanProgress.sesiHariIniCount} sesi hari ini)`
+                : `${ketarunaanProgress.tarunaFinalLocked} / ${ketarunaanProgress.totalTarunaTarget} Nilai Terkunci ke Rapor`,
+            color: 'blue',
+          },
+        ],
+      });
+    }
 
     // SEKSI 5: HUBIN & PKL (Jika sekolah SMK / ada siswa PKL)
     if (totalSiswaPklAktif > 0 || totalPklAll > 0) {
