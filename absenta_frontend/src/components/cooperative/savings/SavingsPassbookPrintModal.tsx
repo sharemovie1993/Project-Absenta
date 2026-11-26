@@ -265,7 +265,7 @@ export const SavingsPassbookPrintModal: React.FC<SavingsPassbookPrintModalProps>
               signerRight={signers.bendaharaKoperasi}
               signerBottom={signers.kepsek}
               verifierLabel="Mengetahui,"
-              makerLabel="Petugas / Bendahara Koperasi,"
+              makerLabel="Disiapkan Oleh,"
               notesOrApprovalLabel="Menyetujui / Pembina Koperasi,"
             />
           </div>

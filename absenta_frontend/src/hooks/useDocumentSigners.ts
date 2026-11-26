@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getStrukturList } from '@/api/academic/strukturOrganisasi.api';
+import { getStrukturTree } from '@/api/academic/strukturOrganisasi.api';
 import { raporApi } from '@/api/rapor.api';
 import { sekolahApi } from '@/api/academic/sekolah.api';
 import { formatIndoDate } from '@/utils/print/rapor/raporShared';
@@ -161,10 +161,13 @@ export const useDocumentSigners = (params: UseDocumentSignersParams = {}): Docum
     customSigners,
   } = params;
 
-  // 1. Fetch Active Organizational Structure (Positions & Assignments)
-  const { data: strukturListRes, isLoading: isLoadingStruktur } = useQuery({
-    queryKey: ['academic-struktur-list-active'],
-    queryFn: () => getStrukturList({ is_active: true }).catch(() => null),
+  // 1. Fetch Active Organizational Structure Tree (Positions & Active Assignments)
+  const { data: strukturTreeRes, isLoading: isLoadingStruktur } = useQuery({
+    queryKey: ['academic-struktur-tree-signers', tahunPelajaranId || 'active'],
+    queryFn: () =>
+      getStrukturTree(
+        tahunPelajaranId ? { tahun_pelajaran_id: tahunPelajaranId } : undefined
+      ).catch(() => null),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -186,9 +189,13 @@ export const useDocumentSigners = (params: UseDocumentSignersParams = {}): Docum
     staleTime: 10 * 60 * 1000,
   });
 
-  const strukturList = useMemo(() => {
-    return (strukturListRes as any)?.data || (Array.isArray(strukturListRes) ? strukturListRes : []);
-  }, [strukturListRes]);
+  const strukturTree = useMemo<Record<string, any[]>>(() => {
+    const raw = (strukturTreeRes as any)?.data ?? strukturTreeRes;
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      return raw as Record<string, any[]>;
+    }
+    return {};
+  }, [strukturTreeRes]);
 
   const raporSettings = useMemo(() => {
     return (raporSettingsRes as any)?.data || raporSettingsRes || null;
@@ -234,12 +241,44 @@ export const useDocumentSigners = (params: UseDocumentSignersParams = {}): Docum
     const dateStr = rawDate ? formatIndoDate(rawDate) : formatIndoDate(new Date());
     const titimangsa = `${city}, ${dateStr}`;
 
-    // Helper: Find assignments for position codes
+    // Helper: Find assignments for position codes from Struktur Tree (or raw organizationalAssigns)
     const getAssignmentsForCode = (codes: string[]): any[] => {
-      const pos = strukturList.find((p: any) =>
-        codes.some((c) => (p.kode || p.code || '').toUpperCase() === c.toUpperCase())
-      );
-      return (pos?.organizationalAssigns || []) as any[];
+      const result: any[] = [];
+      for (const code of codes) {
+        const key = Object.keys(strukturTree).find(
+          (k) => k.toUpperCase() === code.toUpperCase()
+        );
+        if (key && Array.isArray(strukturTree[key])) {
+          for (const node of strukturTree[key]) {
+            if (Array.isArray(node?.members)) {
+              result.push(...node.members);
+            } else if (Array.isArray(node?.organizationalAssigns)) {
+              result.push(...node.organizationalAssigns);
+            }
+          }
+        }
+      }
+      return result;
+    };
+
+    const extractMemberName = (assign: any): string => {
+      if (!assign) return '';
+      const guru = assign?.User?.Guru || assign?.User;
+      const fromNested = guru?.nama_guru || guru?.nama || assign?.User?.full_name;
+      if (fromNested) return String(fromNested).trim();
+      if (assign?.name && assign.name !== 'Unknown') return String(assign.name).trim();
+      return '';
+    };
+
+    const extractMemberNip = (assign: any): string => {
+      if (!assign) return '';
+      const guru = assign?.User?.Guru || assign?.User;
+      if (guru?.nip) return String(guru.nip);
+      if (typeof assign?.details === 'string') {
+        const nipMatch = assign.details.match(/^NIP:\s*(.+)$/i);
+        if (nipMatch?.[1]) return nipMatch[1].trim();
+      }
+      return '';
     };
 
     // Helper: Map assignment record to SignerPerson
@@ -248,15 +287,10 @@ export const useDocumentSigners = (params: UseDocumentSignersParams = {}): Docum
       fallbackRole: string,
       custom?: Partial<SignerPerson>
     ): SignerPerson => {
-      const guru = assign?.User?.Guru || assign?.User;
-      const personName =
-        custom?.personName ||
-        guru?.nama_guru ||
-        guru?.nama ||
-        assign?.User?.full_name ||
-        fallbackRole;
+      const resolvedName = extractMemberName(assign);
+      const personName = custom?.personName || resolvedName || fallbackRole;
 
-      const nipRaw = custom?.nip ?? guru?.nip;
+      const nipRaw = custom?.nip ?? extractMemberNip(assign);
       const nip = cleanNipValue(nipRaw);
       const roleTitle = custom?.roleTitle || assign?.custom_title || fallbackRole;
 
@@ -264,7 +298,7 @@ export const useDocumentSigners = (params: UseDocumentSignersParams = {}): Docum
         roleTitle,
         personName,
         nip,
-        isAssigned: Boolean(assign || custom?.personName),
+        isAssigned: Boolean(resolvedName || custom?.personName),
         assignmentFlag: assign?.assignment_flag,
         customTitle: assign?.custom_title,
       };
@@ -274,20 +308,17 @@ export const useDocumentSigners = (params: UseDocumentSignersParams = {}): Docum
     const kepsekAssigns = getAssignmentsForCode(['KEPALA_SEKOLAH', 'KEPSEK', 'PRINCIPAL']);
     const activeKepsekAssign = resolveLeaderAssignment(kepsekAssigns);
 
-    const kepsekGuru = activeKepsekAssign?.User?.Guru || activeKepsekAssign?.User;
     const kepsekName =
       customSigners?.kepsek?.personName ||
       raporSettings?.kepsek_nama ||
-      kepsekGuru?.nama_guru ||
-      kepsekGuru?.nama ||
-      activeKepsekAssign?.User?.full_name ||
+      extractMemberName(activeKepsekAssign) ||
       sekolah?.kepala_sekolah ||
       'Kepala Sekolah';
 
     const kepsekNipRaw =
       customSigners?.kepsek?.nip ??
       (raporSettings?.kepsek_nip ||
-        kepsekGuru?.nip ||
+        extractMemberNip(activeKepsekAssign) ||
         sekolah?.nip_kepala_sekolah);
     const kepsekNip = cleanNipValue(kepsekNipRaw);
 
@@ -596,7 +627,7 @@ export const useDocumentSigners = (params: UseDocumentSignersParams = {}): Docum
     titimangsaDate,
     raporSettings,
     sekolah,
-    strukturList,
+    strukturTree,
     customSigners,
     kelasId,
     jurusanId,
