@@ -77,9 +77,11 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
   // Dual-mode Cashier: Deposit/Bill Payment vs Cash Withdrawal
   const [tellerMode, setTellerMode] = useState<'DEPOSIT_AND_BILL' | 'WITHDRAWAL'>('DEPOSIT_AND_BILL');
 
-  // 1. Simpanan Pokok Evaluation (Initial Capital)
+  // 1. Simpanan Pokok Evaluation (Initial Capital — hanya jika kategori aktif)
   const pokokSaving = useMemo(() => {
-    return savings.find(s => (s.category?.code || s.type || '').toUpperCase() === 'POKOK');
+    return savings.find(
+      (s) => s.category?.isActive !== false && (s.category?.code || s.type || '').toUpperCase() === 'POKOK'
+    );
   }, [savings]);
 
   const isPokokPaid = useMemo(() => {
@@ -100,9 +102,11 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
     setPokokAmount(defaultPokokAmount);
   }, [student?.id, isPokokPaid, defaultPokokAmount]);
 
-  // 2. Simpanan Wajib Evaluation
+  // 2. Simpanan Wajib Evaluation (hanya jika kategori aktif)
   const wajibSaving = useMemo(() => {
-    return savings.find(s => (s.category?.code || s.type || '').toUpperCase() === 'WAJIB');
+    return savings.find(
+      (s) => s.category?.isActive !== false && (s.category?.code || s.type || '').toUpperCase() === 'WAJIB'
+    );
   }, [savings]);
 
   const now = new Date();
@@ -162,9 +166,11 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
     setCashReceived('');
   }, [student?.id, nextUnpaidInstallment?.id]);
 
-  // 3. Simpanan Sukarela Evaluation (for Deposit)
+  // 3. Simpanan Sukarela Evaluation (for Deposit — hanya jika kategori aktif)
   const sukarelaSaving = useMemo(() => {
-    return savings.find(s => (s.category?.code || s.type || '').toUpperCase() === 'SUKARELA');
+    return savings.find(
+      (s) => s.category?.isActive !== false && (s.category?.code || s.type || '').toUpperCase() === 'SUKARELA'
+    );
   }, [savings]);
 
   const [includeSukarela, setIncludeSukarela] = useState<boolean>(false);
