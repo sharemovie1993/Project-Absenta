@@ -299,7 +299,7 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      size="4xl"
+      size="5xl"
       contentClassName="p-3.5 sm:p-5"
       title={
         <div className="flex items-center gap-2.5">
@@ -577,17 +577,17 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
 
           {/* Desktop/Tablet View: Classic Clean Table (hidden sm:block) */}
           <div className="hidden sm:block border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-2xs">
-            <div className="overflow-x-auto max-h-72">
+            <div className="overflow-y-auto overflow-x-hidden max-h-72">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-100/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 sticky top-0 z-10 backdrop-blur-sm">
-                    <th className="py-2.5 px-3 w-10 text-center">No</th>
-                    <th className="py-2.5 px-3">Tanggal &amp; Waktu</th>
-                    {activeTab === 'ALL' && <th className="py-2.5 px-3">Rekening</th>}
-                    <th className="py-2.5 px-3">Transaksi</th>
-                    <th className="py-2.5 px-3 text-right">Nominal</th>
-                    <th className="py-2.5 px-3">Keterangan / Memo</th>
-                    {canCorrectTx && <th className="py-2.5 px-3 text-center w-24">Aksi</th>}
+                    <th className="py-2.5 px-2 w-8 text-center">No</th>
+                    <th className="py-2.5 px-2">Tanggal &amp; Waktu</th>
+                    {activeTab === 'ALL' && <th className="py-2.5 px-2">Rekening</th>}
+                    <th className="py-2.5 px-2">Transaksi</th>
+                    <th className="py-2.5 px-2 text-right">Nominal</th>
+                    <th className="py-2.5 px-2">Keterangan / Memo</th>
+                    {canCorrectTx && <th className="py-2.5 px-2 text-center w-20">Aksi</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 font-medium">
@@ -616,20 +616,20 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
                       const memo = cleanMemoDescription(tx.description);
                       return (
                         <tr key={tx.id || idx} className={`hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors ${isCancelled ? 'opacity-60' : ''}`}>
-                          <td className="py-2.5 px-3 text-center text-[11px] text-slate-400 font-mono">
+                          <td className="py-2.5 px-2 text-center text-[11px] text-slate-400 font-mono">
                             {idx + 1}
                           </td>
-                          <td className="py-2.5 px-3 text-[11px] text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                          <td className="py-2.5 px-2 text-[11px] text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
                             {formatIndonesianDateTime(tx.date)}
                           </td>
                           {activeTab === 'ALL' && (
-                            <td className="py-2.5 px-3 whitespace-nowrap">
+                            <td className="py-2.5 px-2 whitespace-nowrap">
                               <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                                 {(tx as any).savingCategoryName || 'Simpanan'}
                               </span>
                             </td>
                           )}
-                          <td className="py-2.5 px-3 whitespace-nowrap">
+                          <td className="py-2.5 px-2 whitespace-nowrap">
                             <span className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full ${
                               isDep
                                 ? 'bg-emerald-100/80 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/50'
@@ -648,16 +648,16 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
                               )}
                             </span>
                           </td>
-                          <td className={`py-2.5 px-3 text-right font-mono font-bold whitespace-nowrap ${
+                          <td className={`py-2.5 px-2 text-right font-mono font-bold whitespace-nowrap ${
                             isDep ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                           } ${isCancelled ? 'line-through' : ''}`}>
                             {isDep ? '+' : '-'}Rp {amt.toLocaleString('id-ID')}
                           </td>
-                          <td className="py-2.5 px-3 text-[11px] text-slate-600 dark:text-slate-300 max-w-sm truncate" title={memo}>
+                          <td className="py-2.5 px-2 text-[11px] text-slate-600 dark:text-slate-300 max-w-[200px] truncate" title={memo}>
                             {memo}
                           </td>
                           {canCorrectTx && (
-                            <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                            <td className="py-2.5 px-2 text-center whitespace-nowrap">
                               {isCancelled ? (
                                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">
                                   Dikoreksi
