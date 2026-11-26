@@ -107,6 +107,191 @@ export class BpbkAnalyticsService {
   }
 
   // === EWS Calculation Helper ===
+  /**
+   * SSOT Progress BPBK terscope ke Konteks Akademik Aktif (Tahun Pelajaran & Semester Aktif)
+   * Digunakan oleh Dashboard BPBK, Dashboard Kepsek, dan Daily Executive Briefing.
+   */
+  static async getAcademicScopedProgress(
+    tenantId: string,
+    options?: { startUTC?: Date; endUTC?: Date }
+  ) {
+    const [activeTp, activeSem] = await Promise.all([
+      prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true, tahun: true },
+      }),
+      prisma.semester.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true, nama_semester: true },
+      }),
+    ]);
+
+    let tpDateFilter: { gte?: Date; lte?: Date } | undefined;
+    if (activeTp?.tahun) {
+      const startYearMatch = activeTp.tahun.match(/\d{4}/);
+      if (startYearMatch) {
+        const y = parseInt(startYearMatch[0], 10);
+        const semName = (activeSem?.nama_semester || '').toUpperCase();
+        if (semName.includes('GENAP')) {
+          tpDateFilter = {
+            gte: new Date(Date.UTC(y + 1, 0, 1)),
+            lte: new Date(Date.UTC(y + 1, 5, 30, 23, 59, 59)),
+          };
+        } else if (semName.includes('GANJIL')) {
+          tpDateFilter = {
+            gte: new Date(Date.UTC(y, 6, 1)),
+            lte: new Date(Date.UTC(y, 11, 31, 23, 59, 59)),
+          };
+        } else {
+          tpDateFilter = {
+            gte: new Date(Date.UTC(y, 6, 1)),
+            lte: new Date(Date.UTC(y + 1, 5, 30, 23, 59, 59)),
+          };
+        }
+      }
+    }
+
+    const activeSiswaFilter: any = activeTp
+      ? {
+          status: 'AKTIF',
+          SiswaAkademik: {
+            some: {
+              tahun_pelajaran_id: activeTp.id,
+              ...(activeSem ? { semester_id: activeSem.id } : {}),
+              status: 'AKTIF',
+            },
+          },
+        }
+      : { status: 'AKTIF' };
+
+    const [
+      kasusList,
+      konselingList,
+      pemanggilanPending,
+      pemanggilanTotal,
+      homeVisitTotal,
+      konselingHariIniList,
+    ] = await Promise.all([
+      prisma.kasusBK.findMany({
+        where: {
+          tenant_id: tenantId,
+          deleted_at: null,
+          Siswa: activeSiswaFilter,
+          ...(tpDateFilter ? { tanggal_kasus: tpDateFilter } : {}),
+        },
+        select: {
+          id: true,
+          judul: true,
+          kategori: true,
+          status: true,
+          prioritas: true,
+          Siswa: { select: { nama_siswa: true } },
+        },
+        orderBy: { tanggal_kasus: 'desc' },
+      }),
+      prisma.konselingSiswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          deleted_at: null,
+          Siswa: activeSiswaFilter,
+          ...(tpDateFilter ? { tanggal: tpDateFilter } : {}),
+        },
+        select: { id: true, status: true },
+      }),
+      prisma.pemanggilanOrangTua.count({
+        where: {
+          tenant_id: tenantId,
+          deleted_at: null,
+          status: { in: ['BARU', 'DIKIRIM'] },
+          Siswa: activeSiswaFilter,
+          ...(tpDateFilter ? { tanggal_pemanggilan: tpDateFilter } : {}),
+        },
+      }),
+      prisma.pemanggilanOrangTua.count({
+        where: {
+          tenant_id: tenantId,
+          deleted_at: null,
+          Siswa: activeSiswaFilter,
+          ...(tpDateFilter ? { tanggal_pemanggilan: tpDateFilter } : {}),
+        },
+      }),
+      prisma.homeVisit.count({
+        where: {
+          tenant_id: tenantId,
+          deleted_at: null,
+          Siswa: activeSiswaFilter,
+          ...(tpDateFilter ? { tanggal: tpDateFilter } : {}),
+        },
+      }),
+      options?.startUTC && options?.endUTC
+        ? prisma.konselingSiswa.findMany({
+            where: {
+              tenant_id: tenantId,
+              deleted_at: null,
+              Siswa: activeSiswaFilter,
+              OR: [
+                { tanggal: { gte: options.startUTC, lte: options.endUTC } },
+                { created_at: { gte: options.startUTC, lte: options.endUTC } },
+              ],
+            },
+            select: {
+              id: true,
+              tipe: true,
+              masalah: true,
+              status: true,
+              Siswa: { select: { nama_siswa: true } },
+            },
+            take: 10,
+            orderBy: { created_at: 'desc' },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const totalKasus = kasusList.length;
+    const kasusSelesai = kasusList.filter((k) => k.status === 'SELESAI').length;
+    const kasusAktif = totalKasus - kasusSelesai;
+    const kasusPrioritasTinggi = kasusList.filter(
+      (k) => k.status !== 'SELESAI' && k.prioritas === 'TINGGI'
+    );
+
+    const totalKonseling = konselingList.length;
+    const konselingSelesai = konselingList.filter((k) => k.status === 'SELESAI').length;
+    const konselingProses = totalKonseling - konselingSelesai;
+
+    const progresPenangananKasusPct =
+      totalKasus > 0 ? Math.round((kasusSelesai / totalKasus) * 100) : 100;
+    const progresKonselingPct =
+      totalKonseling > 0 ? Math.round((konselingSelesai / totalKonseling) * 100) : 100;
+
+    return {
+      academicContext: activeTp
+        ? `${activeTp.tahun}${activeSem ? ` (${activeSem.nama_semester})` : ''}`
+        : 'Konteks Aktif',
+      totalKasus,
+      kasusSelesai,
+      kasusAktif,
+      kasusPrioritasTinggi: kasusPrioritasTinggi.slice(0, 5).map((k) => ({
+        judul: k.judul,
+        kategori: k.kategori,
+        status: k.status,
+        siswaNama: k.Siswa?.nama_siswa || 'Siswa',
+      })),
+      progresPenangananKasusPct,
+      totalKonseling,
+      konselingSelesai,
+      konselingProses,
+      progresKonselingPct,
+      pemanggilanPending,
+      pemanggilanTotal,
+      homeVisitTotal,
+      konselingHariIni: konselingHariIniList.map((k: any) => ({
+        title: `${k.Siswa?.nama_siswa || 'Siswa'} (${k.tipe || 'Konseling'})`,
+        note: k.masalah || 'Tindak lanjut pembinaan',
+        status: k.status || 'PROSES',
+      })),
+    };
+  }
+
   static readonly DEFAULT_EWS_WEIGHTS = {
     weight_violation: 1.5,
     weight_alpa: 12.0,

@@ -15,6 +15,7 @@ import { prisma } from '@/utils/prisma';
 import { getTenantTimezone, getTenantDayRangeUTC } from '@/utils/timezone.utils';
 import { IBriefingCollector } from './briefing-collector.interface';
 import { UniversalBriefingData, BriefingMetricItem, BriefingSection } from '../../types/briefing.types';
+import { BpbkAnalyticsService } from '@/modules/bpbk/services/sub/bpbk-analytics.service';
 
 export class KepsekBriefingCollector implements IBriefingCollector {
   async collect(
@@ -350,29 +351,25 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       rombelSempurna = rombelSempurna.slice(0, 4);
     } catch {}
 
-    // ── 6. BP/BK & Pembinaan ──────────────────────────────────────────────────
+    // ── 6. BP/BK & Pembinaan (SSOT via BpbkAnalyticsService, Scoped Konteks Akademik Aktif)
+    let bpbkProgress: Awaited<ReturnType<typeof BpbkAnalyticsService.getAcademicScopedProgress>> | null = null;
     let bpbkItems: Array<{ title: string; note: string; status: string }> = [];
     try {
-      const konselingList = await prisma.konselingSiswa.findMany({
-        where: {
-          tenant_id: tenantId,
-          created_at: { gte: startUTC, lte: endUTC },
-        },
-        select: {
-          id: true,
-          tipe: true,
-          masalah: true,
-          status: true,
-        },
-        take: 3,
+      bpbkProgress = await BpbkAnalyticsService.getAcademicScopedProgress(tenantId, {
+        startUTC,
+        endUTC,
       });
-
-      bpbkItems = konselingList.map(k => ({
-        title: k.tipe ? `Konseling ${k.tipe}` : 'Konseling Siswa',
-        note: k.masalah || 'Tindak lanjut pembinaan',
-        status: k.status || 'PROSES',
-      }));
-    } catch {}
+      bpbkItems = [
+        ...bpbkProgress.konselingHariIni,
+        ...bpbkProgress.kasusPrioritasTinggi.map((k) => ({
+          title: `[Prioritas Tinggi] ${k.siswaNama} — ${k.judul}`,
+          note: `Kategori: ${k.kategori} • Memerlukan tindak lanjut intensif`,
+          status: k.status,
+        })),
+      ];
+    } catch (err) {
+      console.warn('[Briefing:BPBK] Error querying SSOT BPBK progress:', err);
+    }
 
     // ── 7. Konteks Akademik Aktif & Hubin PKL / Sidang ────────────────────────
     const [activeTp, activeSem] = await Promise.all([
@@ -868,21 +865,51 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       ],
     });
 
-    // SEKSI 4: BP/BK & PEMBINAAN
+    // SEKSI 4: BP/BK & PEMBINAAN (SSOT & Scoped Konteks Akademik Aktif)
     sections.push({
       id: 'bpbk',
       title: 'Divisi BP/BK & Bimbingan Konseling',
       category: 'Bimbingan Siswa',
-      badge: bpbkItems.length > 0 ? `${bpbkItems.length} Catatan Hari Ini` : 'Kondusif',
-      summary: bpbkItems.length > 0
-        ? `Tercatat ${bpbkItems.length} sesi layanan konseling & pembinaan karakter siswa hari ini.`
+      badge: bpbkProgress
+        ? (bpbkProgress.kasusAktif > 0 ? `${bpbkProgress.kasusAktif} Kasus Aktif` : 'Kondusif')
+        : (bpbkItems.length > 0 ? `${bpbkItems.length} Catatan Hari Ini` : 'Kondusif'),
+      summary: bpbkProgress
+        ? `Konteks ${bpbkProgress.academicContext}: ${bpbkProgress.totalKasus} kasus tercatat (${bpbkProgress.kasusSelesai} selesai, ${bpbkProgress.kasusAktif} aktif), ${bpbkProgress.totalKonseling} sesi konseling (${bpbkProgress.konselingHariIni.length} hari ini), ${bpbkProgress.pemanggilanPending} panggilan ortu pending, dan ${bpbkProgress.homeVisitTotal} home visit.`
         : 'Situasi pembinaan terpantau kondusif, tidak ada laporan insiden darurat atau pembinaan khusus hari ini.',
+      stats: bpbkProgress
+        ? [
+            { label: 'Kasus Aktif', value: bpbkProgress.kasusAktif },
+            { label: 'Kasus Selesai', value: bpbkProgress.kasusSelesai },
+            { label: 'Konseling Hari Ini', value: bpbkProgress.konselingHariIni.length },
+            { label: 'Konseling Berjalan', value: bpbkProgress.konselingProses },
+            { label: 'Panggilan Ortu Pending', value: bpbkProgress.pemanggilanPending },
+            { label: 'Home Visit', value: bpbkProgress.homeVisitTotal },
+          ]
+        : undefined,
+      progressBars: bpbkProgress
+        ? [
+            {
+              label: 'Progres Penyelesaian Kasus BK',
+              value: bpbkProgress.progresPenangananKasusPct,
+              detail: `${bpbkProgress.kasusSelesai} / ${bpbkProgress.totalKasus} Kasus Selesai`,
+              color: bpbkProgress.progresPenangananKasusPct >= 85 ? 'emerald' : bpbkProgress.progresPenangananKasusPct >= 50 ? 'indigo' : 'amber',
+            },
+            {
+              label: 'Progres Tindak Lanjut Konseling',
+              value: bpbkProgress.progresKonselingPct,
+              detail: `${bpbkProgress.konselingSelesai} / ${bpbkProgress.totalKonseling} Sesi Tuntas`,
+              color: bpbkProgress.progresKonselingPct >= 85 ? 'emerald' : 'blue',
+            },
+          ]
+        : undefined,
       items: bpbkItems.map(b => ({
         title: b.title,
         subtitle: b.note,
         status: b.status,
         badge: b.status,
-        badgeColor: 'text-amber-700 bg-amber-100 border border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800',
+        badgeColor: b.title.startsWith('[Prioritas Tinggi]')
+          ? 'text-rose-700 bg-rose-100 border border-rose-300 dark:bg-rose-950/80 dark:text-rose-300 dark:border-rose-800'
+          : 'text-amber-700 bg-amber-100 border border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800',
       })),
     });
 
