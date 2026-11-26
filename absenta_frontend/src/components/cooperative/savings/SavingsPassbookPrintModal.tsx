@@ -2,9 +2,10 @@ import React, { useRef, useState } from 'react';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
-  PrintHeader,
-  usePrintHeaderData,
+  UniversalDocumentSignatures,
 } from '@/components/ui';
+import { CoopDocumentKop } from '../shared/CoopDocumentKop';
+import { useDocumentSigners } from '@/hooks/useDocumentSigners';
 import toast from 'react-hot-toast';
 import type { Saving, Transaction } from './types';
 import { formatIndonesianDate, formatIndonesianDateTime } from '../../../utils/cooperative/coopDocUtils';
@@ -38,15 +39,9 @@ export const SavingsPassbookPrintModal: React.FC<SavingsPassbookPrintModalProps>
   logoUrl,
 }) => {
   const sheetContainerRef = useRef<HTMLDivElement>(null);
-  const [showLogoDaerah, setShowLogoDaerah] = useState(true);
-  const [showLogoSekolah, setShowLogoSekolah] = useState(true);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
-  const { rawSekolah, tenantInfo } = usePrintHeaderData();
-  const sekolah = (rawSekolah || {}) as any;
-  const kota = sekolah?.kabupaten_kota || sekolah?.kota || tenantInfo?.kota || 'Purwakarta';
-  const kepalaSekolah = sekolah?.kepala_sekolah || sekolah?.nama_kepala_sekolah || '........................................';
-  const nipKepalaSekolah = sekolah?.nip_kepala_sekolah || '........................................';
+  const signers = useDocumentSigners();
   const todayLabel = formatIndonesianDate(new Date());
 
   const isAll = activeTab === 'ALL';
@@ -150,11 +145,7 @@ export const SavingsPassbookPrintModal: React.FC<SavingsPassbookPrintModalProps>
       subtitle="Standar Dokumen Resmi Koperasi • True WYSIWYG A4"
       orientation="portrait"
       allowOrientationToggle={false}
-      allowLogoToggles={true}
-      showLogoDaerah={showLogoDaerah}
-      showLogoSekolah={showLogoSekolah}
-      onToggleLogoDaerah={setShowLogoDaerah}
-      onToggleLogoSekolah={setShowLogoSekolah}
+      allowLogoToggles={false}
       onPrint={handleBrowserPrint}
       onDownloadPdf={handleDownloadPdf}
       downloadPdfText={isExportingPdf ? 'Memproses PDF...' : 'Unduh PDF (A4)'}
@@ -164,21 +155,11 @@ export const SavingsPassbookPrintModal: React.FC<SavingsPassbookPrintModalProps>
       <div ref={sheetContainerRef} className="space-y-6 flex flex-col items-center">
         <PrintDocumentSheet orientation="portrait" className="flex flex-col justify-between text-slate-900">
           <div>
-            {/* 1. Kop Surat Resmi */}
-            <div className="mb-4">
-              <PrintHeader
-                variant="portrait"
-                showLogoDaerah={showLogoDaerah}
-                showLogoSekolah={showLogoSekolah}
-              />
-            </div>
-
-            {/* 2. Judul Dokumen */}
-            <div className="text-center mb-4">
-              <h2 className="text-sm font-black uppercase tracking-wider text-slate-900 underline underline-offset-4">
-                {docTitle}
-              </h2>
-            </div>
+            {/* 1. Kop Resmi Koperasi */}
+            <CoopDocumentKop
+              subtitle={docTitle}
+              subtext="Dokumen Rekapitulasi Simpanan Anggota Koperasi"
+            />
 
             {/* 3. Identitas Anggota & Ringkasan Saldo */}
             <div className="grid grid-cols-2 gap-3 p-3 rounded-lg border border-slate-300 bg-slate-50/70 text-[11px] mb-4">
@@ -311,29 +292,19 @@ export const SavingsPassbookPrintModal: React.FC<SavingsPassbookPrintModalProps>
             </div>
           </div>
 
-          {/* 6. Tanda Tangan 2-Tier Standar Resmi */}
-          <div className="mt-6 pt-2 text-[11px] leading-snug break-inside-avoid">
-            <div className="grid grid-cols-2 gap-8 text-center mb-5">
-              <div>
-                <p className="text-slate-600">Mengetahui,</p>
-                <p className="font-bold text-slate-900">Ketua Koperasi</p>
-                <div className="h-14" />
-                <p className="font-bold underline">( ........................................ )</p>
-              </div>
-              <div>
-                <p className="text-slate-600">{kota}, {todayLabel}</p>
-                <p className="font-bold text-slate-900">Bendahara / Petugas Koperasi</p>
-                <div className="h-14" />
-                <p className="font-bold underline">( ........................................ )</p>
-              </div>
-            </div>
-            <div className="text-center">
-              <p className="text-slate-600">Menyetujui / Pembina Koperasi,</p>
-              <p className="font-bold text-slate-900">Kepala Sekolah</p>
-              <div className="h-14" />
-              <p className="font-bold underline">{kepalaSekolah}</p>
-              <p className="text-[10px] text-slate-600">NIP. {nipKepalaSekolah}</p>
-            </div>
+          {/* 6. Tanda Tangan Standar UniversalDocumentSignatures */}
+          <div className="mt-6 pt-2 break-inside-avoid">
+            <UniversalDocumentSignatures
+              layout="triangle_2tier"
+              fontFamilyClass="font-sans"
+              spacingHeightMm={16}
+              signerLeft={signers.ketuaKoperasi}
+              signerRight={signers.bendaharaKoperasi}
+              signerBottom={signers.kepsek}
+              verifierLabel="Mengetahui,"
+              makerLabel="Petugas / Bendahara Koperasi,"
+              notesOrApprovalLabel="Menyetujui / Pembina Koperasi,"
+            />
           </div>
         </PrintDocumentSheet>
       </div>
