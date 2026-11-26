@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { 
   Check, 
@@ -79,6 +80,46 @@ export const CheckoutDetailStep: React.FC<CheckoutDetailStepProps> = React.memo(
   onCancel,
   setError,
 }) => {
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const [dropdownPos, setDropdownPos] = useState<{
+    left: number;
+    width: number;
+    top?: number;
+    bottom?: number;
+    maxHeight: number;
+  } | null>(null);
+
+  const updateDropdownPosition = useCallback(() => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom - 16;
+    const spaceAbove = rect.top - 16;
+    const openUpward = spaceBelow < 280 && spaceAbove > spaceBelow;
+
+    setDropdownPos({
+      left: rect.left,
+      width: rect.width,
+      ...(openUpward
+        ? { bottom: window.innerHeight - rect.top + 8, maxHeight: Math.min(340, Math.max(160, spaceAbove)) }
+        : { top: rect.bottom + 8, maxHeight: Math.min(340, Math.max(160, spaceBelow)) }),
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isDropdownOpen) {
+      setDropdownPos(null);
+      return;
+    }
+    updateDropdownPosition();
+    window.addEventListener('resize', updateDropdownPosition);
+    window.addEventListener('scroll', updateDropdownPosition, true);
+    return () => {
+      window.removeEventListener('resize', updateDropdownPosition);
+      window.removeEventListener('scroll', updateDropdownPosition, true);
+    };
+  }, [isDropdownOpen, updateDropdownPosition]);
+
   // Kelompokkan saluran pembayaran berdasarkan group (Virtual Account, E-Wallet, Retail, Manual)
   const groupedChannels = useMemo(() => {
     const groups: Record<string, PaymentChannel[]> = {};
@@ -173,6 +214,7 @@ export const CheckoutDetailStep: React.FC<CheckoutDetailStepProps> = React.memo(
                   <>
                     {/* Dropdown Trigger */}
                     <div 
+                      ref={triggerRef}
                       onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                       className="w-full min-h-[58px] pl-12 pr-10 py-2.5 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-bold text-sm flex items-center justify-between cursor-pointer select-none transition-all hover:border-blue-500 focus:border-blue-600"
                     >
@@ -222,14 +264,23 @@ export const CheckoutDetailStep: React.FC<CheckoutDetailStepProps> = React.memo(
                       <CreditCard size={18} />
                     </div>
 
-                    {/* Dropdown Options List Grouped */}
-                    {isDropdownOpen && (
+                    {/* Dropdown Options List Grouped (Portal agar bebas dari clipping container/viewport) */}
+                    {isDropdownOpen && dropdownPos && createPortal(
                       <>
                         <div 
-                          className="fixed inset-0 z-40 cursor-default" 
+                          className="fixed inset-0 z-[9998] cursor-default" 
                           onClick={() => setIsDropdownOpen(false)}
                         />
-                        <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 max-h-[340px] overflow-y-auto p-2 space-y-3">
+                        <div
+                          style={{
+                            left: `${dropdownPos.left}px`,
+                            width: `${dropdownPos.width}px`,
+                            ...(dropdownPos.top !== undefined ? { top: `${dropdownPos.top}px` } : {}),
+                            ...(dropdownPos.bottom !== undefined ? { bottom: `${dropdownPos.bottom}px` } : {}),
+                            maxHeight: `${dropdownPos.maxHeight}px`,
+                          }}
+                          className="fixed bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-[9999] overflow-y-auto p-2 space-y-3"
+                        >
                           {Object.entries(groupedChannels).map(([groupName, channels]) => (
                             <div key={groupName} className="space-y-1">
                               <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2.5 pt-1 pb-0.5">
@@ -288,7 +339,8 @@ export const CheckoutDetailStep: React.FC<CheckoutDetailStepProps> = React.memo(
                             </div>
                           ))}
                         </div>
-                      </>
+                      </>,
+                      document.body
                     )}
                   </>
                 ) : (
