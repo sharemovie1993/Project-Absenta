@@ -694,26 +694,11 @@ export default async function dashboardRoutes(fastify: any) {
                 }
             });
 
-            // Estimasi Dividen SHU Personal Berjalan
-            const activePeriod = await prisma.shuPeriod.findFirst({
-                where: { tenantId, isActive: true },
-                select: { id: true, year: true, totalShu: true }
-            });
-
-            const currentYear = activePeriod?.year || now.getFullYear();
-            let estimatedShu = 0;
-
-            if (activePeriod && Number(activePeriod.totalShu) > 0) {
-                const totalMemberSavingsAll = await prisma.saving.aggregate({
-                    where: { member: { tenantId, status: 'ACTIVE' } },
-                    _sum: { amount: true }
-                });
-                const allSavingsSum = Number(totalMemberSavingsAll._sum.amount || 0);
-                if (allSavingsSum > 0 && totalSavings > 0) {
-                    const modalRatio = totalSavings / allSavingsSum;
-                    estimatedShu = Math.round(Number(activePeriod.totalShu) * 0.4 * modalRatio);
-                }
-            }
+            // Estimasi Dividen SHU Personal Berjalan (Aware terhadap Pengaturan SHU Koperasi / ShuConfig)
+            const { ShuService } = await import('../shu/shu.service');
+            const liveEst: any = await ShuService.getLiveEstimation(tenantId, userId).catch(() => null);
+            const currentYear = liveEst?.year || now.getFullYear();
+            const estimatedShu = liveEst?.enabled ? Number(liveEst?.estimatedTotalShu || 0) : 0;
 
             const data = {
                 isMember: true,

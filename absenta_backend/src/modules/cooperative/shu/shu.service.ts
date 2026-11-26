@@ -933,9 +933,13 @@ export class ShuService {
         }
 
         // [CEK PRIORITAS 2]: Jika belum dikalkulasi resmi, hitung proporsional berbasis pool
-        // 1. Simpanan Modal Saya (POKOK + WAJIB)
+        // 1. Simpanan Modal Saya (Kategori aktif yang masuk perhitungan SHU / POKOK & WAJIB)
         const modalCategories = await prisma.savingCategory.findMany({
-            where: { tenantId, code: { in: ['POKOK', 'WAJIB'] } },
+            where: {
+                tenantId,
+                isActive: true,
+                OR: [{ isIncludedInShu: true }, { code: { in: ['POKOK', 'WAJIB'] } }],
+            },
             select: { id: true },
         });
         const modalCatIds = modalCategories.map(c => c.id);
