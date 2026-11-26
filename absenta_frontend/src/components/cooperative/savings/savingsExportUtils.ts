@@ -71,6 +71,58 @@ export const cleanMemoDescription = (desc?: string | null): string => {
   return cleaned || '-';
 };
 
+export interface SavingCategoryMeta {
+  id: string;
+  code: string;
+  name: string;
+  isActive: boolean;
+  order?: number;
+}
+
+/**
+ * Memfilter dan mengurutkan daftar rekening simpanan sesuai pengaturan Saving Category aktif.
+ * Kategori nonaktif hanya tetap ditampilkan bila masih memiliki saldo > 0 atau riwayat mutasi.
+ */
+export const filterAndSortSavingsByCategory = (
+  rawSavings: Saving[],
+  categories?: SavingCategoryMeta[]
+): Saving[] => {
+  const byId = new Map<string, SavingCategoryMeta>();
+  const byCode = new Map<string, SavingCategoryMeta>();
+  (categories || []).forEach((c) => {
+    if (c.id) byId.set(c.id, c);
+    if (c.code) byCode.set(c.code.toUpperCase(), c);
+  });
+
+  return [...rawSavings]
+    .map((s) => {
+      const code = (s.category?.code || s.type || '').toUpperCase();
+      const liveCat = (s.categoryId ? byId.get(s.categoryId) : undefined) || byCode.get(code);
+      if (!liveCat) return s;
+      return {
+        ...s,
+        category: {
+          ...(s.category || {}),
+          ...liveCat,
+        },
+      };
+    })
+    .filter((s) => {
+      const isCatActive = s.category?.isActive !== false;
+      const hasBalance = (parseFloat(String(s.amount)) || 0) > 0;
+      const hasTx = (s.transactions?.length ?? 0) > 0;
+      return isCatActive || hasBalance || hasTx;
+    })
+    .sort((a, b) => {
+      const orderA = typeof a.category?.order === 'number' ? a.category.order : 999;
+      const orderB = typeof b.category?.order === 'number' ? b.category.order : 999;
+      if (orderA !== orderB) return orderA - orderB;
+      return String(a.category?.name || a.type || '').localeCompare(
+        String(b.category?.name || b.type || '')
+      );
+    });
+};
+
 export interface CellStyle {
   font?: { name?: string; sz?: number; bold?: boolean; italic?: boolean; color?: { rgb?: string } };
   alignment?: { horizontal?: string; vertical?: string };

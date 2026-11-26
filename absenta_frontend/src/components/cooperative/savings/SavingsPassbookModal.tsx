@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { 
   BookOpen, 
   Printer, 
@@ -16,7 +17,7 @@ import { Modal } from '../../ui/Modal';
 import Button from '../../ui/Button';
 import type { Saving, Transaction } from './types';
 import { formatIndonesianDateTime } from '../../../utils/cooperative/coopDocUtils';
-import { cleanMemoDescription } from './savingsExportUtils';
+import { cleanMemoDescription, filterAndSortSavingsByCategory, type SavingCategoryMeta } from './savingsExportUtils';
 import { SavingsPassbookPrintModal } from './SavingsPassbookPrintModal';
 import api from '../../../lib/axiosInstance';
 import toast from 'react-hot-toast';
@@ -144,6 +145,20 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
     };
   }, [isOpen, memberId, initialSaving, memberSavings]);
 
+  const { data: savingCategories = [] } = useQuery({
+    queryKey: ['koperasi-saving-categories-all'],
+    queryFn: async () => {
+      try {
+        const res = await api.get('/cooperative/saving-categories/all');
+        return (res.data?.success ? res.data.data : []) as SavingCategoryMeta[];
+      } catch {
+        return [] as SavingCategoryMeta[];
+      }
+    },
+    enabled: isOpen,
+    staleTime: 30 * 1000,
+  });
+
   // Effective list of savings to display (aware terhadap pengaturan kategori simpanan: aktif & urutan order)
   const effectiveSavings = useMemo(() => {
     const raw =
@@ -155,23 +170,8 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
         ? [initialSaving]
         : [];
 
-    return [...raw]
-      .filter((s) => {
-        const isCatActive = s.category?.isActive !== false;
-        const hasBalance = (parseFloat(String(s.amount)) || 0) > 0;
-        const hasTx = (s.transactions?.length ?? 0) > 0;
-        // Tampilkan kategori aktif, atau kategori nonaktif yang masih memiliki saldo/histori mutasi
-        return isCatActive || hasBalance || hasTx;
-      })
-      .sort((a, b) => {
-        const orderA = typeof a.category?.order === 'number' ? a.category.order : 999;
-        const orderB = typeof b.category?.order === 'number' ? b.category.order : 999;
-        if (orderA !== orderB) return orderA - orderB;
-        return String(a.category?.name || a.type || '').localeCompare(
-          String(b.category?.name || b.type || '')
-        );
-      });
-  }, [detailedSavings, memberSavings, initialSaving]);
+    return filterAndSortSavingsByCategory(raw, savingCategories);
+  }, [detailedSavings, memberSavings, initialSaving, savingCategories]);
 
   // Total balance across all accounts
   const grandTotalBalance = useMemo(() => {

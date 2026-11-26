@@ -1,4 +1,5 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
@@ -6,11 +7,18 @@ import {
 } from '@/components/ui';
 import { CoopDocumentKop } from '../shared/CoopDocumentKop';
 import { useDocumentSigners } from '@/hooks/useDocumentSigners';
+import api from '../../../lib/axiosInstance';
 import toast from 'react-hot-toast';
 import type { Saving, Transaction } from './types';
 import { formatIndonesianDate, formatIndonesianDateTime } from '../../../utils/cooperative/coopDocUtils';
 import { exportPrintSheetsToPdf } from '../../../utils/print/exportPrintSheetsToPdf';
-import { cleanMemoDescription, exportAllSavingsPdf, exportSingleSavingPdf } from './savingsExportUtils';
+import {
+  cleanMemoDescription,
+  exportAllSavingsPdf,
+  exportSingleSavingPdf,
+  filterAndSortSavingsByCategory,
+  type SavingCategoryMeta,
+} from './savingsExportUtils';
 
 export interface SavingsPassbookPrintModalProps {
   isOpen: boolean;
@@ -45,9 +53,28 @@ export const SavingsPassbookPrintModal: React.FC<SavingsPassbookPrintModalProps>
   const signers = useDocumentSigners();
   const todayLabel = formatIndonesianDate(new Date());
 
+  const { data: savingCategories = [] } = useQuery({
+    queryKey: ['koperasi-saving-categories-all'],
+    queryFn: async () => {
+      try {
+        const res = await api.get('/cooperative/saving-categories/all');
+        return (res.data?.success ? res.data.data : []) as SavingCategoryMeta[];
+      } catch {
+        return [] as SavingCategoryMeta[];
+      }
+    },
+    enabled: isOpen,
+    staleTime: 30 * 1000,
+  });
+
+  const awareSavings = useMemo(
+    () => filterAndSortSavingsByCategory(effectiveSavings, savingCategories),
+    [effectiveSavings, savingCategories]
+  );
+
   const isAll = activeTab === 'ALL';
   const activeBalance = isAll
-    ? grandTotalBalance
+    ? awareSavings.reduce((sum, s) => sum + (parseFloat(String(s.amount)) || 0), 0) || grandTotalBalance
     : parseFloat(String(selectedSaving?.amount || 0)) || 0;
   const docTitle = isAll
     ? 'REKAPITULASI BUKU TABUNGAN ANGGOTA'
@@ -83,10 +110,10 @@ export const SavingsPassbookPrintModal: React.FC<SavingsPassbookPrintModalProps>
     } catch (err) {
       console.error('[Passbook True WYSIWYG PDF Error, falling back to Vector Engine]', err);
       toast.dismiss(toastId);
-      const primary = selectedSaving || effectiveSavings[0];
+      const primary = selectedSaving || awareSavings[0];
       if (primary) {
         const normalizedPrimary = primary.member ? primary : ({ ...primary, member } as Saving);
-        const normalizedList = effectiveSavings.map((s) => (s.member ? s : ({ ...s, member } as Saving)));
+        const normalizedList = awareSavings.map((s) => (s.member ? s : ({ ...s, member } as Saving)));
         if (isAll) {
           await exportAllSavingsPdf(normalizedPrimary, normalizedList, logoUrl);
         } else {
@@ -149,7 +176,7 @@ export const SavingsPassbookPrintModal: React.FC<SavingsPassbookPrintModalProps>
                 </div>
                 <div className="flex">
                   <span className="w-32 font-semibold text-slate-600">Jumlah Rekening</span>
-                  <span className="font-semibold text-slate-900">: {effectiveSavings.length} Rekening</span>
+                  <span className="font-semibold text-slate-900">: {awareSavings.length} Rekening</span>
                 </div>
                 <div className="flex">
                   <span className="w-32 font-semibold text-slate-600">Total Saldo</span>
@@ -159,7 +186,7 @@ export const SavingsPassbookPrintModal: React.FC<SavingsPassbookPrintModalProps>
             </div>
 
             {/* 4. Ringkasan Saldo Per Rekening (sesuai urutan kategori) */}
-            {isAll && effectiveSavings.length > 0 && (
+            {isAll && awareSavings.length > 0 && (
               <div className="mb-4">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
                   Ringkasan Rekening Simpanan
@@ -174,7 +201,7 @@ export const SavingsPassbookPrintModal: React.FC<SavingsPassbookPrintModalProps>
                     </tr>
                   </thead>
                   <tbody>
-                    {effectiveSavings.map((s, idx) => (
+                    {awareSavings.map((s, idx) => (
                       <tr key={s.id}>
                         <td className="border border-slate-400 py-1 px-2 text-center">{idx + 1}</td>
                         <td className="border border-slate-400 py-1 px-2 font-semibold">

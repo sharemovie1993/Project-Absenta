@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BookOpen, Printer, Wallet } from 'lucide-react';
 import api from '../../../lib/axiosInstance';
@@ -6,8 +6,12 @@ import { Button } from '../../ui';
 import { Modal } from '../../ui/Modal';
 import { MemberSavingsLedger } from '../members/MemberSavingsLedger';
 import type { Member } from '../members/types';
-import { exportAllSavingsPdf, exportSingleSavingPdf } from '../savings/savingsExportUtils';
-import type { Saving } from '../savings/types';
+import {
+  filterAndSortSavingsByCategory,
+  type SavingCategoryMeta,
+} from '../savings/savingsExportUtils';
+import { SavingsPassbookPrintModal } from '../savings/SavingsPassbookPrintModal';
+import type { Saving, Transaction } from '../savings/types';
 import toast from 'react-hot-toast';
 
 interface MemberSavingsPassbookModalProps {
@@ -36,6 +40,22 @@ export const MemberSavingsPassbookModal: React.FC<MemberSavingsPassbookModalProp
     staleTime: 60 * 1000,
   });
 
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+
+  const { data: savingCategories = [] } = useQuery({
+    queryKey: ['koperasi-saving-categories-all'],
+    queryFn: async () => {
+      try {
+        const res = await api.get('/cooperative/saving-categories/all');
+        return (res.data?.success ? res.data.data : []) as SavingCategoryMeta[];
+      } catch {
+        return [] as SavingCategoryMeta[];
+      }
+    },
+    enabled: isOpen,
+    staleTime: 30 * 1000,
+  });
+
   const member = memberQuery.data || null;
   const loading = memberQuery.isLoading;
 
@@ -43,29 +63,42 @@ export const MemberSavingsPassbookModal: React.FC<MemberSavingsPassbookModalProp
   const displayMemberNo = member?.memberNo || memberNo || '-';
 
   const savingsList = useMemo(() => {
-    return (member?.savings || []) as unknown as Saving[];
-  }, [member?.savings]);
+    const raw = (member?.savings || []) as unknown as Saving[];
+    return filterAndSortSavingsByCategory(raw, savingCategories);
+  }, [member?.savings, savingCategories]);
 
   const totalBalance = useMemo(() => {
     return savingsList.reduce((sum, s) => sum + (parseFloat(String(s.amount)) || 0), 0);
   }, [savingsList]);
 
-  const handlePrintPassbook = async () => {
+  const { allTransactions, totalDeposits, totalWithdrawals } = useMemo(() => {
+    const txs: Array<Transaction & { savingCategoryName?: string; savingCode?: string }> = [];
+    let dep = 0;
+    let wd = 0;
+    savingsList.forEach((s) => {
+      const catName = s.category?.name || s.type || 'Simpanan';
+      const catCode = s.category?.code || s.type || '';
+      (s.transactions || []).forEach((tx) => {
+        const amt = parseFloat(String(tx.amount)) || 0;
+        if (tx.type === 'DEPOSIT') dep += amt;
+        else wd += amt;
+        txs.push({
+          ...tx,
+          savingCategoryName: catName,
+          savingCode: catCode,
+        });
+      });
+    });
+    txs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return { allTransactions: txs, totalDeposits: dep, totalWithdrawals: wd };
+  }, [savingsList]);
+
+  const handlePrintPassbook = () => {
     if (savingsList.length === 0) {
       toast.error('Tidak ada rekening tabungan aktif untuk dicetak.');
       return;
     }
-    try {
-      if (savingsList.length === 1) {
-        await exportSingleSavingPdf(savingsList[0]);
-      } else {
-        await exportAllSavingsPdf(savingsList[0], savingsList);
-      }
-      toast.success('Buku tabungan berhasil digenerate.');
-    } catch (err) {
-      console.error(err);
-      toast.error('Gagal mencetak buku tabungan.');
-    }
+    setIsPrintModalOpen(true);
   };
 
   if (!isOpen || !memberId) return null;
@@ -161,6 +194,19 @@ export const MemberSavingsPassbookModal: React.FC<MemberSavingsPassbookModalProp
           </Button>
         </div>
       </div>
+
+      <SavingsPassbookPrintModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        activeTab="ALL"
+        member={member}
+        effectiveSavings={savingsList}
+        selectedSaving={savingsList[0] || null}
+        displayedTransactions={allTransactions}
+        grandTotalBalance={totalBalance}
+        totalDeposits={totalDeposits}
+        totalWithdrawals={totalWithdrawals}
+      />
     </Modal>
   );
 });
