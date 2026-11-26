@@ -26,7 +26,17 @@ export class ProgramKetarunaanService {
     return unifiedKegiatanService.tapPendamping(tenantId, payload);
   }
 
-  async getStats(tenantId: string, params?: { tahun_pelajaran_id?: string; semester_id?: string; jadwal_kegiatan_id?: string }) {
+  async getStats(
+    tenantId: string,
+    params?: {
+      tahun_pelajaran_id?: string;
+      semester_id?: string;
+      jadwal_kegiatan_id?: string;
+      scope_periode?: '1_tahun' | '1_semester' | '1_bulan' | 'kustom';
+      bulan_ym?: string;
+      mode_agenda?: 'SEMUA_SIKLUS' | 'APEL_PAGI' | 'UPACARA' | 'KETARUNAAN' | 'LATIHAN_KETARUNAAN' | 'DUHA' | 'APEL_SORE';
+    }
+  ) {
     return unifiedKegiatanService.getStats(tenantId, { ...params, jenis_kegiatan: 'KETARUNAAN' });
   }
 
