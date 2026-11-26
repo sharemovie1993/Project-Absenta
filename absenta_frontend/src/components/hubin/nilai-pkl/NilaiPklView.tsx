@@ -195,6 +195,18 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
     isLoadingSem,
   } = academicFilter;
 
+  useEffect(() => {
+    if (propTpId && propTpId !== selectedTp) {
+      setSelectedTp(propTpId);
+    }
+  }, [propTpId, selectedTp, setSelectedTp]);
+
+  useEffect(() => {
+    if (propSemesterId && propSemesterId !== selectedSemester) {
+      setSelectedSemester(propSemesterId);
+    }
+  }, [propSemesterId, selectedSemester, setSelectedSemester]);
+
   // Single SSOT Query (Scoping Protected & Performance Optimized)
   const effectivePembimbingId = (isDedicatedGuidance && activeGuruId) ? activeGuruId : undefined;
 

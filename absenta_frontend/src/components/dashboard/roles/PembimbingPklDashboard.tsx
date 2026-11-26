@@ -116,7 +116,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
     enableSemester: true,
   });
 
-  const tpId = academicFilter.activeTpYear?.id;
+  const tpId = academicFilter.values.tahunPelajaranId || academicFilter.activeTpYear?.id;
   const tpTahun = academicFilter.activeTpYear?.tahun || '';
   const semesterNama = (academicFilter.activeSemester as any)?.nama_semester || (academicFilter.activeSemester as any)?.nama || '';
 
