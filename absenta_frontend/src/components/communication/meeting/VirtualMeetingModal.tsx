@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuthStore } from '../../../store/authStore';
 import { useSocket } from '../../../hooks/useSocket';
 import type { ChatMessage, VirtualMeetingModalProps } from './types';
@@ -362,10 +363,10 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === 'undefined') return null;
 
-  return (
-    <div className="fixed inset-0 z-[9999] bg-[#121212] text-white flex flex-col font-sans overflow-hidden animate-in fade-in duration-200">
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] bg-[#121212] text-white flex flex-col font-sans overflow-hidden animate-in fade-in duration-200">
       {/* ── 1. TOP NAVIGATION BAR ────────────────────────────────────────── */}
       <MeetingTopNav
         roomTitle={roomTitle}
@@ -508,6 +509,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
         playAudioTestChime={playAudioTestChime}
         handleReconnectCamera={handleReconnectCamera}
       />
-    </div>
+    </div>,
+    document.body
   );
 };

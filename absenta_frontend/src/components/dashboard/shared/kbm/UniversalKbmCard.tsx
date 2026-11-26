@@ -1,4 +1,5 @@
 import React, { useMemo, useState, lazy, Suspense, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Clock, 
@@ -119,11 +120,18 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
 
   const pm = item.ProgresMateri || item.progres || item.session?.ProgresMateri || item.session?.progres || null;
   const modePelaksanaan = item.mode_pelaksanaan || pm?.mode_pelaksanaan || item.session?.mode_pelaksanaan || 'TATAP_MUKA';
+  const isNonKbmActivity = Boolean(
+    item.jadwal_kegiatan_id ||
+    item.session?.jadwal_kegiatan_id ||
+    (item.jenis_kegiatan && String(item.jenis_kegiatan).toUpperCase() !== 'KBM')
+  );
   const isPjjDaring = Boolean(
-    item.is_pjj_daring ||
-    item.session?.is_pjj_daring ||
-    modePelaksanaan === 'DARING_LIVE' ||
-    modePelaksanaan === 'DARING_TUGAS'
+    !isNonKbmActivity && (
+      item.is_pjj_daring ||
+      item.session?.is_pjj_daring ||
+      modePelaksanaan === 'DARING_LIVE' ||
+      modePelaksanaan === 'DARING_TUGAS'
+    )
   );
   const perangkatAjarId = item.perangkat_ajar_id || pm?.perangkat_ajar_id || item.session?.perangkat_ajar_id || null;
   const referensiList: Array<{ judul: string; url: string }> = useMemo(() => {
@@ -1589,9 +1597,9 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
       </AnimatePresence>
 
       {/* ── MODAL RUANG KBM DARING & INSTRUKSI TUGAS GURU (KONSOLIDASI SATU KABEL) ── */}
-      {isTaskModalOpen && (
+      {isTaskModalOpen && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-fadeIn"
+          className="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs animate-fadeIn"
           onClick={(e) => {
             e.stopPropagation();
             setIsTaskModalOpen(false);
@@ -1788,7 +1796,8 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── NATIVE WEBRTC VIRTUAL MEETING MODAL (LAZY LOADED) ── */}

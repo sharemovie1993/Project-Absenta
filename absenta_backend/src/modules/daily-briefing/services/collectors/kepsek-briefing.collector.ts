@@ -18,6 +18,7 @@ import { UniversalBriefingData, BriefingMetricItem, BriefingSection } from '../.
 import { BpbkAnalyticsService } from '@/modules/bpbk/services/sub/bpbk-analytics.service';
 import { NilaiMonitoringService } from '@/modules/rapor/services/sub/nilai-monitoring.service';
 import { CbtSettingsService } from '@/modules/cbt/services/cbt-settings.service';
+import { guruRekapService } from '@/modules/attendance/rekap/services/guru-rekap.service';
 
 export class KepsekBriefingCollector implements IBriefingCollector {
   async collect(
@@ -151,87 +152,33 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       });
     } catch {}
 
-    // ── 3. Kurikulum: Kehadiran Guru & KBM ─────────────────────────────────────
+    // ── 3. Kurikulum: Kedisiplinan Guru & KBM (SSOT via GuruRekapService, Scoped TP & Semester Aktif)
     let totalGuru = 0;
     let guruHadir = 0;
     let guruTidakHadir = 0;
     let totalSesiKbm = 0;
     let sesiKbmTerlaksana = 0;
     let guruInvalCount = 0;
-
-    try {
-      totalGuru = await prisma.guru.count({
-        where: { tenant_id: tenantId },
-      });
-
-      const guruAttendance = await prisma.absenGuru.groupBy({
-        by: ['status'],
-        where: {
-          tenant_id: tenantId,
-          created_at: { gte: startUTC, lte: endUTC },
-        },
-        _count: { guru_id: true },
-      });
-
-      for (const g of guruAttendance) {
-        const count = g._count.guru_id;
-        const s = (g.status || '').toUpperCase();
-        if (s === 'HADIR') guruHadir += count;
-        else guruTidakHadir += count;
-      }
-
-      // Sesi KBM hari ini
-      const sesiList = await prisma.sesiAbsensi.findMany({
-        where: {
-          tenant_id: tenantId,
-          tanggal: { gte: startUTC, lte: endUTC },
-        },
-        select: {
-          id: true,
-          status: true,
-          is_delegasi: true,
-          keterangan: true,
-        },
-      });
-
-      totalSesiKbm = sesiList.length;
-      sesiKbmTerlaksana = sesiList.filter(s => s.status === 'SELESAI' || s.keterangan).length;
-      guruInvalCount = sesiList.filter(s => s.is_delegasi).length;
-    } catch (err) {
-      console.warn('[Briefing:Kurikulum] Error querying KBM & teachers:', err);
-    }
-
-    const persentaseGuru = totalGuru > 0
-      ? Math.round((guruHadir / totalGuru) * 100)
-      : (guruHadir > 0 ? 100 : 0);
-
-    const persentaseJurnal = totalSesiKbm > 0
-      ? Math.round((sesiKbmTerlaksana / totalSesiKbm) * 100)
-      : 100;
-
-    // ── 3.1 Guru Berhalangan Hadir & Status Inval ──────────────────────────────
+    let persentaseGuru = 0;
+    let persentaseJurnal = 100;
+    let persentaseKbmTerlaksana = 100;
     let guruBerhalanganItems: Array<{ nama: string; status: string; catatan?: string; isInval: boolean }> = [];
-    try {
-      const absGuruList = await prisma.absenGuru.findMany({
-        where: {
-          tenant_id: tenantId,
-          status: { not: 'HADIR' },
-          created_at: { gte: startUTC, lte: endUTC },
-        },
-        include: {
-          Guru: { select: { nama_guru: true } },
-          SesiAbsensi: { select: { is_delegasi: true } },
-        },
-        take: 6,
-      });
 
-      guruBerhalanganItems = absGuruList.map(ag => ({
-        nama: ag.Guru?.nama_guru || 'Guru',
-        status: ag.status,
-        catatan: ag.catatan || undefined,
-        isInval: Boolean(ag.SesiAbsensi?.is_delegasi),
-      }));
-    } catch {}
+    try {
+      const kbmDiscipline = await guruRekapService.getAcademicScopedKbmDiscipline(tenantId, dateStr);
+      totalGuru = kbmDiscipline.totalGuru;
+      guruHadir = kbmDiscipline.guruHadir;
+      guruTidakHadir = kbmDiscipline.guruTidakHadir;
+      totalSesiKbm = kbmDiscipline.totalSesiKbm;
+      sesiKbmTerlaksana = kbmDiscipline.sesiKbmTerlaksana;
+      guruInvalCount = kbmDiscipline.guruInvalCount;
+      persentaseGuru = kbmDiscipline.persentaseGuru;
+      persentaseJurnal = kbmDiscipline.persentaseJurnal;
+      persentaseKbmTerlaksana = kbmDiscipline.persentaseKbmTerlaksana;
+      guruBerhalanganItems = kbmDiscipline.guruBerhalanganItems;
+    } catch (err) {
+      console.warn('[Briefing:Kurikulum] Error querying SSOT Guru KBM discipline:', err);
+    }
 
     // ── 4. Early Warning System: Siswa Alpa Berturut-turut ─────────────────────
     let consecutiveAlpaItems: Array<{ nama: string; kelas: string; count: number }> = [];
@@ -733,10 +680,10 @@ export class KepsekBriefingCollector implements IBriefingCollector {
           color: persentaseGuru >= 95 ? 'emerald' : persentaseGuru >= 85 ? 'amber' : 'rose',
         },
         {
-          label: 'Kepatuhan Pengisian Jurnal KBM',
-          value: persentaseJurnal,
-          detail: `${sesiKbmTerlaksana} / ${totalSesiKbm} Sesi Terlaksana`,
-          color: persentaseJurnal >= 90 ? 'blue' : 'amber',
+          label: 'Keterlaksanaan Sesi KBM Terjadwal',
+          value: persentaseKbmTerlaksana,
+          detail: `${sesiKbmTerlaksana} / ${totalSesiKbm} Sesi Terlaksana (Jurnal ${persentaseJurnal}%)`,
+          color: persentaseKbmTerlaksana >= 90 ? 'blue' : 'amber',
         },
       ],
       items: kurikulumItems.length > 0 ? kurikulumItems : undefined,

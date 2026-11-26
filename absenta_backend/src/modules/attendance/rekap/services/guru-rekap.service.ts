@@ -358,6 +358,140 @@ export class GuruRekapService {
       };
     }, 60);
   }
+
+  /**
+   * SSOT Progres Kedisiplinan Guru KBM terscope ke Konteks Akademik Aktif (TP & Semester Aktif)
+   * Menghitung kehadiran guru unik (terjadwal KBM hari ini), keterlaksanaan sesi KBM, kepatuhan jurnal, & inval.
+   */
+  async getAcademicScopedKbmDiscipline(tenantId: string, tanggal: string) {
+    const tz = await getTenantTimezone(tenantId);
+    const { startOfDay, endOfDay } = getTenantDayRange(tanggal, tz);
+
+    const [activeTp, activeSem] = await Promise.all([
+      prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true, tahun: true },
+      }),
+      prisma.semester.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true, nama_semester: true },
+      }),
+    ]);
+
+    const dateObj = new Date(`${tanggal}T12:00:00+07:00`);
+    const hariEnumMap = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'] as const;
+    const hariIni = hariEnumMap[dateObj.getDay()];
+
+    const [jadwalHariIni, absGuruList, sesiList, fallbackTotalGuru] = await Promise.all([
+      activeTp && activeSem
+        ? prisma.jadwalKBM.findMany({
+            where: {
+              tenant_id: tenantId,
+              tahun_pelajaran_id: activeTp.id,
+              semester_id: activeSem.id,
+              hari: hariIni as any,
+            },
+            select: { id: true, guru_id: true },
+          })
+        : Promise.resolve([]),
+      prisma.absenGuru.findMany({
+        where: {
+          tenant_id: tenantId,
+          created_at: { gte: startOfDay, lte: endOfDay },
+          ...(activeTp ? { tahun_pelajaran_id: activeTp.id } : {}),
+        },
+        select: {
+          guru_id: true,
+          status: true,
+          catatan: true,
+          Guru: { select: { nama_guru: true } },
+          SesiAbsensi: { select: { is_delegasi: true } },
+        },
+      }),
+      prisma.sesiAbsensi.findMany({
+        where: {
+          tenant_id: tenantId,
+          tanggal: { gte: startOfDay, lte: endOfDay },
+          ...(activeTp ? { tahun_pelajaran_id: activeTp.id } : {}),
+          ...(activeSem ? { semester_id: activeSem.id } : {}),
+        },
+        select: {
+          id: true,
+          status: true,
+          is_delegasi: true,
+          keterangan: true,
+        },
+      }),
+      prisma.guru.count({ where: { tenant_id: tenantId } }),
+    ]);
+
+    const scheduledGuruIds = new Set<string>();
+    for (const j of jadwalHariIni) {
+      if (j.guru_id) scheduledGuruIds.add(j.guru_id);
+    }
+
+    const guruHadirIds = new Set<string>();
+    const guruTidakHadirMap = new Map<
+      string,
+      { nama: string; status: string; catatan?: string; isInval: boolean }
+    >();
+
+    for (const ag of absGuruList) {
+      if (!ag.guru_id) continue;
+      const st = (ag.status || '').toUpperCase();
+      if (st === 'HADIR' || st === 'TERLAMBAT') {
+        guruHadirIds.add(ag.guru_id);
+        guruTidakHadirMap.delete(ag.guru_id);
+      } else if (!guruHadirIds.has(ag.guru_id)) {
+        guruTidakHadirMap.set(ag.guru_id, {
+          nama: ag.Guru?.nama_guru || 'Guru',
+          status: ag.status,
+          catatan: ag.catatan || undefined,
+          isInval: Boolean(ag.SesiAbsensi?.is_delegasi),
+        });
+      }
+    }
+
+    const totalGuruTerjadwal = scheduledGuruIds.size > 0 ? scheduledGuruIds.size : fallbackTotalGuru;
+    const guruHadir = guruHadirIds.size;
+    const guruTidakHadir = guruTidakHadirMap.size;
+
+    const totalJadwalHariIni = jadwalHariIni.length;
+    const sesiDibuka = sesiList.length;
+    const totalSesiKbm = totalJadwalHariIni > 0 ? Math.max(totalJadwalHariIni, sesiDibuka) : sesiDibuka;
+    const sesiKbmTerlaksana = sesiList.filter((s) => s.status === 'SELESAI' || Boolean(s.keterangan)).length;
+    const guruInvalCount = sesiList.filter((s) => s.is_delegasi).length;
+
+    const persentaseGuru =
+      totalGuruTerjadwal > 0
+        ? Math.min(100, Math.round((guruHadir / totalGuruTerjadwal) * 100))
+        : guruHadir > 0
+        ? 100
+        : 0;
+
+    const persentaseKbmTerlaksana =
+      totalSesiKbm > 0 ? Math.min(100, Math.round((sesiDibuka / totalSesiKbm) * 100)) : 100;
+
+    const persentaseJurnal =
+      sesiDibuka > 0 ? Math.round((sesiKbmTerlaksana / sesiDibuka) * 100) : 100;
+
+    return {
+      academicContext: activeTp
+        ? `${activeTp.tahun}${activeSem ? ` (${activeSem.nama_semester})` : ''}`
+        : 'Konteks Aktif',
+      totalGuru: totalGuruTerjadwal,
+      guruHadir,
+      guruTidakHadir,
+      persentaseGuru,
+      totalSesiKbm,
+      sesiDibuka,
+      sesiKbmTerlaksana,
+      persentaseKbmTerlaksana,
+      persentaseJurnal,
+      guruInvalCount,
+      guruBerhalanganItems: Array.from(guruTidakHadirMap.values()).slice(0, 6),
+    };
+  }
 }
 
 export const guruRekapService = GuruRekapService.getInstance();
