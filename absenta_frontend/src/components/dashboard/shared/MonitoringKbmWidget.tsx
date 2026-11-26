@@ -975,6 +975,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
             refetchSessions={refetchSessions}
             handleExport={handleExport}
             onOpenPrint={() => setIsPrintModalOpen(true)}
+            onOpenWaBroadcast={() => setIsWaBroadcastModalOpen(true)}
           />
 
           {/* 3. Session List/Grid/Table */}

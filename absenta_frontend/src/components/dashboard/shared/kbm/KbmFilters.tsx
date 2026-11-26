@@ -3,7 +3,7 @@ import { Button } from '../../../ui';
 import { cn } from '../../../../lib/utils';
 import {
   Calendar as CalendarIcon, Search, Filter,
-  List, LayoutGrid, Activity, Download, Printer
+  List, LayoutGrid, Activity, Download, Printer, MessageSquare
 } from 'lucide-react';
 
 interface KbmFiltersProps {
@@ -25,6 +25,7 @@ interface KbmFiltersProps {
   refetchSessions: () => void;
   handleExport: () => void;
   onOpenPrint?: () => void;
+  onOpenWaBroadcast?: () => void;
 }
 
 export const KbmFilters = React.memo<KbmFiltersProps>(({
@@ -46,6 +47,7 @@ export const KbmFilters = React.memo<KbmFiltersProps>(({
   refetchSessions,
   handleExport,
   onOpenPrint,
+  onOpenWaBroadcast,
 }) => {
   return (
     <div className="bg-white dark:bg-gray-800 p-1.5 rounded-md border border-gray-100 dark:border-gray-700 shadow-sm">
@@ -171,6 +173,19 @@ export const KbmFilters = React.memo<KbmFiltersProps>(({
             >
               <Printer size={10} className="mr-1.5 text-indigo-600 dark:text-indigo-400" />
               Cetak Rekap
+            </Button>
+          )}
+
+          {onOpenWaBroadcast && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-sm border-emerald-500 text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:border-emerald-500 font-black text-[8px] uppercase tracking-widest px-3 h-7 shadow-sm"
+              onClick={onOpenWaBroadcast}
+              title="Kirim pengumuman dadakan via WA Gateway ke guru yang mengajar pada jam KBM ke-n"
+            >
+              <MessageSquare size={10} className="mr-1.5" />
+              Pengumuman WA Guru
             </Button>
           )}
         </div>
