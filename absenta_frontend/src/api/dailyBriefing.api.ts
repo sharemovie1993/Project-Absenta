@@ -80,6 +80,28 @@ export interface BriefingKbmGalleryItem {
   jurnal?: string | null;
 }
 
+export interface BriefingAiPillar {
+  id: string;
+  label: string;
+  score: number;
+  grade: 'A+' | 'A' | 'B+' | 'B' | 'C' | 'D';
+  status: 'excellent' | 'good' | 'warning' | 'critical';
+  summary: string;
+}
+
+export interface BriefingAiVerdict {
+  overallScore: number;
+  grade: 'A+' | 'A' | 'B+' | 'B' | 'C' | 'D';
+  schoolTitle: string;
+  tagline: string;
+  variant: 'emerald' | 'indigo' | 'amber' | 'rose';
+  executiveVerdict: string;
+  pillars: BriefingAiPillar[];
+  strengths: string[];
+  weaknesses: string[];
+  recommendations: string[];
+}
+
 export interface UniversalBriefingData {
   title: string;
   role: string;
@@ -115,6 +137,7 @@ export interface UniversalBriefingData {
     totalPhotosToday: number;
     items: BriefingKbmGalleryItem[];
   };
+  aiVerdict?: BriefingAiVerdict;
 }
 
 export interface DailyBriefingResponse {

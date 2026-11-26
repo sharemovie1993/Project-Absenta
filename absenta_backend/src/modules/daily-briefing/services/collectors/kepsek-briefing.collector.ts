@@ -14,7 +14,13 @@
 import { prisma } from '@/utils/prisma';
 import { getTenantTimezone, getTenantDayRangeUTC } from '@/utils/timezone.utils';
 import { IBriefingCollector } from './briefing-collector.interface';
-import { UniversalBriefingData, BriefingMetricItem, BriefingSection } from '../../types/briefing.types';
+import {
+  UniversalBriefingData,
+  BriefingMetricItem,
+  BriefingSection,
+  BriefingAiPillar,
+  BriefingAiVerdict,
+} from '../../types/briefing.types';
 import { BpbkAnalyticsService } from '@/modules/bpbk/services/sub/bpbk-analytics.service';
 import { NilaiMonitoringService } from '@/modules/rapor/services/sub/nilai-monitoring.service';
 import { CbtSettingsService } from '@/modules/cbt/services/cbt-settings.service';
@@ -1105,6 +1111,284 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       console.warn('[Briefing:LeaderboardGallery] Error querying leaderboard & KBM gallery:', err);
     }
 
+    // ── 11c. AI Executive Verdict & Gelar Sekolah (Multi-Divisi Holistic Intelligence)
+    const toGrade = (s: number): 'A+' | 'A' | 'B+' | 'B' | 'C' | 'D' => {
+      if (s >= 92) return 'A+';
+      if (s >= 84) return 'A';
+      if (s >= 75) return 'B+';
+      if (s >= 65) return 'B';
+      if (s >= 50) return 'C';
+      return 'D';
+    };
+    const toStatus = (s: number): 'excellent' | 'good' | 'warning' | 'critical' => {
+      if (s >= 88) return 'excellent';
+      if (s >= 75) return 'good';
+      if (s >= 55) return 'warning';
+      return 'critical';
+    };
+
+    const aiPillars: BriefingAiPillar[] = [];
+
+    // Pilar 1: Kedisiplinan & Presensi Siswa
+    const latePenalty = totalSiswaAktif > 0 ? Math.min(20, Math.round((siswaTerlambat / totalSiswaAktif) * 100 * 1.5)) : 0;
+    const p1Score = Math.max(
+      0,
+      Math.min(
+        100,
+        Math.round(
+          persentaseSiswa * 0.65 +
+            (pelanggaranSemesterTotal > 0 ? progresPenangananPelanggaranPct : 95) * 0.35 -
+            latePenalty
+        )
+      )
+    );
+    aiPillars.push({
+      id: 'pilar_kesiswaan',
+      label: 'Kedisiplinan & Presensi Siswa',
+      score: p1Score,
+      grade: toGrade(p1Score),
+      status: toStatus(p1Score),
+      summary: `Kehadiran siswa ${persentaseSiswa}%, ${siswaTerlambat} terlambat gerbang, penyelesaian kasus ${progresPenangananPelanggaranPct}%.`,
+    });
+
+    // Pilar 2: Eksekusi KBM & Kinerja Guru
+    const realisasiKbmPct = totalSesiKbm > 0 ? Math.round((sesiKbmTerlaksana / totalSesiKbm) * 100) : persentaseGuru;
+    const p2Score = Math.max(
+      0,
+      Math.min(100, Math.round(persentaseGuru * 0.4 + realisasiKbmPct * 0.35 + persentaseJurnal * 0.25))
+    );
+    aiPillars.push({
+      id: 'pilar_kbm',
+      label: 'Eksekusi KBM & Kepatuhan Jurnal',
+      score: p2Score,
+      grade: toGrade(p2Score),
+      status: toStatus(p2Score),
+      summary: `Kehadiran guru ${persentaseGuru}%, realisasi sesi KBM ${realisasiKbmPct}%, kepatuhan jurnal ${persentaseJurnal}%.`,
+    });
+
+    // Pilar 3: Tata Kelola Administrasi & Akademik (Perangkat Ajar, CBT, Rapor)
+    const perangkatScore = perangkatProgress ? perangkatProgress.progresGuruMengumpulkanPct : 70;
+    const raporScore = raporReadiness ? Math.round(biodataSiapPct * 0.4 + nilaiSumatifPct * 0.6) : 70;
+    const cbtScore = cbtProgress && cbtProgress.totalBank > 0 ? cbtProgress.progresPengumpulanPct : raporScore;
+    const p3Score = Math.max(
+      0,
+      Math.min(100, Math.round(perangkatScore * 0.35 + raporScore * 0.45 + cbtScore * 0.2))
+    );
+    aiPillars.push({
+      id: 'pilar_akademik',
+      label: 'Kesiapan Perangkat Ajar, CBT & Rapor',
+      score: p3Score,
+      grade: toGrade(p3Score),
+      status: toStatus(p3Score),
+      summary: `Perangkat ajar ${perangkatScore}%, nilai rapor ${nilaiSumatifPct}%, biodata ${biodataSiapPct}%.`,
+    });
+
+    // Pilar 4: Transformasi Digital & Adopsi Platform
+    const adoptionPct = adoptionProgress ? adoptionProgress.progresAdopsiPct : 75;
+    const activeTodayPct = adoptionProgress ? adoptionProgress.progresAktifHariIniPct : 70;
+    const p4Score = Math.max(0, Math.min(100, Math.round(adoptionPct * 0.7 + activeTodayPct * 0.3)));
+    aiPillars.push({
+      id: 'pilar_digital',
+      label: 'Transformasi Digital & Adopsi Guru',
+      score: p4Score,
+      grade: toGrade(p4Score),
+      status: toStatus(p4Score),
+      summary: adoptionProgress
+        ? `Adopsi platform ${adoptionPct}% (${adoptionProgress.guruSudahMasuk}/${adoptionProgress.totalGuru} guru), ${adoptionProgress.guruBelumPernahMasuk} belum pernah login.`
+        : `Tingkat adopsi platform guru tercatat ${adoptionPct}%.`,
+    });
+
+    // Pilar 5: Pembinaan Karakter, BP/BK & Ketarunaan
+    const bkCasePct =
+      bpbkProgress && bpbkProgress.totalKasus > 0 ? bpbkProgress.progresPenangananKasusPct : 90;
+    const ketarunaanPct =
+      ketarunaanProgress &&
+      (ketarunaanProgress.isConfigured || ketarunaanProgress.tarunaDinilai > 0)
+        ? ketarunaanProgress.progresInputNilaiPct
+        : bkCasePct;
+    const p5Score = Math.max(0, Math.min(100, Math.round(bkCasePct * 0.6 + ketarunaanPct * 0.4)));
+    aiPillars.push({
+      id: 'pilar_karakter',
+      label: 'Pembinaan Karakter, BK & Ketarunaan',
+      score: p5Score,
+      grade: toGrade(p5Score),
+      status: toStatus(p5Score),
+      summary: `Penanganan kasus BK ${bkCasePct}%${
+        ketarunaanProgress && (ketarunaanProgress.isConfigured || ketarunaanProgress.tarunaDinilai > 0)
+          ? `, penilaian ketarunaan ${ketarunaanProgress.progresInputNilaiPct}%`
+          : ''
+      }.`,
+    });
+
+    // Pilar 6 (Opsional jika ada PKL): Kemitraan Industri & PKL
+    if (totalSiswaPklAktif > 0 || totalPklAll > 0) {
+      const pklHadirPct =
+        totalSiswaPklAktif > 0 ? Math.round((siswaPklHadir / totalSiswaPklAktif) * 100) : 85;
+      const p6Score = Math.max(
+        0,
+        Math.min(100, Math.round(pklHadirPct * 0.4 + progresNilaiPklPct * 0.35 + progresSidangPklPct * 0.25))
+      );
+      aiPillars.push({
+        id: 'pilar_hubin',
+        label: 'Kemitraan Industri & PKL',
+        score: p6Score,
+        grade: toGrade(p6Score),
+        status: toStatus(p6Score),
+        summary: `Presensi PKL hari ini ${siswaPklHadir}/${totalSiswaPklAktif}, nilai DUDI ${progresNilaiPklPct}%, sidang ${progresSidangPklPct}%.`,
+      });
+    }
+
+    const overallAiScore = Math.round(
+      aiPillars.reduce((acc, p) => acc + p.score, 0) / Math.max(1, aiPillars.length)
+    );
+    const overallGrade = toGrade(overallAiScore);
+
+    let schoolTitle = 'Sekolah Berkembang — Perlu Akselerasi Kepatuhan & Digitalisasi';
+    let tagline = 'Operasional berjalan moderat namun sejumlah indikator akademik membutuhkan dorongan pimpinan.';
+    let verdictVariant: BriefingAiVerdict['variant'] = 'indigo';
+
+    if (overallAiScore >= 92) {
+      schoolTitle = 'Sekolah Unggul Berintegritas & Transformasi Digital Paripurna';
+      tagline = 'Standar emas kedisiplinan, pelaksanaan KBM, tata kelola akademik, dan adopsi digital berjalan sangat prima.';
+      verdictVariant = 'emerald';
+    } else if (overallAiScore >= 84) {
+      schoolTitle = 'Sekolah Kondusif, Produktif & Disiplin Eksekusi Tinggi';
+      tagline = 'Stabilitas KBM dan kedisiplinan terjaga kuat dengan tingkat kepatuhan administrasi di atas rata-rata.';
+      verdictVariant = 'emerald';
+    } else if (overallAiScore >= 75) {
+      schoolTitle = 'Sekolah Progresif dengan Kinerja Akademik Stabil';
+      tagline = 'Fondasi pengajaran dan adopsi digital sudah baik, dengan ruang optimalisasi pada ketuntasan administrasi guru.';
+      verdictVariant = 'indigo';
+    } else if (overallAiScore >= 62) {
+      schoolTitle = 'Sekolah Transisi — Perlu Akselerasi Kepatuhan & Digitalisasi';
+      tagline = 'Terdapat kesenjangan antara aktivitas lapangan dan ketuntasan pencatatan jurnal/perangkat ajar/rapor.';
+      verdictVariant = 'amber';
+    } else {
+      schoolTitle = 'Status Atensi Eksekutif — Butuh Penertiban Operasional & KBM';
+      tagline = 'Sejumlah indikator vital (kehadiran, jurnal KBM, atau administrasi akademik) berada di bawah ambang standar.';
+      verdictVariant = 'rose';
+    }
+
+    const strengths: string[] = [];
+    const weaknesses: string[] = [];
+    const recommendations: string[] = [];
+
+    if (persentaseSiswa >= 92) {
+      strengths.push(
+        `Tingkat kehadiran siswa hari ini sangat solid (${persentaseSiswa}%)${
+          rombelSempurna.length > 0 ? ` dengan ${rombelSempurna.length} rombel mencapai kehadiran 100%` : ''
+        }.`
+      );
+    } else {
+      weaknesses.push(
+        `Kehadiran siswa tercatat ${persentaseSiswa}% (${siswaAlpa} alpa, ${siswaTerlambat} terlambat gerbang).`
+      );
+      recommendations.push(
+        `Instruksikan Wakasek Kesiswaan & Wali Kelas menindaklanjuti ${
+          consecutiveAlpaItems.length > 0 ? `${consecutiveAlpaItems.length} siswa alpa beruntun dan ` : ''
+        }rombel dengan alpa tertinggi hari ini.`
+      );
+    }
+
+    if (persentaseGuru >= 90 && persentaseJurnal >= 85) {
+      strengths.push(
+        `Disiplin mengajar guru tinggi (${persentaseGuru}% hadir) dengan kepatuhan pengisian jurnal KBM ${persentaseJurnal}%.`
+      );
+    } else {
+      weaknesses.push(
+        `Realisasi kehadiran mengajar (${persentaseGuru}%) atau kepatuhan pengisian jurnal KBM (${persentaseJurnal}%) belum optimal.`
+      );
+      recommendations.push(
+        `Minta Wakasek Kurikulum & Guru Piket mengingatkan guru pengampu untuk menuntaskan presensi sesi KBM beserta jurnal dan foto bukti mengajar hari ini.`
+      );
+    }
+
+    if (adoptionProgress) {
+      if (adoptionProgress.progresAdopsiPct >= 90) {
+        strengths.push(
+          `Adopsi digital guru sangat matang: ${adoptionProgress.progresAdopsiPct}% guru aktif menggunakan platform (${adoptionProgress.guruAktifHariIni} aktif hari ini).`
+        );
+      } else if (adoptionProgress.guruBelumPernahMasuk > 0) {
+        weaknesses.push(
+          `Masih terdapat ${adoptionProgress.guruBelumPernahMasuk} guru aktif yang belum pernah login/masuk ke platform sama sekali.`
+        );
+        recommendations.push(
+          `Lakukan pendampingan teknis singkat kepada ${adoptionProgress.guruBelumPernahMasuk} guru yang belum pernah masuk platform agar mencapai 100% digitalisasi.`
+        );
+      }
+    }
+
+    if (perangkatProgress) {
+      if (perangkatProgress.progresGuruMengumpulkanPct >= 80) {
+        strengths.push(
+          `Kepatuhan pengumpulan Perangkat Ajar mencapai ${perangkatProgress.progresGuruMengumpulkanPct}% (${perangkatProgress.approvedCount} dokumen telah disetujui).`
+        );
+      } else {
+        weaknesses.push(
+          `Baru ${perangkatProgress.guruSudahMengumpulkan} dari ${perangkatProgress.totalGuruWajib} guru (${perangkatProgress.progresGuruMengumpulkanPct}%) yang mengumpulkan Perangkat Ajar${
+            perangkatProgress.pendingCount > 0 ? `, serta ${perangkatProgress.pendingCount} dokumen menunggu verifikasi` : ''
+          }.`
+        );
+        recommendations.push(
+          `Tetapkan tenggat pengumpulan Perangkat Ajar bagi ${perangkatProgress.guruBelumMengumpulkan} guru yang belum mengunggah dokumen pada semester aktif ini.`
+        );
+      }
+    }
+
+    if (raporReadiness) {
+      if (nilaiSumatifPct >= 85 && biodataSiapPct >= 90) {
+        strengths.push(
+          `Kesiapan Rapor semester aktif sangat terjaga (Biodata ${biodataSiapPct}%, Nilai Sumatif ${nilaiSumatifPct}%).`
+        );
+      } else if (nilaiSumatifPct < 75) {
+        weaknesses.push(
+          `Progres input nilai sumatif rapor masih ${nilaiSumatifPct}% (${raporReadiness.guruEmpty} guru belum menginput nilai).`
+        );
+        recommendations.push(
+          `Dorong percepatan cicilan input nilai sumatif agar tidak menumpuk menjelang pembagian rapor.`
+        );
+      }
+    }
+
+    if (bpbkProgress && bpbkProgress.progresPenangananKasusPct >= 85 && bpbkProgress.totalKasus > 0) {
+      strengths.push(
+        `Responsivitas BP/BK sangat baik dengan rasio penyelesaian kasus ${bpbkProgress.progresPenangananKasusPct}% (${bpbkProgress.kasusSelesai}/${bpbkProgress.totalKasus} kasus selesai).`
+      );
+    }
+
+    if (strengths.length === 0) {
+      strengths.push(
+        `Sistem pemantauan lintas divisi berjalan aktif merekam data real-time pada konteks ${activeTpLabel || 'Tahun Pelajaran Aktif'}.`
+      );
+    }
+    if (weaknesses.length === 0) {
+      weaknesses.push('Tidak ditemukan hambatan struktural mayor hari ini; seluruh indikator utama berada pada zona hijau.');
+    }
+    if (recommendations.length === 0) {
+      recommendations.push(
+        'Pertahankan ritme supervisi harian dan berikan apresiasi kepada guru/siswa terbaik pada leaderboard minggu ini.'
+      );
+    }
+
+    const sortedPillars = [...aiPillars].sort((a, b) => b.score - a.score);
+    const bestPillar = sortedPillars[0];
+    const lowestPillar = sortedPillars[sortedPillars.length - 1];
+
+    const executiveVerdict = `Berdasarkan sintesis algoritma AI terhadap seluruh data SSOT lintas divisi pada ${tanggalStr}, ${sekolahNama} memperoleh Indeks Performa Holistik ${overallAiScore}/100 (Grade ${overallGrade}) dan dianugerahi predikat "${schoolTitle}". Kekuatan terkuat sekolah saat ini bertumpu pada pilar ${bestPillar.label} (skor ${bestPillar.score}/100), sementara fokus akselerasi utama berada pada pilar ${lowestPillar.label} (skor ${lowestPillar.score}/100).`;
+
+    const aiVerdict: BriefingAiVerdict = {
+      overallScore: overallAiScore,
+      grade: overallGrade,
+      schoolTitle,
+      tagline,
+      variant: verdictVariant,
+      executiveVerdict,
+      pillars: aiPillars,
+      strengths,
+      weaknesses,
+      recommendations,
+    };
+
     const expiresAt = new Date(Date.now() + 48 * 3600 * 1000).toISOString();
 
     return {
@@ -1128,6 +1412,7 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       sections,
       leaderboard: leaderboardData,
       kbmGallery: kbmGalleryData,
+      aiVerdict,
     };
   }
 }

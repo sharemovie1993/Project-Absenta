@@ -36,6 +36,9 @@ import {
   Check,
   Trophy,
   Camera,
+  Sparkles,
+  Award,
+  Target,
 } from 'lucide-react';
 import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 import {
@@ -337,6 +340,213 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* ── 2b. VONIS & GELAR AI EKSEKUTIF SEKOLAH (MULTI-DIVISI HOLISTIC INTELLIGENCE) ── */}
+      {briefing.aiVerdict && (
+        <div
+          className={cn(
+            'rounded-2xl border p-4 sm:p-6 shadow-sm transition-all print:border-black print:shadow-none',
+            briefing.aiVerdict.variant === 'emerald'
+              ? 'bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/60 dark:from-emerald-950/30 dark:via-slate-900 dark:to-teal-950/20 border-emerald-300/80 dark:border-emerald-800/70'
+              : briefing.aiVerdict.variant === 'indigo'
+              ? 'bg-gradient-to-br from-indigo-50/90 via-white to-blue-50/60 dark:from-indigo-950/30 dark:via-slate-900 dark:to-blue-950/20 border-indigo-300/80 dark:border-indigo-800/70'
+              : briefing.aiVerdict.variant === 'amber'
+              ? 'bg-gradient-to-br from-amber-50/90 via-white to-orange-50/60 dark:from-amber-950/30 dark:via-slate-900 dark:to-orange-950/20 border-amber-300/80 dark:border-amber-800/70'
+              : 'bg-gradient-to-br from-rose-50/90 via-white to-red-50/60 dark:from-rose-950/30 dark:via-slate-900 dark:to-red-950/20 border-rose-300/80 dark:border-rose-800/70'
+          )}
+        >
+          {/* Top Header: AI Badge + Gelar Sekolah + Grade Gauge */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-slate-800">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-indigo-600 text-white shadow-2xs">
+                  <Sparkles className="w-3 h-3" />
+                  AI Executive Verdict &amp; Gelar Sekolah
+                </span>
+                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                  Sintesis SSOT Lintas Divisi
+                </span>
+              </div>
+              <div className="flex items-start gap-2.5 pt-0.5">
+                <Award
+                  className={cn(
+                    'w-6 h-6 shrink-0 mt-0.5',
+                    briefing.aiVerdict.variant === 'emerald'
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : briefing.aiVerdict.variant === 'indigo'
+                      ? 'text-indigo-600 dark:text-indigo-400'
+                      : briefing.aiVerdict.variant === 'amber'
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-rose-600 dark:text-rose-400'
+                  )}
+                />
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-snug">
+                    &ldquo;{briefing.aiVerdict.schoolTitle}&rdquo;
+                  </h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                    {briefing.aiVerdict.tagline}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Overall Score & Grade Badge */}
+            <div className="flex items-center gap-3 self-start md:self-center shrink-0 bg-white/90 dark:bg-slate-900/90 px-4 py-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+              <div className="text-right">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block">
+                  Skor Holistik AI
+                </span>
+                <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+                  {briefing.aiVerdict.overallScore}
+                  <span className="text-xs font-semibold text-slate-400">/100</span>
+                </span>
+              </div>
+              <div
+                className={cn(
+                  'w-12 h-12 rounded-xl flex flex-col items-center justify-center font-black text-lg border',
+                  briefing.aiVerdict.variant === 'emerald'
+                    ? 'bg-emerald-500 text-white border-emerald-600'
+                    : briefing.aiVerdict.variant === 'indigo'
+                    ? 'bg-indigo-600 text-white border-indigo-700'
+                    : briefing.aiVerdict.variant === 'amber'
+                    ? 'bg-amber-500 text-white border-amber-600'
+                    : 'bg-rose-600 text-white border-rose-700'
+                )}
+              >
+                <span className="text-[8px] font-bold uppercase leading-none opacity-85">Grade</span>
+                <span className="leading-tight">{briefing.aiVerdict.grade}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Executive Narrative Verdict */}
+          <div className="mt-3.5 p-3.5 rounded-xl bg-white/80 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800 text-xs sm:text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
+            <span className="font-bold text-indigo-700 dark:text-indigo-400 mr-1.5">
+              [Vonis AI]:
+            </span>
+            {briefing.aiVerdict.executiveVerdict}
+          </div>
+
+          {/* 6 Pillars Breakdown Grid */}
+          {briefing.aiVerdict.pillars && briefing.aiVerdict.pillars.length > 0 && (
+            <div className="mt-4">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-2">
+                Rapor Indeks 6 Pilar Penilaian AI:
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                {briefing.aiVerdict.pillars.map((pillar) => {
+                  const pColor =
+                    pillar.status === 'excellent'
+                      ? 'bg-emerald-500'
+                      : pillar.status === 'good'
+                      ? 'bg-indigo-500'
+                      : pillar.status === 'warning'
+                      ? 'bg-amber-500'
+                      : 'bg-rose-500';
+                  const pBadge =
+                    pillar.status === 'excellent'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
+                      : pillar.status === 'good'
+                      ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800'
+                      : pillar.status === 'warning'
+                      ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
+                      : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800';
+
+                  return (
+                    <div
+                      key={pillar.id}
+                      className="p-3 rounded-xl bg-white/90 dark:bg-slate-900/70 border border-slate-200/70 dark:border-slate-800 flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                            {pillar.label}
+                          </span>
+                          <span
+                            className={cn(
+                              'text-[10px] font-extrabold px-1.5 py-0.5 rounded border shrink-0',
+                              pBadge
+                            )}
+                          >
+                            {pillar.score}/100 ({pillar.grade})
+                          </span>
+                        </div>
+                        <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden mb-1.5">
+                          <div
+                            className={cn('h-full rounded-full transition-all duration-500', pColor)}
+                            style={{ width: `${Math.min(100, Math.max(4, pillar.score))}%` }}
+                          />
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug">
+                        {pillar.summary}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Strengths, Weaknesses & Tactical Recommendations */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mt-4">
+            {/* Kekuatan Utama */}
+            <div className="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/25 border border-emerald-200/70 dark:border-emerald-800/50">
+              <div className="flex items-center gap-1.5 mb-2">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                  Kekuatan &amp; Prestasi Utama
+                </span>
+              </div>
+              <ul className="space-y-1.5 text-[11px] text-slate-700 dark:text-slate-300">
+                {briefing.aiVerdict.strengths.map((s, idx) => (
+                  <li key={idx} className="flex items-start gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 mt-1.5" />
+                    <span>{s}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Titik Kritis / Blindspot */}
+            <div className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/25 border border-amber-200/70 dark:border-amber-800/50">
+              <div className="flex items-center gap-1.5 mb-2">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                  Titik Kritis &amp; Ruang Perbaikan
+                </span>
+              </div>
+              <ul className="space-y-1.5 text-[11px] text-slate-700 dark:text-slate-300">
+                {briefing.aiVerdict.weaknesses.map((w, idx) => (
+                  <li key={idx} className="flex items-start gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-1.5" />
+                    <span>{w}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Rekomendasi Taktis Kepala Sekolah */}
+            <div className="p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/25 border border-indigo-200/70 dark:border-indigo-800/50">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Target className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-800 dark:text-indigo-300">
+                  Rekomendasi Tindakan Pimpinan
+                </span>
+              </div>
+              <ul className="space-y-1.5 text-[11px] text-slate-700 dark:text-slate-300">
+                {briefing.aiVerdict.recommendations.map((r, idx) => (
+                  <li key={idx} className="flex items-start gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0 mt-1.5" />
+                    <span>{r}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
         </div>
       )}
 

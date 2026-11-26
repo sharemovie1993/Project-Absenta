@@ -105,6 +105,28 @@ export interface BriefingKbmGalleryItem {
   jurnal?: string | null;
 }
 
+export interface BriefingAiPillar {
+  id: string;
+  label: string;
+  score: number; // 0 - 100
+  grade: 'A+' | 'A' | 'B+' | 'B' | 'C' | 'D';
+  status: 'excellent' | 'good' | 'warning' | 'critical';
+  summary: string;
+}
+
+export interface BriefingAiVerdict {
+  overallScore: number; // 0 - 100
+  grade: 'A+' | 'A' | 'B+' | 'B' | 'C' | 'D';
+  schoolTitle: string;  // Gelar / Predikat Sekolah
+  tagline: string;      // Sub-gelar singkat
+  variant: 'emerald' | 'indigo' | 'amber' | 'rose';
+  executiveVerdict: string; // Narasi vonis komprehensif AI
+  pillars: BriefingAiPillar[];
+  strengths: string[];
+  weaknesses: string[];
+  recommendations: string[];
+}
+
 export interface UniversalBriefingData {
   title: string;
   role: BriefingRole;
@@ -140,4 +162,5 @@ export interface UniversalBriefingData {
     totalPhotosToday: number;
     items: BriefingKbmGalleryItem[];
   };
+  aiVerdict?: BriefingAiVerdict;
 }
