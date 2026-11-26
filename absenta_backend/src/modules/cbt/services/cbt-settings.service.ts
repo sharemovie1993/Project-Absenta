@@ -363,7 +363,7 @@ export class CbtSettingsService {
     }
 
     const jadwalTotal = jadwalList.length;
-    const jadwalAktif = jadwalList.filter((j) => j.status === 'AKTIF').length;
+    const jadwalAktif = jadwalList.filter((j) => j.status === 'ACTIVE').length;
 
     const progresPengumpulanPct =
       totalBank > 0 ? Math.round((bankTerisiSoal / totalBank) * 100) : 0;
