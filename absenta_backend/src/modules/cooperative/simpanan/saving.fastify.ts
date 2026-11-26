@@ -235,6 +235,34 @@ export default async function savingRoutes(fastify: any) {
         }
     });
 
+    // POST /savings/transactions/:transactionId/reverse — Koreksi / Reversal transaksi simpanan (Contra-Journal)
+    fastify.post('/transactions/:transactionId/reverse', { preHandler: [requireCapability(['cooperative.savings.deposit', 'cooperative.savings.withdraw'])] }, async (req: any, reply: any) => {
+        try {
+            const tenantId = getTenantId(req);
+            const { transactionId } = req.params as { transactionId: string };
+            const { reason } = (req.body || {}) as { reason?: string };
+
+            const result = await SavingService.reverseTransaction(
+                tenantId,
+                transactionId,
+                reason || '',
+                req.user?.id ? String(req.user.id) : undefined,
+            );
+
+            return reply.send({
+                success: true,
+                message: 'Transaksi berhasil dikoreksi (jurnal pembalik otomatis tercatat).',
+                data: result,
+            });
+        } catch (error: any) {
+            appLogger.error({ err: error }, 'Cooperative reverse transaction error');
+            return reply.status(400).send({
+                success: false,
+                message: error?.message || 'Gagal melakukan koreksi transaksi simpanan',
+            });
+        }
+    });
+
     // GET /savings/:id
     fastify.get('/:id', { preHandler: [requireCapability(['cooperative.savings.view.detail', 'cooperative.savings.view.history'])] }, async (req: any, reply: any) => {
         try {

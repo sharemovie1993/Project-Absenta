@@ -722,4 +722,167 @@ export class SavingService {
 
         return { monthlyTrend, accountStatuses, shuEstimation, coopContact };
     }
+
+    /**
+     * Koreksi / Reversal Transaksi Simpanan (Standard Akuntansi Contra-Journal)
+     * Tidak menghapus record lama agar audit trail, nomor bukti, dan jurnal akuntansi tetap utuh.
+     */
+    static async reverseTransaction(
+        tenantId: string,
+        transactionId: string,
+        reason: string,
+        operatorUserId?: string,
+    ) {
+        const cleanReason = String(reason || '').trim();
+        if (cleanReason.length < 3) {
+            throw new Error('Alasan / catatan koreksi wajib diisi minimal 3 karakter.');
+        }
+
+        const original = await prisma.savingTransaction.findUnique({
+            where: { id: transactionId },
+            include: {
+                saving: {
+                    include: {
+                        member: true,
+                        category: true,
+                    },
+                },
+            },
+        });
+
+        if (!original || !original.saving || original.saving.member?.tenantId !== tenantId) {
+            throw new Error('Transaksi simpanan tidak ditemukan pada tenant ini.');
+        }
+
+        const origDesc = original.description || '';
+        if (origDesc.includes('[DIBATALKAN]') || origDesc.includes('[KOREKSI/REVERSAL]')) {
+            throw new Error('Transaksi ini sudah pernah dikoreksi/dibatalkan sebelumnya.');
+        }
+
+        const existingRef = await prisma.savingTransaction.findFirst({
+            where: {
+                savingId: original.savingId,
+                description: { contains: `[REF:${original.id}]` },
+            },
+        });
+        if (existingRef) {
+            throw new Error('Transaksi ini sudah memiliki jurnal koreksi (reversal) sebelumnya.');
+        }
+
+        const amount = Number(original.amount || 0);
+        if (amount <= 0) {
+            throw new Error('Nominal transaksi tidak valid untuk dikoreksi.');
+        }
+
+        const { FiscalYearGuard } = await import('../fiscal-year.guard');
+        await FiscalYearGuard.validateNotClosed(tenantId, new Date(), 'Koreksi / Reversal Transaksi Simpanan');
+
+        const savingsAccountCode = original.saving.category.accountCode;
+        await AccountingService.getOrCreateDefaultAccounts(tenantId);
+        await AccountingService.resolveAccountId(tenantId, savingsAccountCode, original.saving.category.name);
+
+        const isOriginalCredit = original.type === 'DEPOSIT' || original.type === 'INTEREST';
+        const reversalType: TransactionType = isOriginalCredit ? 'WITHDRAWAL' : 'DEPOSIT';
+
+        return prisma.$transaction(async (tx) => {
+            const freshSaving = await tx.saving.findUnique({ where: { id: original.savingId } });
+            if (!freshSaving) throw new Error('Rekening simpanan tidak ditemukan.');
+
+            const currentBalance = Number(freshSaving.amount);
+            if (isOriginalCredit && currentBalance < amount) {
+                throw new Error(
+                    `Saldo rekening saat ini (Rp ${currentBalance.toLocaleString('id-ID')}) tidak mencukupi untuk membatalkan setoran Rp ${amount.toLocaleString('id-ID')}.`
+                );
+            }
+
+            // 1. Buat transaksi pembalik (Contra Transaction)
+            const reversalDescription = `[KOREKSI/REVERSAL] ${cleanReason} [REF:${original.id}]`;
+            const reversalTx = await tx.savingTransaction.create({
+                data: {
+                    savingId: original.savingId,
+                    amount,
+                    type: reversalType,
+                    description: reversalDescription,
+                },
+            });
+
+            // 2. Tandai transaksi asli sebagai [DIBATALKAN] tanpa menghapus baris
+            await tx.savingTransaction.update({
+                where: { id: original.id },
+                data: {
+                    description: origDesc ? `${origDesc} [DIBATALKAN]` : '[DIBATALKAN]',
+                },
+            });
+
+            // 3. Perbarui saldo rekening secara atomik
+            const delta = isOriginalCredit ? -amount : amount;
+            await tx.saving.update({
+                where: { id: original.savingId },
+                data: { amount: { increment: delta } },
+            });
+
+            // 4. Buat jurnal akuntansi pembalik (Double-Entry Reversal)
+            let journalItems: { accountCode: string; type: string; amount: number }[] = [];
+            if (original.type === 'DEPOSIT') {
+                journalItems = [
+                    { accountCode: savingsAccountCode, type: 'DEBIT', amount },
+                    { accountCode: '1010', type: 'CREDIT', amount },
+                ];
+            } else if (original.type === 'INTEREST') {
+                journalItems = [
+                    { accountCode: savingsAccountCode, type: 'DEBIT', amount },
+                    { accountCode: '5020', type: 'CREDIT', amount },
+                ];
+            } else if (original.type === 'WITHDRAWAL') {
+                journalItems = [
+                    { accountCode: '1010', type: 'DEBIT', amount },
+                    { accountCode: savingsAccountCode, type: 'CREDIT', amount },
+                ];
+            } else if (original.type === 'ADMIN_FEE') {
+                journalItems = [
+                    { accountCode: '5020', type: 'DEBIT', amount },
+                    { accountCode: savingsAccountCode, type: 'CREDIT', amount },
+                ];
+            }
+
+            if (journalItems.length > 0) {
+                await AccountingService.createJournalEntry(
+                    tenantId,
+                    `Koreksi/Reversal ${original.type} - ${original.saving.category.name} (${original.saving.member.memberNo}): ${cleanReason}`,
+                    `SAV-REV-${original.id}`,
+                    journalItems as any,
+                    tx,
+                );
+            }
+
+            // 5. Tarik kembali poin loyalitas jika transaksi asli adalah DEPOSIT yang menghasilkan poin
+            if (original.type === 'DEPOSIT') {
+                const pointsEarned = Math.floor(amount / 50000) * 10;
+                const currentPoints = Number(original.saving.member?.points || 0);
+                const pointsToDeduct = Math.min(currentPoints, pointsEarned);
+                if (pointsToDeduct > 0) {
+                    await tx.member.update({
+                        where: { id: original.saving.memberId },
+                        data: { points: { decrement: pointsToDeduct } },
+                    });
+                    await tx.coopPointTransaction.create({
+                        data: {
+                            tenantId,
+                            memberId: original.saving.memberId,
+                            amount: -pointsToDeduct,
+                            type: 'ADJUSTMENT',
+                            description: `Koreksi poin akibat pembatalan setoran ${original.saving.category.name}`,
+                            referenceId: reversalTx.id,
+                        },
+                    });
+                }
+            }
+
+            return {
+                reversalTransaction: reversalTx,
+                originalTransactionId: original.id,
+                operatorUserId,
+            };
+        });
+    }
 }

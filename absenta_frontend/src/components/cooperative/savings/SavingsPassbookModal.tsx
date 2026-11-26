@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCapabilities } from '@/hooks/useCapabilities';
 import { 
   BookOpen, 
   Printer, 
@@ -66,11 +67,28 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
   defaultViewMode = 'SPECIFIC',
   logoUrl,
 }) => {
+  const queryClient = useQueryClient();
+  const { can, isAdmin, isKoperasiHead, isKoperasiFinance } = useCapabilities();
+  const canCorrectTx =
+    isAdmin ||
+    isKoperasiHead ||
+    isKoperasiFinance ||
+    can('cooperative.savings.deposit') ||
+    can('cooperative.savings.withdraw');
+
   // Active Account Tab: 'ALL' or saving.id
   const [activeTab, setActiveTab] = useState<string>('ALL');
   const [loading, setLoading] = useState(false);
   const [detailedSavings, setDetailedSavings] = useState<Saving[]>([]);
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
+  const [reversingTx, setReversingTx] = useState<{
+    id: string;
+    type: string;
+    amount: number;
+    categoryName: string;
+  } | null>(null);
+  const [reversalReason, setReversalReason] = useState('');
+  const [isReversing, setIsReversing] = useState(false);
 
   // Sync activeTab when modal opens or initialSaving changes
   useEffect(() => {
@@ -158,6 +176,45 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
     enabled: isOpen,
     staleTime: 30 * 1000,
   });
+
+  const handleConfirmReverse = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reversingTx) return;
+    if (reversalReason.trim().length < 3) {
+      toast.error('Mohon isi catatan / alasan koreksi minimal 3 karakter');
+      return;
+    }
+
+    try {
+      setIsReversing(true);
+      const res = await api.post(`/cooperative/savings/transactions/${reversingTx.id}/reverse`, {
+        reason: reversalReason.trim(),
+      });
+      if (res.data?.success) {
+        toast.success(res.data?.message || 'Transaksi berhasil dikoreksi (reversal)');
+        setReversingTx(null);
+        setReversalReason('');
+        if (memberId) {
+          try {
+            const memberRes = await api.get(`/cooperative/members/${memberId}`);
+            if (memberRes.data?.savings && Array.isArray(memberRes.data.savings)) {
+              setDetailedSavings(memberRes.data.savings);
+            }
+          } catch {}
+        }
+        queryClient.invalidateQueries({ queryKey: ['koperasi-savings'] });
+        queryClient.invalidateQueries({ queryKey: ['cooperative-savings'] });
+        queryClient.invalidateQueries({ queryKey: ['cooperative-transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['cooperative-dashboard'] });
+      } else {
+        toast.error(res.data?.message || 'Gagal memproses koreksi transaksi');
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Gagal memproses koreksi transaksi');
+    } finally {
+      setIsReversing(false);
+    }
+  }, [reversingTx, reversalReason, memberId, queryClient]);
 
   // Effective list of savings to display (aware terhadap pengaturan kategori simpanan: aktif & urutan order)
   const effectiveSavings = useMemo(() => {
@@ -454,6 +511,70 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
             )}
           </div>
 
+          {/* Inline Form Koreksi / Reversal Transaksi (khusus Pengurus/Operator) */}
+          {reversingTx && (
+            <form
+              onSubmit={handleConfirmReverse}
+              className="p-3.5 rounded-xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/70 space-y-2.5 animate-in fade-in duration-150"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-xs font-black text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                    <RotateCcw size={13} />
+                    <span>Koreksi / Pembatalan Transaksi (Jurnal Pembalik)</span>
+                  </p>
+                  <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 mt-0.5">
+                    {reversingTx.categoryName} • {reversingTx.type === 'DEPOSIT' ? 'Setoran' : 'Penarikan'} sebesar{' '}
+                    <strong className="font-mono">Rp {reversingTx.amount.toLocaleString('id-ID')}</strong> akan dibuatkan transaksi pembalik otomatis.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReversingTx(null);
+                    setReversalReason('');
+                  }}
+                  className="text-[11px] font-bold text-amber-700 dark:text-amber-300 hover:underline cursor-pointer shrink-0"
+                >
+                  Batal
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5">
+                {['Salah nominal input', 'Salah pilih anggota', 'Transaksi tercatat ganda'].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setReversalReason(preset)}
+                    className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800 text-[10px] font-semibold text-amber-800 dark:text-amber-200 hover:bg-amber-100/70 cursor-pointer"
+                  >
+                    + {preset}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={reversalReason}
+                  onChange={(e) => setReversalReason(e.target.value)}
+                  placeholder="Tulis catatan / alasan koreksi (wajib)..."
+                  className="flex-1 h-9 px-3 text-xs rounded-xl bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                  required
+                />
+                <Button
+                  type="submit"
+                  variant="primary"
+                  isLoading={isReversing}
+                  disabled={isReversing || reversalReason.trim().length < 3}
+                  className="h-9 px-4 text-xs font-bold rounded-xl bg-amber-600 hover:bg-amber-700 text-white shrink-0"
+                >
+                  Proses Koreksi
+                </Button>
+              </div>
+            </form>
+          )}
+
           {/* Desktop/Tablet View: Classic Clean Table (hidden sm:block) */}
           <div className="hidden sm:block border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-2xs">
             <div className="overflow-x-auto max-h-72">
@@ -466,19 +587,20 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
                     <th className="py-2.5 px-3">Transaksi</th>
                     <th className="py-2.5 px-3 text-right">Nominal</th>
                     <th className="py-2.5 px-3">Keterangan / Memo</th>
+                    {canCorrectTx && <th className="py-2.5 px-3 text-center w-24">Aksi</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 font-medium">
                   {loading ? (
                     <tr>
-                      <td colSpan={activeTab === 'ALL' ? 6 : 5} className="py-12 text-center text-xs text-slate-400">
+                      <td colSpan={(activeTab === 'ALL' ? 6 : 5) + (canCorrectTx ? 1 : 0)} className="py-12 text-center text-xs text-slate-400">
                         <div className="w-5 h-5 border-2 border-indigo-600/30 border-t-indigo-600 rounded-full animate-spin mx-auto mb-2" />
                         <span>Memuat riwayat transaksi...</span>
                       </td>
                     </tr>
                   ) : displayedTransactions.length === 0 ? (
                     <tr>
-                      <td colSpan={activeTab === 'ALL' ? 6 : 5} className="py-12 text-center text-xs text-slate-400 space-y-1">
+                      <td colSpan={(activeTab === 'ALL' ? 6 : 5) + (canCorrectTx ? 1 : 0)} className="py-12 text-center text-xs text-slate-400 space-y-1">
                         <HelpCircle size={28} className="mx-auto opacity-40 text-slate-400" />
                         <p className="font-semibold">Belum ada riwayat transaksi</p>
                         <p className="text-[10px] text-slate-400">Transaksi setor atau tarik tunai pada rekening ini akan tercatat di sini.</p>
@@ -488,9 +610,12 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
                     displayedTransactions.map((tx, idx) => {
                       const isDep = tx.type === 'DEPOSIT' || tx.type === 'INTEREST';
                       const amt = parseFloat(String(tx.amount)) || 0;
+                      const rawDesc = tx.description || '';
+                      const isCancelled = rawDesc.includes('[DIBATALKAN]');
+                      const isReversalEntry = rawDesc.includes('[KOREKSI/REVERSAL]');
                       const memo = cleanMemoDescription(tx.description);
                       return (
-                        <tr key={tx.id || idx} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                        <tr key={tx.id || idx} className={`hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors ${isCancelled ? 'opacity-60' : ''}`}>
                           <td className="py-2.5 px-3 text-center text-[11px] text-slate-400 font-mono">
                             {idx + 1}
                           </td>
@@ -525,12 +650,43 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
                           </td>
                           <td className={`py-2.5 px-3 text-right font-mono font-bold whitespace-nowrap ${
                             isDep ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
-                          }`}>
+                          } ${isCancelled ? 'line-through' : ''}`}>
                             {isDep ? '+' : '-'}Rp {amt.toLocaleString('id-ID')}
                           </td>
                           <td className="py-2.5 px-3 text-[11px] text-slate-600 dark:text-slate-300 max-w-sm truncate" title={memo}>
                             {memo}
                           </td>
+                          {canCorrectTx && (
+                            <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                              {isCancelled ? (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">
+                                  Dikoreksi
+                                </span>
+                              ) : isReversalEntry ? (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300">
+                                  Jurnal Balik
+                                </span>
+                              ) : tx.id ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setReversingTx({
+                                      id: tx.id,
+                                      type: tx.type,
+                                      amount: amt,
+                                      categoryName: (tx as any).savingCategoryName || 'Simpanan',
+                                    });
+                                    setReversalReason('');
+                                  }}
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 border border-amber-200/80 dark:border-amber-800/70 transition-colors cursor-pointer"
+                                  title="Buat transaksi pembalik (Koreksi)"
+                                >
+                                  <RotateCcw size={10} />
+                                  <span>Koreksi</span>
+                                </button>
+                              ) : null}
+                            </td>
+                          )}
                         </tr>
                       );
                     })
