@@ -560,6 +560,9 @@ export const SiswaCbtTab: React.FC = () => {
     setDenahModalOpen(true);
   };
 
+  // Random jitter 45-60 detik per klien agar polling 1,400+ siswa tersebar merata
+  const pollingIntervalMs = useMemo(() => 45000 + Math.floor(Math.random() * 15000), []);
+
   const {
     data: exams = [],
     isLoading,
@@ -570,8 +573,7 @@ export const SiswaCbtTab: React.FC = () => {
     queryKey: cbtQueryKeys.myExams(),
     queryFn: cbtApi.getMyExams,
     staleTime: 30000,
-    // Polling dengan interval 45 detik untuk menghindari thundering herd pada 1,400+ siswa
-    refetchInterval: 45000,
+    refetchInterval: pollingIntervalMs,
     // Cegah mobile wake-up stampede saat siswa HP mengunci/membuka layar
     refetchOnWindowFocus: false,
   });

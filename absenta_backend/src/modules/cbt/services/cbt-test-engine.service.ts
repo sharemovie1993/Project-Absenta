@@ -272,11 +272,18 @@ export class CbtTestEngineService {
     return data;
   }
 
-  /**
-   * Daftar jadwal ujian milik siswa (berdasarkan kelas siswa) beserta status & hasil pengerjaannya.
-   * Token ujian TIDAK pernah dikirim ke siswa — token tetap diumumkan oleh pengawas.
-   */
-  static async getMyExams(tenantId: string, siswaId: string) {
+  private static async getCachedSiswaClassProfile(tenantId: string, siswaId: string) {
+    const redis = getRedisConnection();
+    const redisKey = `cbt:${tenantId}:siswa-kelas:${siswaId}`;
+    if (redis) {
+      const cachedRaw = await redis.get(redisKey).catch(() => null);
+      if (cachedRaw) {
+        try {
+          return JSON.parse(cachedRaw);
+        } catch {}
+      }
+    }
+
     const siswa = await prisma.siswa.findFirst({
       where: { id: siswaId, tenant_id: tenantId },
       select: {
@@ -292,6 +299,19 @@ export class CbtTestEngineService {
         },
       },
     });
+
+    if (siswa && redis) {
+      await redis.set(redisKey, JSON.stringify(siswa), 'EX', 300).catch(() => null); // 5 menit
+    }
+    return siswa;
+  }
+
+  /**
+   * Daftar jadwal ujian milik siswa (berdasarkan kelas siswa) beserta status & hasil pengerjaannya.
+   * Token ujian TIDAK pernah dikirim ke siswa — token tetap diumumkan oleh pengawas.
+   */
+  static async getMyExams(tenantId: string, siswaId: string) {
+    const siswa = await CbtTestEngineService.getCachedSiswaClassProfile(tenantId, siswaId);
 
     if (!siswa) {
       throw new Error('Data siswa tidak ditemukan.');
