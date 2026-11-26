@@ -647,6 +647,269 @@ export class DashboardAttendanceStatsService {
       };
     });
   }
+
+  /**
+   * SSOT Leaderboard (Guru Terbaik & Siswa Terbaik) dan Galeri Foto Bukti KBM Hari Ini
+   * Terscope ke Konteks Akademik Aktif (Tahun Pelajaran & Semester Aktif).
+   */
+  async getAcademicScopedLeaderboardAndGallery(
+    tenantId: string,
+    options?: { startUTC?: Date; endUTC?: Date; tz?: string; limit?: number }
+  ) {
+    const limit = options?.limit || 5;
+    const tz = options?.tz || (await getTenantTimezone(tenantId));
+
+    const [activeTp, activeSem] = await Promise.all([
+      prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true, tahun: true },
+      }),
+      prisma.semester.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true, nama_semester: true },
+      }),
+    ]);
+
+    const academicContext = activeTp
+      ? `${activeTp.tahun}${activeSem ? ` (${activeSem.nama_semester})` : ''}`
+      : 'Konteks Aktif';
+
+    const sesiAcademicScope: any = {
+      ...(activeTp ? { tahun_pelajaran_id: activeTp.id } : {}),
+      ...(activeSem ? { semester_id: activeSem.id } : {}),
+    };
+
+    // ── 1. Leaderboard Guru Terbaik (Scoped TP & Semester Aktif) ──────────────
+    const guruGroup = await prisma.absenGuru.groupBy({
+      by: ['guru_id'],
+      where: {
+        tenant_id: tenantId,
+        status: 'HADIR',
+        ...sesiAcademicScope,
+      },
+      _sum: { poin_kehadiran: true },
+      _count: { id: true },
+      orderBy: [{ _sum: { poin_kehadiran: 'desc' } }, { _count: { id: 'desc' } }],
+      take: limit,
+    });
+
+    const guruIds = guruGroup.map((g) => g.guru_id);
+    const guruList =
+      guruIds.length > 0
+        ? await prisma.guru.findMany({
+            where: { id: { in: guruIds } },
+            select: { id: true, nama_guru: true, nip: true, foto: true },
+          })
+        : [];
+
+    const topTeachers = guruGroup.map((g, idx) => {
+      const info = guruList.find((item) => item.id === g.guru_id);
+      const poin = g._sum.poin_kehadiran || 0;
+      const sesi = g._count.id || 0;
+      return {
+        rank: idx + 1,
+        name: info?.nama_guru || 'Guru',
+        subtitle: info?.nip ? `NIP. ${info.nip}` : 'Tenaga Pendidik',
+        badge: `${poin} Poin • ${sesi} Sesi KBM`,
+        photoUrl: info?.foto || null,
+      };
+    });
+
+    // ── 2. Leaderboard Siswa Terbaik (Scoped TP & Semester Aktif) ─────────────
+    const siswaHadirGroup = await prisma.absenSiswa.groupBy({
+      by: ['siswa_id'],
+      where: {
+        tenant_id: tenantId,
+        status: 'HADIR',
+        ...(activeTp ? { SesiAbsensi: sesiAcademicScope } : {}),
+      },
+      _count: { id: true },
+      orderBy: { _count: { id: 'desc' } },
+      take: 25,
+    });
+
+    const candidateSiswaIds = siswaHadirGroup.map((s) => s.siswa_id).filter(Boolean);
+    let topStudents: Array<{
+      rank: number;
+      name: string;
+      subtitle: string;
+      badge: string;
+      photoUrl?: string | null;
+    }> = [];
+
+    if (candidateSiswaIds.length > 0) {
+      const [candidateDetails, alpaGroup, pelanggaranGroup, prestasiGroup] = await Promise.all([
+        prisma.siswa.findMany({
+          where: { id: { in: candidateSiswaIds }, status: 'AKTIF' },
+          select: {
+            id: true,
+            nama_siswa: true,
+            nis: true,
+            foto: true,
+            Kelas: { select: { nama_kelas: true } },
+            SiswaAkademik: activeTp
+              ? {
+                  where: sesiAcademicScope,
+                  select: { kelas: { select: { nama_kelas: true } } },
+                  take: 1,
+                }
+              : false,
+          },
+        }),
+        prisma.absenSiswa.groupBy({
+          by: ['siswa_id'],
+          where: {
+            tenant_id: tenantId,
+            siswa_id: { in: candidateSiswaIds },
+            status: 'ALPA',
+            ...(activeTp ? { SesiAbsensi: sesiAcademicScope } : {}),
+          },
+          _count: { id: true },
+        }),
+        prisma.pelanggaranSiswa.groupBy({
+          by: ['siswa_id'],
+          where: {
+            tenant_id: tenantId,
+            siswa_id: { in: candidateSiswaIds },
+            ...(activeTp ? { tahun_pelajaran_id: activeTp.id } : {}),
+          },
+          _sum: { poin: true },
+        }),
+        prisma.prestasiSiswa.groupBy({
+          by: ['siswa_id'],
+          where: {
+            tenant_id: tenantId,
+            siswa_id: { in: candidateSiswaIds },
+          },
+          _count: { id: true },
+        }),
+      ]);
+
+      const alpaMap = new Map<string, number>();
+      alpaGroup.forEach((a) => alpaMap.set(a.siswa_id, a._count.id));
+
+      const pelanggaranMap = new Map<string, number>();
+      pelanggaranGroup.forEach((p) => pelanggaranMap.set(p.siswa_id, p._sum.poin || 0));
+
+      const prestasiMap = new Map<string, number>();
+      prestasiGroup.forEach((pr) => prestasiMap.set(pr.siswa_id, pr._count.id));
+
+      const scoredStudents = siswaHadirGroup
+        .map((sh) => {
+          const detail = candidateDetails.find((d) => d.id === sh.siswa_id);
+          if (!detail) return null;
+          const hadirCount = sh._count.id || 0;
+          const alpaCount = alpaMap.get(sh.siswa_id) || 0;
+          const pelPoin = pelanggaranMap.get(sh.siswa_id) || 0;
+          const prestasiCount = prestasiMap.get(sh.siswa_id) || 0;
+          const score = hadirCount * 10 + prestasiCount * 50 - alpaCount * 30 - pelPoin * 2;
+          const kelasNama =
+            (Array.isArray(detail.SiswaAkademik) && detail.SiswaAkademik[0]?.kelas?.nama_kelas) ||
+            detail.Kelas?.nama_kelas ||
+            'Siswa';
+          return {
+            name: detail.nama_siswa,
+            subtitle: `${kelasNama} • NIS. ${detail.nis}`,
+            badge:
+              prestasiCount > 0
+                ? `${hadirCount} Sesi Hadir • ${prestasiCount} Prestasi`
+                : `${hadirCount} Sesi Hadir • 0 Pelanggaran`,
+            photoUrl: detail.foto || null,
+            score,
+            alpaCount,
+            pelPoin,
+          };
+        })
+        .filter((x): x is NonNullable<typeof x> => x !== null)
+        .sort((a, b) => {
+          if (a.alpaCount === 0 && b.alpaCount > 0) return -1;
+          if (b.alpaCount === 0 && a.alpaCount > 0) return 1;
+          return b.score - a.score;
+        })
+        .slice(0, limit);
+
+      topStudents = scoredStudents.map((s, idx) => ({
+        rank: idx + 1,
+        name: s.name,
+        subtitle: s.subtitle,
+        badge: s.badge,
+        photoUrl: s.photoUrl,
+      }));
+    }
+
+    // ── 3. Galeri Bukti KBM Hari Ini (foto_kegiatan dari SesiAbsensi) ─────────
+    const basePhotoWhere: any = {
+      tenant_id: tenantId,
+      foto_kegiatan: { not: null },
+      NOT: { foto_kegiatan: '' },
+      ...sesiAcademicScope,
+    };
+
+    const todayPhotoSessions =
+      options?.startUTC && options?.endUTC
+        ? await prisma.sesiAbsensi.findMany({
+            where: {
+              ...basePhotoWhere,
+              tanggal: { gte: options.startUTC, lte: options.endUTC },
+            },
+            include: {
+              Guru: { select: { nama_guru: true } },
+              GuruPelaksana: { select: { nama_guru: true } },
+              Kelas: { select: { nama_kelas: true } },
+              Mapel: { select: { nama_mapel: true } },
+            },
+            orderBy: { waktu_mulai: 'desc' },
+            take: 12,
+          })
+        : [];
+
+    let isToday = todayPhotoSessions.length > 0;
+    const rawGallerySessions =
+      todayPhotoSessions.length > 0
+        ? todayPhotoSessions
+        : await prisma.sesiAbsensi.findMany({
+            where: basePhotoWhere,
+            include: {
+              Guru: { select: { nama_guru: true } },
+              GuruPelaksana: { select: { nama_guru: true } },
+              Kelas: { select: { nama_kelas: true } },
+              Mapel: { select: { nama_mapel: true } },
+            },
+            orderBy: { waktu_mulai: 'desc' },
+            take: 8,
+          });
+
+    const galleryItems = rawGallerySessions
+      .filter((s) => Boolean(s.foto_kegiatan && s.foto_kegiatan.trim()))
+      .map((s) => ({
+        id: s.id,
+        photoUrl: s.foto_kegiatan!.trim(),
+        mapel: s.Mapel?.nama_mapel || s.jenis_kegiatan || 'KBM Kelas',
+        kelas: s.Kelas?.nama_kelas || 'Kelas',
+        guru: s.GuruPelaksana?.nama_guru || s.Guru?.nama_guru || 'Guru Pengajar',
+        waktu: s.waktu_mulai
+          ? new Date(s.waktu_mulai).toLocaleTimeString('id-ID', {
+              hour: '2-digit',
+              minute: '2-digit',
+              timeZone: tz,
+            })
+          : '-',
+        jurnal: s.keterangan || null,
+      }));
+
+    return {
+      leaderboard: {
+        academicContext,
+        topTeachers,
+        topStudents,
+      },
+      kbmGallery: {
+        isToday,
+        totalPhotosToday: todayPhotoSessions.length,
+        items: galleryItems,
+      },
+    };
+  }
 }
 
 function mapViolationStatusToEscalationStatus(status: string): string {

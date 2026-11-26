@@ -211,6 +211,29 @@ export class DailyBriefingService {
       lines.push(``);
     }
 
+    // Leaderboard Guru & Siswa Terbaik + Galeri Bukti KBM
+    if (
+      (data.leaderboard &&
+        (data.leaderboard.topTeachers.length > 0 || data.leaderboard.topStudents.length > 0)) ||
+      (data.kbmGallery && data.kbmGallery.items.length > 0)
+    ) {
+      lines.push(`🏆 *APRESIASI & DOKUMENTASI KBM*`);
+      if (data.leaderboard?.topTeachers?.[0]) {
+        const topG = data.leaderboard.topTeachers[0];
+        lines.push(`• Guru Terbaik: *${topG.name}* (${topG.badge})`);
+      }
+      if (data.leaderboard?.topStudents?.[0]) {
+        const topS = data.leaderboard.topStudents[0];
+        lines.push(`• Siswa Terbaik: *${topS.name}* (${topS.subtitle} • ${topS.badge})`);
+      }
+      if (data.kbmGallery && data.kbmGallery.items.length > 0) {
+        lines.push(
+          `• Galeri Bukti KBM: *${data.kbmGallery.items.length} Foto Kegiatan* terlampir di tautan laporan`
+        );
+      }
+      lines.push(``);
+    }
+
     // Tautan Akses Laporan Ber-token
     lines.push(`🔗 *Laporan Lengkap & Rekapitulasi Divisi:*`);
     lines.push(`${tokenUrl}`);

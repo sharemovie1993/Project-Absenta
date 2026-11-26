@@ -43,6 +43,24 @@ export interface BriefingSection {
   items?: BriefingSectionItem[];
 }
 
+export interface BriefingLeaderboardPerson {
+  rank: number;
+  name: string;
+  subtitle: string;
+  badge: string;
+  photoUrl?: string | null;
+}
+
+export interface BriefingKbmGalleryItem {
+  id: string;
+  photoUrl: string;
+  mapel: string;
+  kelas: string;
+  guru: string;
+  waktu: string;
+  jurnal?: string | null;
+}
+
 export interface UniversalBriefingData {
   title: string;
   role: string;
@@ -66,6 +84,16 @@ export interface UniversalBriefingData {
   metrics: BriefingMetricItem[];
   highlights: string[];
   sections: BriefingSection[];
+  leaderboard?: {
+    academicContext: string;
+    topTeachers: BriefingLeaderboardPerson[];
+    topStudents: BriefingLeaderboardPerson[];
+  };
+  kbmGallery?: {
+    isToday: boolean;
+    totalPhotosToday: number;
+    items: BriefingKbmGalleryItem[];
+  };
 }
 
 export interface DailyBriefingResponse {

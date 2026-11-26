@@ -21,6 +21,7 @@ import { CbtSettingsService } from '@/modules/cbt/services/cbt-settings.service'
 import { guruRekapService } from '@/modules/attendance/rekap/services/guru-rekap.service';
 import { PelanggaranService } from '@/modules/kesiswaan/services/pelanggaran.service';
 import { ketarunaanPenilaianService } from '@/modules/kesiswaan/program-ketarunaan/services/ketarunaan-penilaian.service';
+import { DashboardAttendanceStatsService } from '@/modules/dashboard/services/sub/dashboard-attendance-stats.service';
 
 export class KepsekBriefingCollector implements IBriefingCollector {
   async collect(
@@ -739,6 +740,21 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       });
     }
 
+    // ── 11b. Leaderboard (Guru Terbaik & Siswa Terbaik) & Galeri Bukti KBM Hari Ini (SSOT)
+    let leaderboardData: UniversalBriefingData['leaderboard'] = undefined;
+    let kbmGalleryData: UniversalBriefingData['kbmGallery'] = undefined;
+    try {
+      const attendanceStatsService = new DashboardAttendanceStatsService();
+      const lbAndGallery = await attendanceStatsService.getAcademicScopedLeaderboardAndGallery(
+        tenantId,
+        { startUTC, endUTC, tz, limit: 5 }
+      );
+      leaderboardData = lbAndGallery.leaderboard;
+      kbmGalleryData = lbAndGallery.kbmGallery;
+    } catch (err) {
+      console.warn('[Briefing:LeaderboardGallery] Error querying leaderboard & KBM gallery:', err);
+    }
+
     const expiresAt = new Date(Date.now() + 48 * 3600 * 1000).toISOString();
 
     return {
@@ -760,6 +776,8 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       metrics,
       highlights,
       sections,
+      leaderboard: leaderboardData,
+      kbmGallery: kbmGalleryData,
     };
   }
 }

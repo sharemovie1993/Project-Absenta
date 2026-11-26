@@ -34,13 +34,16 @@ import {
   Activity,
   Share2,
   Check,
+  Trophy,
+  Camera,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 import {
   getDailyBriefingByToken,
   type UniversalBriefingData,
   type BriefingMetricItem,
   type BriefingSection,
+  type BriefingKbmGalleryItem,
 } from '@/api/dailyBriefing.api';
 import { Loader } from '@/components/ui/Loader';
 import { Button } from '@/components/ui';
@@ -91,6 +94,7 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
   });
 
   const [copied, setCopied] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<BriefingKbmGalleryItem | null>(null);
 
   const toggleSection = (id: string) => {
     setOpenSections((prev) => ({
@@ -565,6 +569,213 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
           );
         })}
       </div>
+
+      {/* ── 4b. LEADERBOARD GURU TERBAIK & SISWA TERBAIK ── */}
+      {briefing.leaderboard &&
+        (briefing.leaderboard.topTeachers.length > 0 || briefing.leaderboard.topStudents.length > 0) && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+                <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                Leaderboard Apresiasi Kedisiplinan ({briefing.leaderboard.academicContext})
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Top Guru */}
+              <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+                  <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
+                    <Trophy className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Guru Terbaik (Kedisiplinan KBM)</h4>
+                    <p className="text-[11px] text-slate-500">Berdasarkan poin kehadiran &amp; ketepatan sesi mengajar</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {briefing.leaderboard.topTeachers.length === 0 ? (
+                    <p className="text-xs text-slate-400 py-4 text-center">Belum ada data peringkat guru.</p>
+                  ) : (
+                    briefing.leaderboard.topTeachers.map((t) => (
+                      <div
+                        key={t.rank}
+                        className="flex items-center justify-between gap-2.5 p-2.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span
+                            className={cn(
+                              'w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0',
+                              t.rank === 1
+                                ? 'bg-amber-400 text-amber-950'
+                                : t.rank === 2
+                                ? 'bg-slate-300 text-slate-800'
+                                : t.rank === 3
+                                ? 'bg-amber-700/80 text-white'
+                                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                            )}
+                          >
+                            {t.rank}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{t.name}</p>
+                            <p className="text-[10px] text-slate-500 truncate">{t.subtitle}</p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 shrink-0">
+                          {t.badge}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Top Siswa */}
+              <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+                  <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
+                    <GraduationCap className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Siswa Terbaik (Kehadiran &amp; Prestasi)</h4>
+                    <p className="text-[11px] text-slate-500">Kehadiran sesi KBM tertinggi tanpa catatan alpa/pelanggaran</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {briefing.leaderboard.topStudents.length === 0 ? (
+                    <p className="text-xs text-slate-400 py-4 text-center">Belum ada data peringkat siswa.</p>
+                  ) : (
+                    briefing.leaderboard.topStudents.map((s) => (
+                      <div
+                        key={s.rank}
+                        className="flex items-center justify-between gap-2.5 p-2.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span
+                            className={cn(
+                              'w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0',
+                              s.rank === 1
+                                ? 'bg-amber-400 text-amber-950'
+                                : s.rank === 2
+                                ? 'bg-slate-300 text-slate-800'
+                                : s.rank === 3
+                                ? 'bg-amber-700/80 text-white'
+                                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                            )}
+                          >
+                            {s.rank}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{s.name}</p>
+                            <p className="text-[10px] text-slate-500 truncate">{s.subtitle}</p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 shrink-0">
+                          {s.badge}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+      {/* ── 4c. GALERI BUKTI KBM HARI INI (FOTO KEGIATAN SESI KBM) ── */}
+      {briefing.kbmGallery && briefing.kbmGallery.items.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+              <Camera className="w-3.5 h-3.5 text-indigo-500" />
+              Galeri Dokumentasi &amp; Bukti KBM ({briefing.kbmGallery.isToday ? 'Hari Ini' : 'Terbaru Semester Ini'})
+            </h3>
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+              {briefing.kbmGallery.items.length} Foto Sesi KBM
+            </span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {briefing.kbmGallery.items.map((photo) => (
+              <button
+                key={photo.id}
+                type="button"
+                onClick={() => setSelectedPhoto(photo)}
+                className="group text-left rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col"
+              >
+                <div className="relative aspect-video w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                  <img
+                    src={resolveProfilePhotoUrl(photo.photoUrl)}
+                    alt={`${photo.mapel} - ${photo.kelas}`}
+                    loading="lazy"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-slate-900/75 text-white text-[10px] font-bold backdrop-blur-xs">
+                    {photo.kelas}
+                  </span>
+                  <span className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/60 text-white text-[9px] font-mono">
+                    {photo.waktu}
+                  </span>
+                </div>
+                <div className="p-2.5 flex-1 flex flex-col justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{photo.mapel}</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">{photo.guru}</p>
+                  </div>
+                  {photo.jurnal && (
+                    <p className="text-[10px] text-slate-400 italic truncate mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800">
+                      &ldquo;{photo.jurnal}&rdquo;
+                    </p>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox Modal untuk Foto Bukti KBM */}
+      {selectedPhoto && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 print:hidden"
+          onClick={() => setSelectedPhoto(null)}
+        >
+          <div
+            className="relative max-w-3xl w-full bg-white dark:bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-3.5 border-b border-slate-100 dark:border-slate-800">
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                  {selectedPhoto.mapel} — {selectedPhoto.kelas}
+                </h4>
+                <p className="text-xs text-slate-500">
+                  {selectedPhoto.guru} • Pukul {selectedPhoto.waktu}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedPhoto(null)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="bg-black flex items-center justify-center max-h-[70vh] overflow-hidden">
+              <img
+                src={resolveProfilePhotoUrl(selectedPhoto.photoUrl)}
+                alt={selectedPhoto.mapel}
+                className="max-h-[70vh] w-auto object-contain"
+              />
+            </div>
+            {selectedPhoto.jurnal && (
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 text-xs text-slate-700 dark:text-slate-300">
+                <span className="font-bold">Catatan Jurnal KBM: </span>
+                {selectedPhoto.jurnal}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── 5. FOOTER RESMI & MASA BERLAKU ── */}
       <div className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center text-[11px] text-slate-500 dark:text-slate-400 space-y-1 print:border-none print:bg-none">
