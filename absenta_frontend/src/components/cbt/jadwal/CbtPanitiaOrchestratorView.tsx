@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, Suspense, lazy } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   useKelasOptions,
   useTahunPelajaranOptions,
@@ -78,6 +78,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
   onOpenSettings,
 }) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const tenantId = user?.tenant_id;
   const { mode, eventName, isOrkestrasi, isMandiri, targetTingkat: localTargetTingkat } = useCbtOperationMode();
@@ -224,6 +225,16 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
   // ── 2. State Ploting Ruang ke Kelas (Kelas-Centrik R.01 - R.n & Terintegrasi Denah Spasial) ──
   const [roomMappings, setRoomMappings] = useState<KelasRoomMapping[]>([]);
   const isRoomInitializedRef = useRef(false);
+  const prevEventIdRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    const currentId = activeEvent?.id;
+    if (!currentId) return;
+    if (prevEventIdRef.current && prevEventIdRef.current !== currentId) {
+      queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false });
+    }
+    prevEventIdRef.current = currentId;
+  }, [activeEvent?.id, queryClient]);
 
   useEffect(() => {
     isRoomInitializedRef.current = false;
@@ -758,6 +769,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
       {/* ── Satukan Flight Deck + Toolbar ke dalam 1 Ruang Utuh pada Fase 1 & 2 ── */}
       {activeTab === 'fase_1_soal' && (
         <CbtBankSoalReadinessPanel
+          key={activeEvent?.id || 'default'}
           topFlightDeck={flightDeckNode}
           bankList={rawBankList}
           activeTpId={effectiveTpId}
@@ -772,6 +784,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
 
       {activeTab === 'fase_2_ruang' && (
         <CbtKelasRoomTreePanel
+          key={activeEvent?.id || 'default'}
           topFlightDeck={flightDeckNode}
           kelasList={scopedKelasList}
           roomMappings={roomMappings}
@@ -789,6 +802,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
 
       {activeTab === 'fase_3_jadwal' && (
         <CbtTimetableMatrixPanel
+          key={activeEvent?.id || 'default'}
           topFlightDeck={flightDeckNode}
           bankList={rawBankList}
           rawGuruMapel={rawGuruMapel}
@@ -811,6 +825,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
 
       {activeTab === 'fase_4_pengawas' && (
         <CbtPengawasMatrixPanel
+          key={activeEvent?.id || 'default'}
           topFlightDeck={flightDeckNode}
           jadwalList={jadwalList}
           guruList={guruList}
@@ -825,6 +840,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
 
       {activeTab === 'fase_5_monitor' && (
         <CbtPanitiaLiveCommandPanel
+          key={activeEvent?.id || 'default'}
           topFlightDeck={flightDeckNode}
           jadwalList={jadwalList}
           isLoadingJadwal={isLoadingJadwal}
