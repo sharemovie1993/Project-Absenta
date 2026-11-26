@@ -28,6 +28,7 @@ import { CbtSharedDistributionModal } from './CbtSharedDistributionModal';
 
 interface TeacherCbtDutyCardProps {
   guruId?: string;
+  overrideEvent?: any;
   variant?: 'detailed' | 'compact';
   onNavigateToCbt?: () => void;
   onCreateBankSoal?: (mapelId: string, tingkatRoman: string, jurusan?: string) => void;
@@ -37,6 +38,7 @@ interface TeacherCbtDutyCardProps {
 
 export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
   guruId,
+  overrideEvent,
   variant = 'detailed',
   onNavigateToCbt,
   onCreateBankSoal,
@@ -60,7 +62,7 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
     hasNoDuties,
     items,
     pendingJurusanSummary,
-  } = useTeacherCbtDutyStatus(guruId);
+  } = useTeacherCbtDutyStatus(guruId, overrideEvent);
 
   // Ambil nama lengkap guru yang login/ditugaskan
   const isCurrentUser = Boolean(!guruId || guruId === user?.guru_profile?.id || guruId === user?.id);

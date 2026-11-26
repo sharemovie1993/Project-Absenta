@@ -595,6 +595,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
       {!isPanitiaCbt && (
         <TeacherCbtDutyCard
           guruId={currentGuruId}
+          overrideEvent={viewedEvent}
           variant="detailed"
           onCreateBankSoal={(mId, tRoman, jur) => {
             setSelectedBankSoal(null);
