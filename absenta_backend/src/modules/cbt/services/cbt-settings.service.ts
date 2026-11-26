@@ -295,6 +295,104 @@ export class CbtSettingsService {
     return summary.active_event;
   }
 
+  /**
+   * SSOT Progres Event CBT & Pengumpulan Bank Soal terscope ke Konteks Akademik Aktif.
+   * Menggunakan CbtSettingsService.getActiveEvent sebagai SSOT event aktif per TP & Semester.
+   */
+  static async getAcademicScopedEventProgress(tenantId: string) {
+    const [activeEvent, activeTp, activeSem] = await Promise.all([
+      this.getActiveEvent(tenantId),
+      prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true, tahun: true },
+      }),
+      prisma.semester.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true, nama_semester: true },
+      }),
+    ]);
+
+    const bankWhere: any = {
+      tenant_id: tenantId,
+      status: { not: 'ARCHIVED' },
+    };
+
+    if (activeEvent?.tahun_pelajaran_id || activeTp?.id) {
+      bankWhere.tahun_pelajaran_id = activeEvent?.tahun_pelajaran_id || activeTp?.id;
+    }
+    if (activeSem?.id) {
+      bankWhere.OR = [{ semester_id: activeSem.id }, { semester_id: null }];
+    }
+    if (activeEvent?.id) {
+      bankWhere.event_id = activeEvent.id;
+    }
+
+    const [bankList, jadwalList] = await Promise.all([
+      prisma.cbtBankSoal.findMany({
+        where: bankWhere,
+        select: {
+          id: true,
+          status: true,
+          jumlah_soal: true,
+          _count: { select: { Soal: true } },
+        },
+      }),
+      activeTp?.id && activeSem?.id
+        ? prisma.cbtJadwalUjian.findMany({
+            where: {
+              tenant_id: tenantId,
+              tahun_pelajaran_id: activeTp.id,
+              semester_id: activeSem.id,
+              ...(activeEvent?.id ? { BankSoal: { event_id: activeEvent.id } } : {}),
+            },
+            select: { id: true, status: true },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    let totalBank = bankList.length;
+    let bankTerisiSoal = 0;
+    let bankPublished = 0;
+    let totalSoal = 0;
+
+    for (const b of bankList) {
+      const soalCount = Math.max(b.jumlah_soal || 0, b._count?.Soal || 0);
+      totalSoal += soalCount;
+      if (soalCount > 0) bankTerisiSoal++;
+      if (b.status === 'PUBLISHED') bankPublished++;
+    }
+
+    const jadwalTotal = jadwalList.length;
+    const jadwalAktif = jadwalList.filter((j) => j.status === 'AKTIF').length;
+
+    const progresPengumpulanPct =
+      totalBank > 0 ? Math.round((bankTerisiSoal / totalBank) * 100) : 0;
+    const progresPublikasiPct =
+      totalBank > 0 ? Math.round((bankPublished / totalBank) * 100) : 0;
+
+    return {
+      academicContext: activeTp
+        ? `${activeTp.tahun}${activeSem ? ` (${activeSem.nama_semester})` : ''}`
+        : 'Konteks Aktif',
+      activeEvent: activeEvent
+        ? {
+            id: activeEvent.id,
+            nama_event: activeEvent.nama_event,
+            kode_event: activeEvent.kode_event,
+            semester: activeEvent.semester,
+          }
+        : null,
+      totalBank,
+      bankTerisiSoal,
+      bankPublished,
+      totalSoal,
+      jadwalTotal,
+      jadwalAktif,
+      progresPengumpulanPct,
+      progresPublikasiPct,
+    };
+  }
+
   static async upsertEvent(tenantId: string, payload: Partial<CbtEventItem>) {
     const dbEvents = await prisma.cbtEvent.findMany({
       where: { tenant_id: tenantId },

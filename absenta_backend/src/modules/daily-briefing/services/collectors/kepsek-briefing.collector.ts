@@ -17,6 +17,7 @@ import { IBriefingCollector } from './briefing-collector.interface';
 import { UniversalBriefingData, BriefingMetricItem, BriefingSection } from '../../types/briefing.types';
 import { BpbkAnalyticsService } from '@/modules/bpbk/services/sub/bpbk-analytics.service';
 import { NilaiMonitoringService } from '@/modules/rapor/services/sub/nilai-monitoring.service';
+import { CbtSettingsService } from '@/modules/cbt/services/cbt-settings.service';
 
 export class KepsekBriefingCollector implements IBriefingCollector {
   async collect(
@@ -476,35 +477,13 @@ export class KepsekBriefingCollector implements IBriefingCollector {
     const sidangDenominator = pklSidangScheduled > 0 ? pklSidangScheduled : totalPklAll;
     const progresSidangPklPct = sidangDenominator > 0 ? Math.round((pklSidangTerisi / sidangDenominator) * 100) : 0;
 
-    // ── 7c. Kurikulum: Event CBT Aktif & Progres Pengumpulan Soal ─────────────
-    let activeCbtEvents: Array<{ nama_event: string; kode_event: string; semester: string }> = [];
-    let cbtTotalBank = 0;
-    let cbtSiapBank = 0;
-    let cbtTotalSoal = 0;
+    // ── 7c. Kurikulum: Event CBT Aktif & Pengumpulan Soal (SSOT via CbtSettingsService)
+    let cbtProgress: Awaited<ReturnType<typeof CbtSettingsService.getAcademicScopedEventProgress>> | null = null;
     try {
-      activeCbtEvents = await prisma.cbtEvent.findMany({
-        where: { tenant_id: tenantId, is_active: true },
-        select: { nama_event: true, kode_event: true, semester: true },
-      });
-
-      const bankWhere: any = { tenant_id: tenantId };
-      if (activeTp?.id) bankWhere.tahun_pelajaran_id = activeTp.id;
-
-      const bankList = await prisma.cbtBankSoal.findMany({
-        where: bankWhere,
-        select: { status: true, jumlah_soal: true },
-      });
-      cbtTotalBank = bankList.length;
-      for (const b of bankList) {
-        cbtTotalSoal += b.jumlah_soal || 0;
-        if ((b.jumlah_soal || 0) > 0 && b.status !== 'ARCHIVED') {
-          cbtSiapBank++;
-        }
-      }
+      cbtProgress = await CbtSettingsService.getAcademicScopedEventProgress(tenantId);
     } catch (err) {
-      console.warn('[Briefing:CBT] Error querying CBT progress:', err);
+      console.warn('[Briefing:CBT] Error querying SSOT CBT progress:', err);
     }
-    const cbtProgressPct = cbtTotalBank > 0 ? Math.round((cbtSiapBank / cbtTotalBank) * 100) : 0;
 
     // ── 7d. Fase Penilaian KBM & Rapor (SSOT via NilaiMonitoringService, Scoped TP & Semester Aktif)
     let raporReadiness: Awaited<ReturnType<typeof NilaiMonitoringService.getAcademicScopedRaporReadiness>> | null = null;
@@ -763,27 +742,37 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       items: kurikulumItems.length > 0 ? kurikulumItems : undefined,
     });
 
-    // SEKSI 3b: EVENT CBT & PENGUMPULAN SOAL
-    if (activeCbtEvents.length > 0 || cbtTotalBank > 0) {
+    // SEKSI 3b: EVENT CBT & PENGUMPULAN SOAL (SSOT)
+    if (cbtProgress && (cbtProgress.activeEvent || cbtProgress.totalBank > 0)) {
       sections.push({
         id: 'cbt_kurikulum',
         title: 'Event CBT & Progres Pengumpulan Soal',
         category: 'Kurikulum • CBT',
-        badge: activeCbtEvents.length > 0 ? `${activeCbtEvents.length} Event Aktif` : `${cbtTotalBank} Bank Soal`,
-        summary: activeCbtEvents.length > 0
-          ? `Event CBT aktif: ${activeCbtEvents.map(e => e.nama_event).join(', ')}. Kesiapan bank soal mencapai ${cbtProgressPct}% (${cbtSiapBank}/${cbtTotalBank} bank siap, ${cbtTotalSoal} butir soal).`
-          : `Terdapat ${cbtTotalBank} bank soal terdaftar dengan ${cbtTotalSoal} butir soal terkumpul.`,
+        badge: cbtProgress.activeEvent
+          ? `${cbtProgress.activeEvent.kode_event} (${cbtProgress.progresPengumpulanPct}%)`
+          : `${cbtProgress.totalBank} Bank Soal`,
+        summary: cbtProgress.activeEvent
+          ? `Konteks ${cbtProgress.academicContext} — Event Aktif: ${cbtProgress.activeEvent.nama_event}. Pengumpulan soal mencapai ${cbtProgress.progresPengumpulanPct}% (${cbtProgress.bankTerisiSoal}/${cbtProgress.totalBank} bank soal terisi, ${cbtProgress.bankPublished} published, total ${cbtProgress.totalSoal} butir soal).`
+          : `Terdapat ${cbtProgress.totalBank} bank soal terdaftar dengan ${cbtProgress.totalSoal} butir soal terkumpul.`,
         stats: [
-          { label: 'Event CBT Aktif', value: activeCbtEvents.length },
-          { label: 'Bank Soal Siap', value: `${cbtSiapBank} / ${cbtTotalBank}` },
-          { label: 'Total Butir Soal', value: cbtTotalSoal },
+          { label: 'Event CBT Aktif', value: cbtProgress.activeEvent ? cbtProgress.activeEvent.kode_event : 'Tidak Ada' },
+          { label: 'Bank Soal Terisi', value: `${cbtProgress.bankTerisiSoal} / ${cbtProgress.totalBank}` },
+          { label: 'Bank Published', value: `${cbtProgress.bankPublished} / ${cbtProgress.totalBank}` },
+          { label: 'Total Butir Soal', value: cbtProgress.totalSoal },
+          { label: 'Sesi Ujian Aktif', value: `${cbtProgress.jadwalAktif} / ${cbtProgress.jadwalTotal}` },
         ],
         progressBars: [
           {
-            label: 'Progres Pengumpulan Soal CBT',
-            value: cbtProgressPct,
-            detail: `${cbtSiapBank} dari ${cbtTotalBank} Bank Soal terisi (${cbtTotalSoal} soal)`,
-            color: cbtProgressPct >= 90 ? 'emerald' : cbtProgressPct >= 60 ? 'indigo' : 'amber',
+            label: 'Progres Pengumpulan Bank Soal CBT',
+            value: cbtProgress.progresPengumpulanPct,
+            detail: `${cbtProgress.bankTerisiSoal} / ${cbtProgress.totalBank} Bank Soal Terisi (${cbtProgress.totalSoal} butir soal)`,
+            color: cbtProgress.progresPengumpulanPct >= 90 ? 'emerald' : cbtProgress.progresPengumpulanPct >= 60 ? 'indigo' : 'amber',
+          },
+          {
+            label: 'Kesiapan Publikasi Bank Soal (Siap Ujian)',
+            value: cbtProgress.progresPublikasiPct,
+            detail: `${cbtProgress.bankPublished} / ${cbtProgress.totalBank} Bank Soal Berstatus PUBLISHED`,
+            color: cbtProgress.progresPublikasiPct >= 90 ? 'emerald' : 'blue',
           },
         ],
       });

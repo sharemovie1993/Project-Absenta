@@ -29,7 +29,7 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { getJadwalKegiatan } from '@/api/attendance/jadwalKegiatan.api';
-import { tapSiswaSesi } from '@/api/attendanceGerbang.api';
+import { tapSiswaKeSesi } from '@/api/attendanceGerbang.api';
 import { Button, PersonPhoto } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { 
@@ -187,7 +187,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
     ) {
       try {
         setIsRecordingDaringPresence(true);
-        await tapSiswaSesi(String(effectiveSesiIdForTap), {
+        await tapSiswaKeSesi(String(effectiveSesiIdForTap), {
           status: 'HADIR',
           catatan: 'Hadir Ruang KBM Daring'
         });
