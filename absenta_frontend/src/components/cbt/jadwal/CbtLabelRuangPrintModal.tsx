@@ -120,11 +120,12 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
   const [showLogoSekolah, setShowLogoSekolah] = useState<boolean>(true);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
 
-  // State nama event & tahun pelajaran yang dapat diedit langsung oleh panitia
+  // State nama event, tahun pelajaran, & judul label ruang yang dapat diedit langsung oleh panitia
   const [customEventName, setCustomEventName] = useState<string>(resolvedEventName);
   const [customTpText, setCustomTpText] = useState<string>(() =>
     formatLabelRuangTp(resolvedTpName, resolvedSemester)
   );
+  const [customRoomTitle, setCustomRoomTitle] = useState<string>('RUANG UJIAN');
 
   const { tenantInfo, rawSekolah } = usePrintHeaderData();
   const sekolah = (rawSekolah || {}) as any;
@@ -300,6 +301,20 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
             />
           </div>
 
+          {/* Input Edit Judul Label Ruang Ujian (Custom) */}
+          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-1 rounded-lg">
+            <Edit3 size={12} className="text-indigo-600 shrink-0" />
+            <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">Label Ruang:</span>
+            <input
+              type="text"
+              value={customRoomTitle}
+              onChange={(e) => setCustomRoomTitle(e.target.value)}
+              placeholder="RUANG UJIAN..."
+              aria-label="Edit judul label ruang ujian"
+              className="text-xs font-bold bg-transparent text-slate-800 dark:text-slate-100 focus:outline-hidden w-32 sm:w-40"
+            />
+          </div>
+
           {/* Filter Ruang Dropdown */}
           <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-1 rounded-lg">
             <Filter size={12} className="text-slate-400" />
@@ -359,10 +374,12 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
                     )}
                   </div>
 
-                  {/* Judul: RUANG UJIAN (Cukup judul tegas) */}
-                  <h2 className="text-2xl sm:text-3xl font-black tracking-widest uppercase text-slate-900 mb-2">
-                    RUANG UJIAN
-                  </h2>
+                  {/* Judul Label Ruang (Default: RUANG UJIAN, dapat diedit custom dari toolbar) */}
+                  {customRoomTitle.trim() && (
+                    <h2 className="text-2xl sm:text-3xl font-black tracking-widest uppercase text-slate-900 mb-2">
+                      {customRoomTitle}
+                    </h2>
+                  )}
 
                   {/* KODE RUANG (R.05 / R.01) - TYPOGRAPHY RAKSASA & FOKUS */}
                   <div className="my-1 sm:my-2">
