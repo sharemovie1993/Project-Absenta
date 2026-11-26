@@ -374,6 +374,42 @@ export const CooperativeProfileForm = React.memo<CooperativeProfileFormProps>(({
               </div>
             )}
           </div>
+
+          {/* Toggle 3: Tampilkan Kartu Estimasi Dividen SHU di Dashboard Anggota */}
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 space-y-1.5">
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                  Tampilkan Kartu Estimasi Dividen SHU
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Menampilkan atau menyembunyikan kartu analitik <strong>Estimasi Dividen SHU</strong> pada ringkasan Dashboard Anggota Koperasi.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={!canEditProfile}
+                onClick={() =>
+                  onToggleChange?.(
+                    'cooperative_show_member_shu_estimate',
+                    formData.cooperative_show_member_shu_estimate === 'false' ? 'true' : 'false'
+                  )
+                }
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 shrink-0 ${
+                  formData.cooperative_show_member_shu_estimate !== 'false'
+                    ? 'bg-indigo-600'
+                    : 'bg-slate-300 dark:bg-slate-700'
+                } ${!canEditProfile ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                aria-checked={formData.cooperative_show_member_shu_estimate !== 'false'}
+                role="switch"
+                aria-label="Tampilkan Kartu Estimasi Dividen SHU"
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform duration-200 ${
+                  formData.cooperative_show_member_shu_estimate !== 'false' ? 'translate-x-6' : 'translate-x-1'
+                }`} />
+              </button>
+            </div>
+          </div>
         </div>
         {/* ─────────────────────────────────────────────────────────────────────────── */}
 

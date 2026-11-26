@@ -13,6 +13,8 @@ export interface CooperativeSettings {
   cooperative_loan_min_membership_months?: string;
   /** Wajib lunas simpanan pokok sebelum boleh mengajukan pinjaman */
   cooperative_loan_require_simpanan_pokok?: string; // 'true' | 'false'
+  /** Tampilkan kartu Estimasi Dividen SHU pada Dashboard Anggota */
+  cooperative_show_member_shu_estimate?: string; // 'true' | 'false'
 }
 
 export interface SavingCategory {

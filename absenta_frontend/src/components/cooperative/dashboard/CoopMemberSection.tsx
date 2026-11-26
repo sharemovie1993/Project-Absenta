@@ -106,6 +106,7 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
   // SHU Dividend Projections
   const estimatedShu = memberSummary?.myShuEstimate?.estimatedAmount ?? myShuSum;
   const shuYear = memberSummary?.myShuEstimate?.periodYear ?? new Date().getFullYear();
+  const showShuEstimate = memberSummary?.myShuEstimate?.showEstimate !== false;
 
   // Purchases Breakdown
   const purchasesList = useMemo(() => salesHistory ?? [], [salesHistory]);
@@ -218,8 +219,8 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
             </div>
           )}
 
-          {/* 3. Tiga Kartu Metrik Finansial Utama */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6 w-full max-w-full min-w-0">
+          {/* 3. Kartu Metrik Finansial Utama */}
+          <div className={`grid grid-cols-1 ${showShuEstimate ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-3 sm:gap-6 w-full max-w-full min-w-0`}>
             <AnalyticsCard 
               title="Total Simpanan Saya" 
               value={`Rp ${totalSavings.toLocaleString('id-ID')}`} 
@@ -252,14 +253,16 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
               />
             )}
 
-            <AnalyticsCard 
-              title="Estimasi Dividen SHU" 
-              value={`Rp ${estimatedShu.toLocaleString('id-ID')}`} 
-              icon={<Award size={24} />} 
-              gradient="from-indigo-600 to-purple-700 text-white border-indigo-400/30" 
-              subtitle={`Proyeksi SHU Tahun Buku ${shuYear}`}
-              mobileCompact={true}
-            />
+            {showShuEstimate && (
+              <AnalyticsCard 
+                title="Estimasi Dividen SHU" 
+                value={`Rp ${estimatedShu.toLocaleString('id-ID')}`} 
+                icon={<Award size={24} />} 
+                gradient="from-indigo-600 to-purple-700 text-white border-indigo-400/30" 
+                subtitle={`Proyeksi SHU Tahun Buku ${shuYear}`}
+                mobileCompact={true}
+              />
+            )}
           </div>
 
           {/* Rincian Komponen Simpanan (Zero Truncation Breakdown) */}

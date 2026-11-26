@@ -87,6 +87,7 @@ const Settings: React.FC<SettingsProps> = React.memo(({ hideLayout = false }) =>
     cooperative_loan_min_membership_enabled: 'false',
     cooperative_loan_min_membership_months: '3',
     cooperative_loan_require_simpanan_pokok: 'true',
+    cooperative_show_member_shu_estimate: 'true',
   });
 
   // Category Modal State

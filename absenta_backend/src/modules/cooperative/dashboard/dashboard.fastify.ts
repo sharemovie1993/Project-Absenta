@@ -694,11 +694,17 @@ export default async function dashboardRoutes(fastify: any) {
                 }
             });
 
-            // Estimasi Dividen SHU Personal Berjalan (Aware terhadap Pengaturan SHU Koperasi / ShuConfig)
+            // Estimasi Dividen SHU Personal Berjalan (Aware terhadap Pengaturan SHU Koperasi / ShuConfig & Visibilitas Kartu)
             const { ShuService } = await import('../shu/shu.service');
-            const liveEst: any = await ShuService.getLiveEstimation(tenantId, userId).catch(() => null);
-            const currentYear = liveEst?.year || now.getFullYear();
-            const estimatedShu = liveEst?.enabled ? Number(liveEst?.estimatedTotalShu || 0) : 0;
+            const [liveEst, shuCardConfig] = await Promise.all([
+                ShuService.getLiveEstimation(tenantId, userId).catch(() => null),
+                prisma.config.findFirst({
+                    where: { tenant_id: tenantId, key: 'cooperative_show_member_shu_estimate' }
+                })
+            ]);
+            const currentYear = (liveEst as any)?.year || now.getFullYear();
+            const estimatedShu = (liveEst as any)?.enabled ? Number((liveEst as any)?.estimatedTotalShu || 0) : 0;
+            const showShuEstimate = shuCardConfig?.value !== 'false';
 
             const data = {
                 isMember: true,
@@ -734,7 +740,8 @@ export default async function dashboardRoutes(fastify: any) {
                 },
                 myShuEstimate: {
                     estimatedAmount: estimatedShu,
-                    periodYear: currentYear
+                    periodYear: currentYear,
+                    showEstimate: showShuEstimate
                 },
                 recentPurchases: recentSales.map(s => ({
                     id: s.id,
