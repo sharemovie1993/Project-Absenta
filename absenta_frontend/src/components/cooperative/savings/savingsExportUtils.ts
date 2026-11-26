@@ -896,7 +896,10 @@ export const exportAllSavingsPdf = async (saving: Saving, savingsList: Saving[],
 
   const toastId = toast.loading('Menyiapkan rekap buku tabungan...');
   try {
-    const memberSavings = savingsList.filter(s => s.member.memberNo === saving.member.memberNo);
+    const targetMemberNo = saving?.member?.memberNo;
+    const memberSavings = targetMemberNo
+      ? savingsList.filter((s) => !s.member?.memberNo || s.member.memberNo === targetMemberNo)
+      : savingsList;
 
     if (memberSavings.length === 0) {
       toast.error('Tidak ada rekening simpanan ditemukan untuk anggota ini.', { id: toastId });
@@ -955,8 +958,8 @@ export const exportAllSavingsPdf = async (saving: Saving, savingsList: Saving[],
 
     doc.setFont('Helvetica', 'bold');
     doc.setTextColor(15, 23, 42);
-    doc.text(saving.member.name.toUpperCase(), 45, startY + 6);
-    doc.text(saving.member.memberNo, 45, startY + 12);
+    doc.text((saving?.member?.name || 'ANGGOTA KOPERASI').toUpperCase(), 45, startY + 6);
+    doc.text(saving?.member?.memberNo || '-', 45, startY + 12);
 
     doc.setFont('Helvetica', 'bold');
     doc.setTextColor(71, 85, 105);

@@ -16,7 +16,8 @@ import { Modal } from '../../ui/Modal';
 import Button from '../../ui/Button';
 import type { Saving, Transaction } from './types';
 import { formatIndonesianDateTime } from '../../../utils/cooperative/coopDocUtils';
-import { exportSingleSavingPdf, exportAllSavingsPdf, cleanMemoDescription } from './savingsExportUtils';
+import { cleanMemoDescription } from './savingsExportUtils';
+import { SavingsPassbookPrintModal } from './SavingsPassbookPrintModal';
 import api from '../../../lib/axiosInstance';
 import toast from 'react-hot-toast';
 
@@ -68,7 +69,7 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
   const [activeTab, setActiveTab] = useState<string>('ALL');
   const [loading, setLoading] = useState(false);
   const [detailedSavings, setDetailedSavings] = useState<Saving[]>([]);
-  const [isExporting, setIsExporting] = useState(false);
+  const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
 
   // Sync activeTab when modal opens or initialSaving changes
   useEffect(() => {
@@ -229,25 +230,10 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
     return { totalDeposits: dep, totalWithdrawals: wdr };
   }, [displayedTransactions]);
 
-  // Handlers for exporting PDF on demand
-  const handleExportPdf = async () => {
+  // Buka modal pratinjau cetak standar Universal Document Printing
+  const handleOpenPrintPreview = () => {
     if (!initialSaving && effectiveSavings.length === 0) return;
-    setIsExporting(true);
-    try {
-      if (activeTab === 'ALL') {
-        const primary = initialSaving || effectiveSavings[0];
-        await exportAllSavingsPdf(primary, effectiveSavings, logoUrl);
-        toast.success('Rekap Buku Tabungan berhasil diekspor!');
-      } else if (selectedSaving) {
-        await exportSingleSavingPdf(selectedSaving, logoUrl);
-        toast.success(`Mutasi ${selectedSaving.category?.name || 'Rekening'} berhasil diekspor!`);
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error('Gagal mengekspor dokumen PDF.');
-    } finally {
-      setIsExporting(false);
-    }
+    setIsPrintPreviewOpen(true);
   };
 
   if (!isOpen) return null;
@@ -569,25 +555,34 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
           <Button
             type="button"
             variant="primary"
-            disabled={isExporting || effectiveSavings.length === 0}
-            onClick={handleExportPdf}
+            disabled={effectiveSavings.length === 0}
+            onClick={handleOpenPrintPreview}
             className="py-2 px-3 sm:px-4 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 shadow-xs"
           >
             <Printer size={14} />
-            <span className="sm:hidden">
-              {isExporting ? 'Memproses...' : 'Cetak PDF'}
-            </span>
+            <span className="sm:hidden">Cetak / PDF</span>
             <span className="hidden sm:inline">
-              {isExporting 
-                ? 'Menyiapkan PDF...' 
-                : activeTab === 'ALL'
-                  ? 'Cetak Rekap Buku Tabungan (PDF)'
-                  : `Cetak Mutasi ${getShortTabName(selectedSaving)} (PDF)`
-              }
+              {activeTab === 'ALL'
+                ? 'Cetak Rekap Buku Tabungan (PDF)'
+                : `Cetak Mutasi ${getShortTabName(selectedSaving)} (PDF)`}
             </span>
           </Button>
         </div>
       </div>
+
+      <SavingsPassbookPrintModal
+        isOpen={isPrintPreviewOpen}
+        onClose={() => setIsPrintPreviewOpen(false)}
+        activeTab={activeTab}
+        member={member}
+        effectiveSavings={effectiveSavings}
+        selectedSaving={selectedSaving}
+        displayedTransactions={displayedTransactions}
+        grandTotalBalance={grandTotalBalance}
+        totalDeposits={totalDeposits}
+        totalWithdrawals={totalWithdrawals}
+        logoUrl={logoUrl}
+      />
     </Modal>
   );
 });
