@@ -738,6 +738,9 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
               {availableEvents.length > 1 && (
                 <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 h-8 sm:h-9 shadow-2xs">
                   <Calendar size={13} className={isViewingNonActiveEvent ? 'text-amber-600 shrink-0' : 'text-indigo-600 shrink-0'} />
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 shrink-0">
+                    Event:
+                  </span>
                   <select
                     value={viewedEvent?.id || ''}
                     onChange={(e) => {
@@ -745,7 +748,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                       setPage(1);
                     }}
                     aria-label="Pilih Konteks Event CBT"
-                    className="bg-transparent text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer max-w-[190px] truncate"
+                    className="bg-transparent text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer min-w-[220px] sm:min-w-[280px] max-w-[380px]"
                   >
                     {availableEvents.map((ev) => (
                       <option key={ev.id} value={ev.id} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">
