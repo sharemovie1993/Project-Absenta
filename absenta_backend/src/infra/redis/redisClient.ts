@@ -47,9 +47,11 @@ async function createClient(): Promise<RedisClient> {
   const mode = getRedisMode();
   const password = getRedisPassword();
   
-  // In embedded mode, we assume the 'absenta-redis' process in PM2 has started the server
+  // In embedded mode, we use getRedisUrl() so it defaults to 127.0.0.1:6379 on primary node,
+  // but still respects REDIS_URL when a secondary worker node points to the primary Redis server.
   if (mode === 'embedded') {
-    return new IORedis('redis://127.0.0.1:6379', {
+    const embeddedUrl = getRedisUrl();
+    return new IORedis(embeddedUrl, {
       maxRetriesPerRequest: null,
       enableReadyCheck: true,
       connectTimeout: 10000,

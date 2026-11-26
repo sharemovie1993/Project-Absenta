@@ -20,6 +20,7 @@ import { getRedisConnection } from '@/queue/redis';
 import { createRedisConnection } from '@/infra/redis/redisClient';
 import { appLogger } from '@/utils/app-logger';
 import { parseWaSessionKey } from '../wa-prisma-auth.service';
+import { clusterLeaderService } from '@/infra/cluster-leader.service';
 
 // ─── WA Groups Redis Cache ─────────────────────────────────────────────────────
 export { getRedisConnection } from '@/queue/redis';
@@ -128,7 +129,14 @@ export function isMasterInstance(): boolean {
   // 2. Explicit HTTP API instances DO NOT handle WA socket directly (delegates via Redis RPC)
   if (serviceRole === 'api') return false;
 
-  // 3. Explicit Dedicated WA Worker process handles WA socket
+  // 3. Multi-Node Cluster Leader Guard:
+  // If cluster leader election has been started for 'wa-worker', only the active cluster leader holds Baileys sockets
+  // (prevents Error 440 connectionReplaced across multiple physical servers).
+  if (!clusterLeaderService.isLeader('wa-worker')) {
+    return false;
+  }
+
+  // 4. Explicit Dedicated WA Worker process handles WA socket
   if (serviceRole === 'wa-worker' || serviceRole === 'wa_worker' || serviceRole === 'worker') return true;
 
   return true;

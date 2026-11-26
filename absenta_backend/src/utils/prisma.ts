@@ -1,9 +1,22 @@
 import { PrismaClient } from '@prisma/client';
+import * as os from 'os';
 import { appLogger } from './app-logger';
 
 declare global {
   var __prisma: PrismaClient | undefined;
 }
+
+const resolveAdaptivePoolLimit = (): string => {
+  const explicitRaw = parseInt(String(process.env.DB_POOL_SIZE_PER_WORKER || '').trim(), 10);
+  if (Number.isFinite(explicitRaw) && explicitRaw >= 2 && explicitRaw <= 100) {
+    return String(explicitRaw);
+  }
+  // Adaptive per-worker budget: target ~60 total connections per physical node across CPU cores
+  // With max_connections=300 on PostgreSQL, this safely allows up to 4-5 physical nodes without PgBouncer
+  const cpuCount = Math.max(1, os.cpus()?.length || 4);
+  const adaptive = Math.max(5, Math.min(15, Math.floor(60 / cpuCount)));
+  return String(adaptive);
+};
 
 const applyPrismaPoolDefaults = () => {
   try {
@@ -11,8 +24,13 @@ const applyPrismaPoolDefaults = () => {
     if (!raw) return;
     if (!(raw.startsWith('postgres://') || raw.startsWith('postgresql://'))) return;
     const u = new URL(raw);
-    if (!u.searchParams.has('connection_limit')) u.searchParams.set('connection_limit', '20');
+    if (!u.searchParams.has('connection_limit')) {
+      u.searchParams.set('connection_limit', resolveAdaptivePoolLimit());
+    }
     if (!u.searchParams.has('pool_timeout')) u.searchParams.set('pool_timeout', '20');
+    if (u.port === '6432' && !u.searchParams.has('pgbouncer')) {
+      u.searchParams.set('pgbouncer', 'true');
+    }
     process.env.DATABASE_URL = u.toString();
   } catch {}
 };

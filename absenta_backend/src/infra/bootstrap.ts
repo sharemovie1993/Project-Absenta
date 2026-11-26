@@ -5,6 +5,7 @@ import { authMiddleware } from '../middlewares/auth';
 import { serverLicenseGuard } from '../middlewares/server-license.guard';
 import { storageService } from './storage/storage.service';
 import { getSmartApiBaseUrl, getSmartFrontendBaseUrl, getDomainBases } from '../utils/url-helper';
+import { getNodeId } from './nodeId';
 
 export async function registerPlugins(fastify: any) {
   // 1. REGISTER CORS PALING ATAS
@@ -331,13 +332,12 @@ export async function registerMiddlewares(fastify: any, appendLog: (entry: any) 
     request.correlationId = correlationId;
     try {
       reply.header('x-correlation-id', correlationId);
-      const backendNodeId =
+      const baseNodeId =
         process.env.BACKEND_NODE_ID ||
         process.env.BACKEND_NODE_LABEL ||
-        '';
-      if (backendNodeId) {
-        reply.header('x-backend-node', backendNodeId);
-      }
+        getNodeId();
+      const workerInstance = process.env.NODE_APP_INSTANCE ?? '0';
+      reply.header('x-backend-node', `${baseNodeId}-w${workerInstance}`);
     } catch {}
 
     const urlPath = getUrlPath(request.url);

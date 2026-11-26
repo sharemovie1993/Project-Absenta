@@ -4,6 +4,7 @@ import os from 'os';
 import crypto from 'crypto';
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { LocalDiskStorage } from '@/infra/storage/LocalDiskStorage';
+import { storageService } from '@/infra/storage/storage.service';
 import { getRestoreQueue } from '../restore.queue';
 import { backupService } from '../services/backup.service';
 import { migrationBundleService } from '../services/migration-bundle.service';
@@ -561,6 +562,7 @@ export class BackupController {
   // --- REPLICATION CONTROLLERS ---
   static async getReplicationConfig(_req: any, reply: any) {
     try {
+      await backupReplicationService.ensureLoadedFromDb();
       const config = backupReplicationService.getConfig(true);
       return reply.send({ success: true, data: config });
     } catch (err: any) {
@@ -570,8 +572,9 @@ export class BackupController {
 
   static async saveReplicationConfig(req: any, reply: any) {
     try {
+      await backupReplicationService.ensureLoadedFromDb();
       const payload = req.body || {};
-      const updated = backupReplicationService.saveConfig(payload);
+      const updated = await backupReplicationService.saveConfigAsync(payload);
       return reply.send({ success: true, data: updated, message: 'Konfigurasi replikasi berhasil disimpan' });
     } catch (err: any) {
       return reply.status(400).send({ success: false, message: err?.message || 'Gagal menyimpan konfigurasi replikasi' });
@@ -1000,15 +1003,27 @@ export class BackupController {
         return reply.status(404).send({ success: false, message: 'Pekerjaan tidak ditemukan' });
       }
 
-      if (job.status !== 'COMPLETED' || !job.result?.filepath) {
+      if (job.status !== 'COMPLETED' || (!job.result?.filepath && !job.result?.storageKey)) {
         return reply.status(400).send({
           success: false,
           message: `Berkas belum siap diunduh (Status saat ini: ${job.status})`
         });
       }
 
-      const { filepath, filename, size, manifest } = job.result;
-      if (!fs.existsSync(filepath)) {
+      const { filepath, storageKey, filename, size, manifest } = job.result;
+
+      // 1. Prioritaskan Shared Storage (MinIO S3 / StorageService) agar multi-node load balanced bebas 404
+      if (storageKey && (await storageService.exists(storageKey))) {
+        reply.header('Content-Type', 'application/octet-stream');
+        reply.header('Content-Disposition', `attachment; filename="${filename || 'absenta_backup.absenta'}"`);
+        if (size) reply.header('Content-Length', size.toString());
+        if (manifest) reply.header('X-Absenta-Manifest', encodeURIComponent(JSON.stringify(manifest)));
+
+        return reply.send(storageService.createReadStream(storageKey));
+      }
+
+      // 2. Fallback: Disk Lokal (apabila job dieksekusi di node yang sama dengan driver lokal)
+      if (!filepath || !fs.existsSync(filepath)) {
         return reply.status(404).send({
           success: false,
           message: 'Berkas arsip fisik telah kedaluwarsa atau dibersihkan dari server.'

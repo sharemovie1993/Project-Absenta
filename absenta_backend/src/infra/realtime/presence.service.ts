@@ -1,5 +1,6 @@
 import { getRedisConnection } from '@/queue/redis';
 import { prisma } from '@/utils/prisma';
+import { getNodeId } from '../nodeId';
 
 const REDIS_PRESENCE_SNAPSHOT_PREFIX = 'presence:cluster:snapshot:';
 const HTTP_ONLY_STALE_MS = 4 * 60 * 1000; // 4 minutes sliding window for HTTP-active users without active WS
@@ -305,9 +306,10 @@ export class PresenceService {
         tenantsPayload[tId] = list;
       }
 
+      const nodeId = getNodeId();
       await redis.set(
-        `${REDIS_PRESENCE_SNAPSHOT_PREFIX}${process.pid}`,
-        JSON.stringify({ pid: process.pid, updatedAt: Date.now(), tenants: tenantsPayload }),
+        `${REDIS_PRESENCE_SNAPSHOT_PREFIX}${nodeId}:${process.pid}`,
+        JSON.stringify({ nodeId, pid: process.pid, updatedAt: Date.now(), tenants: tenantsPayload }),
         'EX',
         25
       );

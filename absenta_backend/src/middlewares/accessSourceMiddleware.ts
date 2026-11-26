@@ -1,5 +1,6 @@
 import { getRedisConnection } from '@/queue/redis';
 import { presenceService } from '@/infra/realtime/presence.service';
+import { getNodeId } from '@/infra/nodeId';
 
 interface TunnelStats {
   localHits: number;
@@ -152,9 +153,10 @@ async function flushWorkerTelemetryToRedis(): Promise<void> {
       combinedByTenant[tId] = Array.from(existing);
     }
 
+    const nodeId = getNodeId();
     await redis.set(
-      `${REDIS_WORKER_PRESENCE_PREFIX}${process.pid}`,
-      JSON.stringify({ pid: process.pid, updatedAt: now, tenants: combinedByTenant }),
+      `${REDIS_WORKER_PRESENCE_PREFIX}${nodeId}:${process.pid}`,
+      JSON.stringify({ nodeId, pid: process.pid, updatedAt: now, tenants: combinedByTenant }),
       'EX',
       30
     );
@@ -313,16 +315,16 @@ export async function consumeIntervalStats(): Promise<{
 
 /**
  * Memeriksa apakah suatu alamat IP tergolong IP Lokal LAN Sekolah (misal 10.10.10.x, 192.168.x.x, 127.0.0.1)
- * PERHATIAN: IP Subnet WireGuard Tunnel (10.0.0.x, 10.8.0.x, 10.200.0.x) BUKAN LAN lokal, melainkan lalu lintas PUBLIK dari VPS!
+ * PERHATIAN: IP Subnet WireGuard Tunnel (10.0.0.x, 10.0.2.x, 10.8.0.x, 10.200.0.x) BUKAN LAN lokal, melainkan lalu lintas PUBLIK dari VPS!
  */
 function isSchoolLanIp(ip: string): boolean {
   if (!ip) return true;
   const clean = ip.replace(/^::ffff:/, '').trim();
   if (clean === '127.0.0.1' || clean === '::1' || clean === 'localhost') return true;
 
-  // IP Interface Subnet WireGuard VPN Tunnel (10.0.0.x, 10.8.0.x, 10.200.0.x) -> PASTI PUBLIK INTERNET!
+  // IP Interface Subnet WireGuard VPN Tunnel (10.0.0.x, 10.0.2.x, 10.8.0.x, 10.200.0.x) -> PASTI PUBLIK INTERNET!
   if (
-    clean.startsWith('10.0.0.') || 
+    clean.startsWith('10.0.') || 
     clean.startsWith('10.8.0.') || 
     clean.startsWith('10.200.0.') ||
     clean.startsWith('10.13.13.')
@@ -360,11 +362,19 @@ export function detectAccessRoute(request: any): AccessRouteResult {
     request.headers?.['x-gateway-mode'] === 'easy-tunnel';
 
   // 2. Ambil IP Klien Pertama dari X-Forwarded-For atau X-Real-IP
+  // Dalam topologi Multi-Node (Cloud Caddy 103.196.155.87 -> Local Caddy LB 10.10.10.116 -> Worker Node 10.10.10.20),
+  // X-Forwarded-For berisi rantai IP: "<client_ip>, <wireguard_or_lb_ip>".
+  // Kita selalu memeriksa IP pertama (klien asli) serta apakah ada IP WireGuard Tunnel di rantai hop.
   const forwardedFor = request.headers?.['x-forwarded-for'];
   let clientIp = '';
+  let hasWireGuardHop = false;
   if (forwardedFor) {
-    const ips = String(forwardedFor).split(',').map((s: string) => s.trim());
+    const ips = String(forwardedFor).split(',').map((s: string) => s.trim()).filter(Boolean);
     clientIp = ips[0] || '';
+    hasWireGuardHop = ips.some((hopIp: string) => {
+      const cleanHop = hopIp.replace(/^::ffff:/, '').trim();
+      return cleanHop.startsWith('10.0.') || cleanHop.startsWith('10.8.0.') || cleanHop.startsWith('10.200.0.');
+    });
   } else {
     clientIp = request.headers?.['x-real-ip'] || request.ip || request.raw?.socket?.remoteAddress || '';
   }
@@ -372,7 +382,7 @@ export function detectAccessRoute(request: any): AccessRouteResult {
   // Jika IP Klien pertama bukan IP LAN Sekolah (atau merupakan IP Publik / Subnet WireGuard), maka Publik/Tunnel!
   const isPublicClientIp = !isSchoolLanIp(clientIp);
 
-  const isTunnel = rawSource === 'public' || isWgTunnelHeader || isPublicClientIp;
+  const isTunnel = rawSource === 'public' || isWgTunnelHeader || hasWireGuardHop || isPublicClientIp;
 
   return {
     route: isTunnel ? 'TUNNEL' : 'LOCAL',

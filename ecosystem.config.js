@@ -33,94 +33,121 @@ function readEnv(filePath) {
 const backendEnv = readEnv(path.join(__dirname, 'absenta_backend', '.env'));
 const frontendEnv = readEnv(path.join(__dirname, 'absenta_frontend', '.env'));
 
-// Dynamic Port Configuration (Fallbacks to defaults if not set)
+// Dynamic Port & Cluster Role Configuration (Fallbacks to defaults if not set)
 const backendPort = process.env.PORT || backendEnv.PORT || '3003';
 const frontendPort = process.env.FRONTEND_PORT || frontendEnv.PORT || '5175';
+const clusterNodeRole = String(process.env.CLUSTER_NODE_ROLE || backendEnv.CLUSTER_NODE_ROLE || 'primary').trim().toLowerCase();
+const rawPm2Instances = process.env.PM2_INSTANCES || backendEnv.PM2_INSTANCES || 'max';
+const pm2Instances = /^\d+$/.test(String(rawPm2Instances)) ? parseInt(String(rawPm2Instances), 10) : String(rawPm2Instances);
+
+// Determine which services run on this node based on CLUSTER_NODE_ROLE:
+// - 'primary' (default): Runs absenta-redis + absenta-api (cluster) + absenta-wa-service + absenta-web
+// - 'secondary' (scale-out worker node): Runs ONLY absenta-api (cluster) by default (optional standby WA/Web via env)
+// - 'api-only': Runs only absenta-api (cluster)
+// - 'wa-only': Runs only absenta-wa-service
+const shouldRunLocalRedis = clusterNodeRole === 'primary';
+const shouldRunApi = clusterNodeRole !== 'wa-only';
+const shouldRunWa = clusterNodeRole === 'primary' || clusterNodeRole === 'wa-only' || String(process.env.ENABLE_WA_STANDBY || backendEnv.ENABLE_WA_STANDBY || '').toLowerCase() === 'true';
+const shouldRunWeb = clusterNodeRole === 'primary' || String(process.env.ENABLE_WEB_STANDBY || backendEnv.ENABLE_WEB_STANDBY || '').toLowerCase() === 'true';
 
 // Print a beautiful summary in terminal when PM2 loads/executes this config file
 console.log('\x1b[36m==================================================\x1b[0m');
 console.log('\x1b[32m       🚀  PROJECT ABSENTA DEPLOYMENT INFO  🚀     \x1b[0m');
 console.log('\x1b[36m==================================================\x1b[0m');
+console.log(` 🧩 Cluster Role: \x1b[33m${clusterNodeRole.toUpperCase()}\x1b[0m (Instances: ${pm2Instances})`);
 console.log(` 🌐 Backend API : \x1b[35mhttp://localhost:${backendPort}\x1b[0m`);
 console.log(` 💻 Frontend Web: \x1b[35mhttp://localhost:${frontendPort}\x1b[0m`);
 console.log('\x1b[36m==================================================\x1b[0m\n');
 
-module.exports = {
-  apps: [
-    {
-      name: 'absenta-redis',
-      script: 'scripts/start-embedded-redis.js',
-      cwd: path.join(__dirname, 'absenta_backend'),
-      instances: 1,
-      exec_mode: 'fork',
-      watch: false,
-      windowsHide: true,
-      kill_timeout: 5000,
-      wait_ready: true, // PM2 will wait for process.send('ready')
-      listen_timeout: 30000, // Wait up to 30s for Redis binary to download/start
-      max_restarts: 10,
-      restart_delay: 4000,
-      env: {
-        NODE_ENV: 'production'
-      }
-    },
-    {
-      name: `absenta-api:${backendPort}`,
-      script: 'dist/main.js',
-      cwd: path.join(__dirname, 'absenta_backend'),
-      instances: 'max', 
-      exec_mode: 'cluster',
-      windowsHide: true,
-      wait_ready: true, // PM2 will wait for process.send('ready')
-      listen_timeout: 20000, // Wait up to 20s for NestJS/Fastify to boot
-      restart_delay: 5000,
-      max_restarts: 10,
-      node_args: '--max-old-space-size=4096',
-      env: {
-        NODE_ENV: 'production',
-        PORT: backendPort,
-        SERVICE_ROLE: 'api',
-        EMBEDDED_WORKERS: 'true',
-        AUTOSCALER_MAX_WORKERS: '10',
-        ...backendEnv
-      },
-      watch: false,
-      max_memory_restart: '3500M'
-    },
-    {
-      name: 'absenta-wa-service',
-      script: 'dist/workers/wa-worker.js',
-      cwd: path.join(__dirname, 'absenta_backend'),
-      instances: 1,
-      exec_mode: 'fork',
-      windowsHide: true,
-      restart_delay: 5000,
-      max_restarts: 10,
-      node_args: '--max-old-space-size=2048',
-      env: {
-        NODE_ENV: 'production',
-        SERVICE_ROLE: 'wa-worker',
-        ...backendEnv
-      },
-      watch: false,
-      max_memory_restart: '1500M'
-    },
-    {
-      name: `absenta-web:${frontendPort}`,
-      script: 'scripts/start-web.cjs',
-      cwd: path.join(__dirname, 'absenta_frontend'),
-      instances: 1, 
-      exec_mode: 'fork',
-      windowsHide: true,
-      wait_ready: true, // PM2 will wait for process.send('ready')
-      listen_timeout: 15000,
-      restart_delay: 5000,
-      env: {
-        NODE_ENV: 'production',
-        PORT: frontendPort,
-        ...frontendEnv
-      },
-      watch: false
+const apps = [];
+
+if (shouldRunLocalRedis) {
+  apps.push({
+    name: 'absenta-redis',
+    script: 'scripts/start-embedded-redis.js',
+    cwd: path.join(__dirname, 'absenta_backend'),
+    instances: 1,
+    exec_mode: 'fork',
+    watch: false,
+    windowsHide: true,
+    kill_timeout: 5000,
+    wait_ready: true, // PM2 will wait for process.send('ready')
+    listen_timeout: 30000, // Wait up to 30s for Redis binary to download/start
+    max_restarts: 10,
+    restart_delay: 4000,
+    env: {
+      NODE_ENV: 'production'
     }
-  ]
-};
+  });
+}
+
+if (shouldRunApi) {
+  apps.push({
+    name: `absenta-api:${backendPort}`,
+    script: 'dist/main.js',
+    cwd: path.join(__dirname, 'absenta_backend'),
+    instances: pm2Instances,
+    exec_mode: 'cluster',
+    windowsHide: true,
+    wait_ready: true, // PM2 will wait for process.send('ready')
+    listen_timeout: 20000, // Wait up to 20s for NestJS/Fastify to boot
+    restart_delay: 5000,
+    max_restarts: 10,
+    node_args: '--max-old-space-size=4096',
+    env: {
+      NODE_ENV: 'production',
+      PORT: backendPort,
+      SERVICE_ROLE: 'api',
+      CLUSTER_NODE_ROLE: clusterNodeRole,
+      EMBEDDED_WORKERS: 'true',
+      AUTOSCALER_MAX_WORKERS: '10',
+      ...backendEnv
+    },
+    watch: false,
+    max_memory_restart: '3500M'
+  });
+}
+
+if (shouldRunWa) {
+  apps.push({
+    name: 'absenta-wa-service',
+    script: 'dist/workers/wa-worker.js',
+    cwd: path.join(__dirname, 'absenta_backend'),
+    instances: 1,
+    exec_mode: 'fork',
+    windowsHide: true,
+    restart_delay: 5000,
+    max_restarts: 10,
+    node_args: '--max-old-space-size=2048',
+    env: {
+      NODE_ENV: 'production',
+      SERVICE_ROLE: 'wa-worker',
+      CLUSTER_NODE_ROLE: clusterNodeRole,
+      ...backendEnv
+    },
+    watch: false,
+    max_memory_restart: '1500M'
+  });
+}
+
+if (shouldRunWeb) {
+  apps.push({
+    name: `absenta-web:${frontendPort}`,
+    script: 'scripts/start-web.cjs',
+    cwd: path.join(__dirname, 'absenta_frontend'),
+    instances: 1,
+    exec_mode: 'fork',
+    windowsHide: true,
+    wait_ready: true, // PM2 will wait for process.send('ready')
+    listen_timeout: 15000,
+    restart_delay: 5000,
+    env: {
+      NODE_ENV: 'production',
+      PORT: frontendPort,
+      ...frontendEnv
+    },
+    watch: false
+  });
+}
+
+module.exports = { apps };

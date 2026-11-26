@@ -5,6 +5,8 @@ import { appendLog } from '../utils/logger';
 // List of endpoints that don't require authentication
 const PUBLIC_ENDPOINTS = [
   '/health',
+  '/api/health',
+  '/api/cluster/health',
   // Auth endpoints
   '/auth/login', '/auth/register', '/auth/refresh', '/auth/verify-email',
   '/auth/resend-verification',

@@ -3,6 +3,8 @@ import { capabilityGuard } from '../plugins/capability.guard';
 import { serviceFeatureGuard } from './guards/service-feature.guard';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { organizationalScopeMiddleware } from '@/middlewares/organizationalScope';
+import { getNodeId } from './nodeId';
+import { clusterLeaderService } from './cluster-leader.service';
 
 export async function registerRoutes(fastify: any, prisma: any) {
   fastify.all('/auth/*', {
@@ -15,13 +17,29 @@ export async function registerRoutes(fastify: any, prisma: any) {
     });
   });
 
-  fastify.get('/health', async () => {
+  const buildClusterHealthPayload = async () => {
+    const nodeId = getNodeId();
+    const instanceId = process.env.NODE_APP_INSTANCE ?? '0';
+    const clusterRole = process.env.CLUSTER_NODE_ROLE || 'primary';
     return {
       status: 'ok',
+      nodeId,
+      instanceId,
+      workerNode: `${nodeId}-w${instanceId}`,
+      clusterRole,
+      pid: process.pid,
+      isApiClusterLeader: clusterLeaderService.isLeader('api'),
+      currentApiLeader: await clusterLeaderService.getCurrentClusterLeader('api'),
+      currentWaLeader: await clusterLeaderService.getCurrentClusterLeader('wa-worker'),
+      uptimeSeconds: Math.round(process.uptime()),
       timestamp: new Date().toISOString(),
       database: 'connected'
     };
-  });
+  };
+
+  fastify.get('/health', { config: { skipAuth: true, public: true } }, buildClusterHealthPayload);
+  fastify.get('/api/health', { config: { skipAuth: true, public: true } }, buildClusterHealthPayload);
+  fastify.get('/api/cluster/health', { config: { skipAuth: true, public: true } }, buildClusterHealthPayload);
 
   fastify.get('/internal/events/metrics', {
     preHandler: [requireCapability('superadmin.infra.monitoring.view')],

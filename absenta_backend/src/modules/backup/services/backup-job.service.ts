@@ -1,6 +1,7 @@
 import fs from 'fs';
 import crypto from 'crypto';
 import { getRedisConnection } from '@/queue/redis';
+import { storageService } from '@/infra/storage/storage.service';
 import { migrationBundleService, ExportBundleOptions, RestoreBundleOptions, ExportProgressUpdate, RestoreProgressUpdate } from './migration-bundle.service';
 
 export type JobType = 'EXPORT' | 'RESTORE';
@@ -20,6 +21,7 @@ export interface BackupJob {
   error?: string;
   result?: {
     filepath?: string;
+    storageKey?: string;
     filename?: string;
     size?: number;
     checksum_sha256?: string;
@@ -123,6 +125,23 @@ export class BackupJobService {
         );
 
         const completedJob = (await this.getJob(jobId)) || initialJob;
+        let storageKey: string | undefined;
+
+        // Multi-Node Readiness: Unggah berkas hasil export ke Shared Storage (MinIO S3 / StorageService)
+        // agar jika request download masuk ke Worker Node lain di belakang Load Balancer, berkas tetap tersedia.
+        try {
+          storageKey = `temp-jobs/${jobId}/${result.filename}`;
+          await storageService.uploadStream(storageKey, fs.createReadStream(result.filepath), {
+            contentType: 'application/octet-stream',
+          });
+          if (storageService.getDriverName() === 's3') {
+            await fs.promises.unlink(result.filepath).catch(() => {});
+          }
+        } catch (stageErr: any) {
+          console.warn(`[BackupJobService] Gagal staging export job ${jobId} ke shared storage, menggunakan fallback disk lokal:`, stageErr?.message);
+          storageKey = undefined;
+        }
+
         completedJob.status = 'COMPLETED';
         completedJob.progress = 100;
         completedJob.stage = 'finalizing';
@@ -130,6 +149,7 @@ export class BackupJobService {
         completedJob.completedAt = new Date().toISOString();
         completedJob.result = {
           filepath: result.filepath,
+          storageKey,
           filename: result.filename,
           size: result.size,
           checksum_sha256: result.manifest.checksum_sha256,
@@ -137,7 +157,7 @@ export class BackupJobService {
         };
 
         await this.saveJob(completedJob);
-        console.log(`[BackupJobService] ✅ Background export job ${jobId} sukses (${(result.size / 1024 / 1024).toFixed(2)} MB).`);
+        console.log(`[BackupJobService] ✅ Background export job ${jobId} sukses (${(result.size / 1024 / 1024).toFixed(2)} MB, storageKey=${storageKey || 'local'}).`);
       } catch (err: any) {
         console.error(`[BackupJobService] ❌ Background export job ${jobId} gagal:`, err);
         const failedJob = (await this.getJob(jobId)) || initialJob;
@@ -157,6 +177,7 @@ export class BackupJobService {
    */
   async startRestoreJob(tempFilePath: string, options: RestoreBundleOptions = {}): Promise<BackupJob> {
     const jobId = `rst_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+    const tempStorageKey = `temp-jobs/${jobId}/restore_upload.absenta`;
     const initialJob: BackupJob = {
       id: jobId,
       type: 'RESTORE',
@@ -176,7 +197,16 @@ export class BackupJobService {
       try {
         console.log(`[BackupJobService] 🚀 Memulai background restore job ${jobId}...`);
 
-        const buffer = await fs.promises.readFile(tempFilePath);
+        // Stage ke shared storage jika menggunakan S3 agar multi-node worker dapat mengaksesnya
+        let buffer: Buffer;
+        if (fs.existsSync(tempFilePath)) {
+          buffer = await fs.promises.readFile(tempFilePath);
+          if (storageService.getDriverName() === 's3') {
+            await storageService.uploadBuffer(tempStorageKey, buffer, { contentType: 'application/octet-stream' }).catch(() => {});
+          }
+        } else {
+          buffer = await storageService.readFileBuffer(tempStorageKey);
+        }
 
         const result = await migrationBundleService.restoreBundle(
           buffer,
@@ -190,8 +220,9 @@ export class BackupJobService {
           }
         );
 
-        // Bersihkan berkas sementara
+        // Bersihkan berkas sementara di disk lokal maupun shared storage
         await fs.promises.unlink(tempFilePath).catch(() => {});
+        await storageService.delete(tempStorageKey).catch(() => {});
 
         const completedJob = (await this.getJob(jobId)) || initialJob;
         completedJob.status = 'COMPLETED';
@@ -212,6 +243,7 @@ export class BackupJobService {
       } catch (err: any) {
         console.error(`[BackupJobService] ❌ Background restore job ${jobId} gagal:`, err);
         await fs.promises.unlink(tempFilePath).catch(() => {});
+        await storageService.delete(tempStorageKey).catch(() => {});
 
         const failedJob = (await this.getJob(jobId)) || initialJob;
         failedJob.status = 'FAILED';

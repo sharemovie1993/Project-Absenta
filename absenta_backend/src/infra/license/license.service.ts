@@ -26,6 +26,11 @@ export class LicenseService {
    * Menghasilkan fingerprint unik untuk mesin ini guna mencegah duplikasi folder aplikasi (piracy)
    */
   static getMachineFingerprint(): string {
+    const explicitClusterHwId = String(process.env.CLUSTER_HARDWARE_ID || '').trim();
+    if (explicitClusterHwId) {
+      return explicitClusterHwId.replace(/^server-/, '');
+    }
+
     const interfaces = os.networkInterfaces();
     let macs = '';
 
@@ -44,6 +49,38 @@ export class LicenseService {
     // Jika tidak ada MAC (misal di container tertentu), gunakan hostname + platform + arch sebagai fallback
     const rawId = `${os.hostname()}-${os.platform()}-${os.arch()}-${macs}`;
     return crypto.createHash('sha1').update(rawId).digest('hex').slice(0, 16);
+  }
+
+  /**
+   * Resolusi Device ID tingkat Cluster:
+   * Pada mode Multi-Node Horizontal Scale, Node 1 menyimpan fingerprint-nya ke tabel Config
+   * ('license_cluster_device_id') sehingga Node 2, 3, dst. menggunakan identitas cluster yang sama
+   * dan tidak ditolak oleh Server Lisensi karena perbedaan MAC Address.
+   */
+  static async resolveClusterDeviceId(): Promise<string> {
+    const explicitClusterHwId = String(process.env.CLUSTER_HARDWARE_ID || '').trim();
+    if (explicitClusterHwId) {
+      return explicitClusterHwId.startsWith('server-') ? explicitClusterHwId : `server-${explicitClusterHwId}`;
+    }
+
+    const SYSTEM_TENANT_ID = 'system';
+    const clusterKey = 'license_cluster_device_id';
+    try {
+      const existing = await prisma.config.findFirst({
+        where: { tenant_id: SYSTEM_TENANT_ID, key: clusterKey }
+      });
+      if (existing?.value && existing.value.trim()) {
+        return existing.value.trim();
+      }
+    } catch {}
+
+    const localDeviceId = `server-${this.getMachineFingerprint()}`;
+    try {
+      await prisma.config.create({
+        data: { tenant_id: SYSTEM_TENANT_ID, key: clusterKey, value: localDeviceId }
+      });
+    } catch {}
+    return localDeviceId;
   }
 
   /**
@@ -125,8 +162,7 @@ export class LicenseService {
       };
     }
 
-    const fingerprint = this.getMachineFingerprint();
-    const deviceId = `server-${fingerprint}`;
+    const deviceId = await this.resolveClusterDeviceId();
 
     try {
       console.log(`[License] Menghubungi server lisensi untuk aktivasi onpremise (Device: ${deviceId})...`);

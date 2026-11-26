@@ -9,6 +9,9 @@ import {
   PutObjectCommand 
 } from '@aws-sdk/client-s3';
 import { PassThrough } from 'stream';
+import { prisma } from '@/utils/prisma';
+
+const REPLICATION_CONFIG_DB_KEY = 'backup_replication_config';
 
 export interface NodeConfig {
   enabled: boolean;
@@ -59,9 +62,60 @@ export interface ReplicationStatusSummary {
 
 class BackupReplicationService {
   private configPath: string;
+  private dbCache: MultiTierReplicationConfig | null = null;
+  private lastDbLoadAt = 0;
 
   constructor() {
     this.configPath = path.resolve(process.cwd(), 'storage', 'configs', 'backup-replication.json');
+  }
+
+  /**
+   * Sinkronisasi konfigurasi replikasi Tier-2/Tier-3 dari PostgreSQL (`Config.key = 'backup_replication_config'`)
+   * agar seluruh node dalam cluster multi-node membaca konfigurasi replikasi yang identik.
+   */
+  public async ensureLoadedFromDb(force = false): Promise<void> {
+    if (!force && this.dbCache && Date.now() - this.lastDbLoadAt < 5000) {
+      return;
+    }
+    try {
+      const row = await prisma.config.findUnique({
+        where: { tenant_id_key: { tenant_id: 'system', key: REPLICATION_CONFIG_DB_KEY } }
+      });
+      if (row?.value) {
+        const parsed = JSON.parse(row.value);
+        if (parsed && (parsed.tier2 || parsed.tier3)) {
+          this.dbCache = parsed;
+          this.lastDbLoadAt = Date.now();
+          // Tulis juga ke cache file lokal di node ini
+          try {
+            const dir = path.dirname(this.configPath);
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            fs.writeFileSync(this.configPath, JSON.stringify(parsed, null, 2), 'utf8');
+          } catch {}
+          return;
+        }
+      } else if (fs.existsSync(this.configPath)) {
+        // Migrasi otomatis satu kali dari file JSON lokal ke PostgreSQL jika di DB belum ada
+        const localCfg = this.getRawConfig();
+        await this.persistToDb(localCfg);
+      }
+    } catch {
+      // Fallback ke file lokal jika tabel Config belum siap
+    }
+  }
+
+  private async persistToDb(cfg: MultiTierReplicationConfig): Promise<void> {
+    try {
+      this.dbCache = JSON.parse(JSON.stringify(cfg));
+      this.lastDbLoadAt = Date.now();
+      await prisma.config.upsert({
+        where: { tenant_id_key: { tenant_id: 'system', key: REPLICATION_CONFIG_DB_KEY } },
+        update: { value: JSON.stringify(cfg) },
+        create: { tenant_id: 'system', key: REPLICATION_CONFIG_DB_KEY, value: JSON.stringify(cfg) }
+      });
+    } catch (err: any) {
+      console.warn('[BackupReplicationService] Gagal menyimpan config replikasi ke DB:', err?.message);
+    }
   }
 
   public getPrimaryConfig() {
@@ -102,6 +156,20 @@ class BackupReplicationService {
     };
 
     try {
+      if (this.dbCache && (this.dbCache.tier2 || this.dbCache.tier3)) {
+        return {
+          tier2: {
+            ...defaultTier2,
+            ...(this.dbCache.tier2 || {}),
+            forcePathStyle: this.dbCache.tier2?.forcePathStyle !== false,
+          },
+          tier3: {
+            ...defaultTier3,
+            ...(this.dbCache.tier3 || {}),
+            forcePathStyle: this.dbCache.tier3?.forcePathStyle !== false,
+          },
+        };
+      }
       if (fs.existsSync(this.configPath)) {
         const raw = fs.readFileSync(this.configPath, 'utf8');
         const parsed = JSON.parse(raw);
@@ -209,6 +277,16 @@ class BackupReplicationService {
     }
 
     fs.writeFileSync(this.configPath, JSON.stringify(updated, null, 2), 'utf8');
+    // Simpan ke PostgreSQL secara asinkron agar tersinkronisasi lintas node
+    this.persistToDb(updated).catch(() => {});
+    return this.getConfig(true);
+  }
+
+  public async saveConfigAsync(payload: any): Promise<MultiTierReplicationConfig> {
+    await this.ensureLoadedFromDb(true);
+    this.saveConfig(payload);
+    const raw = this.getRawConfig();
+    await this.persistToDb(raw);
     return this.getConfig(true);
   }
 
@@ -236,6 +314,7 @@ class BackupReplicationService {
     latencyMs: number;
     message: string;
   }> {
+    await this.ensureLoadedFromDb();
     const raw = this.getRawConfig();
     const cfg: Partial<NodeConfig> = payload?.config || payload || {};
     const tier: 'tier2' | 'tier3' = payload?.tier === 'tier3' ? 'tier3' : 'tier2';
@@ -308,6 +387,7 @@ class BackupReplicationService {
   }
 
   public async getStatusSummary(): Promise<ReplicationStatusSummary> {
+    await this.ensureLoadedFromDb();
     const primaryCfg = this.getPrimaryConfig();
     const raw = this.getRawConfig();
     const tier2Cfg = raw.tier2;
@@ -506,6 +586,7 @@ class BackupReplicationService {
     replicatedKeys: string[];
     message: string;
   }> {
+    await this.ensureLoadedFromDb();
     const primaryCfg = this.getPrimaryConfig();
     const raw = this.getRawConfig();
 
@@ -566,6 +647,7 @@ class BackupReplicationService {
   }
 
   public async replicateFileIfEnabled(key: string): Promise<boolean> {
+    await this.ensureLoadedFromDb();
     const raw = this.getRawConfig();
     const primaryCfg = this.getPrimaryConfig();
     let replicatedAny = false;

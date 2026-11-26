@@ -98,6 +98,7 @@ import { buildAttendanceFeed } from './modules/attendance/notify/controllers/not
 import { startAttendanceWorker } from './workers/attendance.worker';
 import { initSchedulers } from './infra/scheduler';
 import { trackService, registerService, printStartupTable } from './utils/startup-table';
+import { clusterLeaderService } from './infra/cluster-leader.service';
 
 // PHASE 1: Runtime Lock is now handled in infra/env
 
@@ -318,32 +319,49 @@ async function start() {
       process.send('ready');
     }
 
-    // ─── Print PM2-style startup table (Hanya di Master Instance 0) ───
+    // ─── Print PM2-style startup table (Hanya di Master Instance 0 per Node) ───
     if (isMasterInstance()) {
       printStartupTable(port, host);
     }
 
+    // ─── Multi-Node Cluster Leader Election (Hanya 1 Instance 0 di seluruh Cluster Fisik) ───
+    let schedulersInitialized = false;
+    const initClusterSingletonServices = async () => {
+      if (schedulersInitialized) return;
+      schedulersInitialized = true;
+
+      await trackService('Schedulers', 'scheduler', async () => {
+        await initSchedulers(fastify);
+      });
+
+      await trackService('Billing Worker', 'worker', async () => { await import('./workers/billing.worker'); });
+      await trackService('Analytics Worker', 'worker', async () => { await import('./workers/analytics.worker'); });
+      await trackService('Infra Worker', 'worker', async () => { await import('./workers/infra.worker'); });
+      await trackService('Maintenance Worker', 'worker', async () => { await import('./workers/maintenance.worker'); });
+    };
+
+    const isApiClusterLeader = isMasterInstance()
+      ? await clusterLeaderService.startElectionLoop('api', {
+          onBecomeLeader: async () => {
+            await initClusterSingletonServices();
+          }
+        })
+      : false;
+
     // ─── Background Workers & WhatsApp Restore (Non-Blocking Startup) ───
-    // Schedulers & singleton workers hanya di Master Instance 0
-    // Consumer workers (PDF, billing, WA) boleh di semua instance untuk load balancing
+    // Schedulers & singleton workers hanya di Cluster Leader
+    // Consumer workers (PDF, billing, notification, attendance) boleh di semua instance untuk load balancing
     void (async () => {
       try {
         if (isHybridMode) {
           await startBackgroundServices();
         }
 
-        // ─── Cron Schedulers & Background Workers: Master Instance 0 ONLY ───
-        if (isMasterInstance()) {
-          await trackService('Schedulers', 'scheduler', async () => {
-            await initSchedulers(fastify);
-          });
-
-          await trackService('Billing Worker', 'worker', async () => { await import('./workers/billing.worker'); });
-          await trackService('Analytics Worker', 'worker', async () => { await import('./workers/analytics.worker'); });
-          await trackService('Infra Worker', 'worker', async () => { await import('./workers/infra.worker'); });
-          await trackService('Maintenance Worker', 'worker', async () => { await import('./workers/maintenance.worker'); });
+        // ─── Cron Schedulers & Background Workers: Cluster Leader ONLY ───
+        if (isApiClusterLeader) {
+          await initClusterSingletonServices();
         } else {
-          // Non-master: daftarkan service sebagai online tanpa menjalankannya
+          // Non-leader: daftarkan service sebagai online tanpa menjalankan duplikat scheduler
           registerService('Schedulers', 'scheduler', 'online');
           registerService('Billing Worker', 'worker', 'online');
           registerService('Analytics Worker', 'worker', 'online');
@@ -373,7 +391,7 @@ async function start() {
       }
     })();
 
-    // ─── Sync License: hanya Master Instance 0 yang hit API, instance lain baca cache DB ───
+    // ─── Sync License: hanya Cluster Leader yang hit API, instance/node lain baca cache DB ───
     const { LicenseService } = await import('./infra/license/license.service');
     const { getDeployScenario } = await import('./utils/deployScenario');
     const currentScenario = getDeployScenario();
@@ -384,25 +402,30 @@ async function start() {
         : (currentScenario === 'saas-local'
           ? 'SAAS-LOCAL (Home/Office Multi-Tenant via EasyTunnel)'
           : 'ONPREMISE (Dedicated School Appliance - Hybrid LAN & Online)');
-      console.log(`[Bootstrap] 🚀 Deployment Scenario: ${scenarioLabel}`);
+      console.log(`[Bootstrap] 🚀 Deployment Scenario: ${scenarioLabel} (Cluster Leader: ${isApiClusterLeader ? 'YES' : 'STANDBY'})`);
+    }
 
+    if (isApiClusterLeader) {
       LicenseService.syncLicense().catch((err: any) => {
         console.warn('[License Startup Warning] Failed to sync license on startup:', err.message);
       });
     } else {
-      // Non-master: load token dari cache DB tanpa hit API
+      // Non-leader & Secondary Nodes: load token dari cache DB (dan refresh berkala tiap 5 menit) tanpa hit API
       LicenseService.loadFromCache().catch(() => {});
+      setInterval(() => {
+        LicenseService.loadFromCache().catch(() => {});
+      }, 5 * 60 * 1000).unref();
     }
 
-    // ─── Heartbeat: cron hanya di Master Instance 0 ───
+    // ─── Heartbeat: cron di Master Instance 0 tiap node (sudah dijaga distributed lock di heartbeat.service) ───
     try {
       const { heartbeatService } = await import('./modules/system-config/services/heartbeat.service');
       if (isMasterInstance()) {
-        // Master: kirim heartbeat pertama + jalankan cron
-        void heartbeatService.collectAndSendMetrics();
+        if (isApiClusterLeader) {
+          void heartbeatService.collectAndSendMetrics();
+        }
         heartbeatService.startCronJob();
       }
-      // Non-master tidak perlu cron — heartbeat sudah dijaga distributed lock di heartbeat.service
     } catch (err: any) {
       console.warn('[Heartbeat Startup Warning] Failed to initialize heartbeat service:', err.message);
     }
@@ -418,6 +441,9 @@ async function start() {
 process.on('SIGINT', async () => {
   fastify.log.info('Received SIGINT, shutting down gracefully...');
   try {
+    await clusterLeaderService.releaseAll();
+  } catch (_) {}
+  try {
     const { waGatewayService } = require('./services/wa-gateway.service');
     await waGatewayService.shutdownAll();
   } catch (_) {}
@@ -432,6 +458,9 @@ process.on('SIGINT', async () => {
 
 process.on('SIGTERM', async () => {
   fastify.log.info('Received SIGTERM, shutting down gracefully...');
+  try {
+    await clusterLeaderService.releaseAll();
+  } catch (_) {}
   try {
     const { waGatewayService } = require('./services/wa-gateway.service');
     await waGatewayService.shutdownAll();
