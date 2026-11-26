@@ -565,6 +565,237 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
                     </div>
                   )}
 
+                  {/* Visual Charts (Pie / Donut & Bar Charts) */}
+                  {sec.charts && sec.charts.length > 0 && (
+                    <div
+                      className={`grid grid-cols-1 ${
+                        sec.charts.length > 1 ? 'lg:grid-cols-2' : ''
+                      } gap-3 pt-1`}
+                    >
+                      {sec.charts.map((chart, cIdx) => {
+                        const COLOR_PALETTE: Record<
+                          string,
+                          { stroke: string; bg: string; text: string; lightBg: string }
+                        > = {
+                          emerald: {
+                            stroke: '#10b981',
+                            bg: 'bg-emerald-500',
+                            text: 'text-emerald-700 dark:text-emerald-300',
+                            lightBg: 'bg-emerald-50 dark:bg-emerald-950/40',
+                          },
+                          indigo: {
+                            stroke: '#6366f1',
+                            bg: 'bg-indigo-500',
+                            text: 'text-indigo-700 dark:text-indigo-300',
+                            lightBg: 'bg-indigo-50 dark:bg-indigo-950/40',
+                          },
+                          amber: {
+                            stroke: '#f59e0b',
+                            bg: 'bg-amber-500',
+                            text: 'text-amber-700 dark:text-amber-300',
+                            lightBg: 'bg-amber-50 dark:bg-amber-950/40',
+                          },
+                          rose: {
+                            stroke: '#f43f5e',
+                            bg: 'bg-rose-500',
+                            text: 'text-rose-700 dark:text-rose-300',
+                            lightBg: 'bg-rose-50 dark:bg-rose-950/40',
+                          },
+                          sky: {
+                            stroke: '#0ea5e9',
+                            bg: 'bg-sky-500',
+                            text: 'text-sky-700 dark:text-sky-300',
+                            lightBg: 'bg-sky-50 dark:bg-sky-950/40',
+                          },
+                          violet: {
+                            stroke: '#8b5cf6',
+                            bg: 'bg-violet-500',
+                            text: 'text-violet-700 dark:text-violet-300',
+                            lightBg: 'bg-violet-50 dark:bg-violet-950/40',
+                          },
+                          slate: {
+                            stroke: '#94a3b8',
+                            bg: 'bg-slate-400',
+                            text: 'text-slate-600 dark:text-slate-400',
+                            lightBg: 'bg-slate-100 dark:bg-slate-800',
+                          },
+                        };
+
+                        const totalValue = chart.data.reduce(
+                          (acc, item) => acc + Math.max(0, Number(item.value) || 0),
+                          0
+                        );
+                        const maxVal = Math.max(
+                          1,
+                          ...chart.data.map((d) => Math.max(0, Number(d.value) || 0))
+                        );
+
+                        let cumulativePct = 0;
+
+                        return (
+                          <div
+                            key={cIdx}
+                            className="p-3.5 rounded-xl bg-slate-50/90 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between"
+                          >
+                            <div className="flex items-start justify-between gap-2 mb-3">
+                              <div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
+                                    {chart.type === 'pie' ? 'Grafik Pie / Proporsi' : 'Grafik Bar'}
+                                  </span>
+                                  <h5 className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                                    {chart.title}
+                                  </h5>
+                                </div>
+                                {chart.subtitle && (
+                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                    {chart.subtitle}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            {chart.type === 'pie' ? (
+                              <div className="flex flex-col sm:flex-row items-center gap-4 my-auto py-1">
+                                {/* SVG Donut Chart */}
+                                <div className="relative w-28 h-28 shrink-0 flex items-center justify-center">
+                                  <svg
+                                    viewBox="0 0 42 42"
+                                    className="w-full h-full -rotate-90 overflow-visible"
+                                  >
+                                    <circle
+                                      cx="21"
+                                      cy="21"
+                                      r="15.91549430918954"
+                                      fill="transparent"
+                                      stroke="currentColor"
+                                      strokeWidth="5.5"
+                                      className="text-slate-200 dark:text-slate-700"
+                                    />
+                                    {totalValue > 0 &&
+                                      chart.data.map((slice, sIdx) => {
+                                        const val = Math.max(0, Number(slice.value) || 0);
+                                        if (val <= 0) return null;
+                                        const pct = (val / totalValue) * 100;
+                                        const dashArray = `${pct} ${100 - pct}`;
+                                        const dashOffset = -cumulativePct;
+                                        cumulativePct += pct;
+                                        const palette =
+                                          COLOR_PALETTE[slice.color || 'indigo'] ||
+                                          COLOR_PALETTE.indigo;
+                                        return (
+                                          <circle
+                                            key={sIdx}
+                                            cx="21"
+                                            cy="21"
+                                            r="15.91549430918954"
+                                            fill="transparent"
+                                            stroke={palette.stroke}
+                                            strokeWidth="5.8"
+                                            strokeDasharray={dashArray}
+                                            strokeDashoffset={dashOffset}
+                                            strokeLinecap="butt"
+                                            className="transition-all duration-500"
+                                          />
+                                        );
+                                      })}
+                                  </svg>
+                                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-1">
+                                    <span className="text-xs font-extrabold text-slate-800 dark:text-slate-100 leading-tight">
+                                      {totalValue.toLocaleString('id-ID')}
+                                    </span>
+                                    <span className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-tight">
+                                      {chart.unit || 'Total'}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Legend */}
+                                <div className="flex-1 w-full space-y-1.5">
+                                  {chart.data.map((slice, sIdx) => {
+                                    const val = Math.max(0, Number(slice.value) || 0);
+                                    const pct =
+                                      totalValue > 0
+                                        ? Math.round((val / totalValue) * 1000) / 10
+                                        : 0;
+                                    const palette =
+                                      COLOR_PALETTE[slice.color || 'indigo'] ||
+                                      COLOR_PALETTE.indigo;
+                                    return (
+                                      <div
+                                        key={sIdx}
+                                        className="flex items-center justify-between text-xs gap-2 px-2 py-1 rounded-lg bg-white/90 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-700/50"
+                                      >
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <span
+                                            className={`w-2.5 h-2.5 rounded-sm shrink-0 ${palette.bg}`}
+                                          />
+                                          <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300 truncate">
+                                            {slice.label}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                          <span className="text-[11px] font-bold text-slate-900 dark:text-white">
+                                            {val.toLocaleString('id-ID')}
+                                            {chart.unit ? ` ${chart.unit}` : ''}
+                                          </span>
+                                          <span
+                                            className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${palette.lightBg} ${palette.text}`}
+                                          >
+                                            {pct}%
+                                          </span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ) : (
+                              /* Horizontal Bar Chart */
+                              <div className="space-y-2.5 my-auto py-1">
+                                {chart.data.map((bar, bIdx) => {
+                                  const val = Math.max(0, Number(bar.value) || 0);
+                                  const widthPct =
+                                    chart.unit === '%'
+                                      ? Math.min(100, Math.max(val > 0 ? 4 : 0, val))
+                                      : Math.min(
+                                          100,
+                                          Math.max(val > 0 ? 4 : 0, Math.round((val / maxVal) * 100))
+                                        );
+                                  const palette =
+                                    COLOR_PALETTE[bar.color || 'indigo'] || COLOR_PALETTE.indigo;
+                                  return (
+                                    <div key={bIdx} className="space-y-1">
+                                      <div className="flex items-center justify-between text-[11px]">
+                                        <span className="font-medium text-slate-700 dark:text-slate-300 truncate pr-2">
+                                          {bar.label}
+                                        </span>
+                                        <span className="font-bold text-slate-900 dark:text-white shrink-0">
+                                          {val.toLocaleString('id-ID')}
+                                          {chart.unit
+                                            ? chart.unit === '%'
+                                              ? '%'
+                                              : ` ${chart.unit}`
+                                            : ''}
+                                        </span>
+                                      </div>
+                                      <div className="w-full h-2.5 bg-slate-200/80 dark:bg-slate-700/80 rounded-full overflow-hidden">
+                                        <div
+                                          className={`h-full rounded-full transition-all duration-500 ${palette.bg}`}
+                                          style={{ width: `${widthPct}%` }}
+                                        />
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   {/* List Items (Catatan Kasus / Siswa Perhatian / Rombel Prestasi) */}
                   {sec.items && sec.items.length > 0 && (
                     <div className="space-y-2 pt-2">

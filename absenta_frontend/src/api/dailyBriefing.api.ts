@@ -31,6 +31,22 @@ export interface BriefingProgressBar {
   color?: 'emerald' | 'blue' | 'amber' | 'rose' | 'indigo';
 }
 
+export interface BriefingChartSlice {
+  label: string;
+  value: number;
+  color: 'emerald' | 'blue' | 'indigo' | 'amber' | 'rose' | 'slate' | 'purple';
+  unit?: string;
+}
+
+export interface BriefingChartBlock {
+  type: 'pie' | 'bar';
+  title: string;
+  subtitle?: string;
+  centerLabel?: string;
+  maxValue?: number;
+  data: BriefingChartSlice[];
+}
+
 export interface BriefingSection {
   id: string;
   title: string;
@@ -42,6 +58,7 @@ export interface BriefingSection {
   todayStats?: Array<{ label: string; value: string | number }>;
   rangeStats?: Array<{ label: string; value: string | number }>;
   progressBars?: BriefingProgressBar[];
+  charts?: BriefingChartBlock[];
   items?: BriefingSectionItem[];
 }
 

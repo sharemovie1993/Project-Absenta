@@ -504,6 +504,35 @@ export class KepsekBriefingCollector implements IBriefingCollector {
           color: pelanggaranDeltaPct !== null && pelanggaranDeltaPct <= 0 ? 'emerald' : 'amber',
         },
       ],
+      charts: [
+        {
+          type: 'pie',
+          title: 'Komposisi Kehadiran Siswa (Hari Ini)',
+          subtitle: 'Distribusi status kehadiran siswa unik hari ini',
+          centerLabel: `${persentaseSiswa}%`,
+          data: [
+            { label: 'Hadir', value: siswaHadir, color: 'emerald' },
+            { label: 'Sakit / Izin', value: siswaSakit + siswaIzin, color: 'amber' },
+            { label: 'Alpa', value: siswaAlpa, color: 'rose' },
+            {
+              label: 'Belum Tercatat',
+              value: Math.max(0, totalSiswaAktif - (siswaHadir + siswaSakit + siswaIzin + siswaAlpa)),
+              color: 'slate',
+            },
+          ],
+        },
+        {
+          type: 'bar',
+          title: 'Tren & Penanganan Pelanggaran Siswa',
+          subtitle: 'Perbandingan kasus 7 hari terakhir vs penyelesaian semester',
+          data: [
+            { label: '7 Hari Lalu', value: pelanggaranMingguLalu, color: 'slate', unit: 'Kasus' },
+            { label: '7 Hari Ini', value: pelanggaranMingguIni, color: 'amber', unit: 'Kasus' },
+            { label: 'Terlambat Hari Ini', value: siswaTerlambat, color: 'rose', unit: 'Siswa' },
+            { label: 'Selesai (Semester)', value: pelanggaranSemesterSelesai, color: 'emerald', unit: 'Kasus' },
+          ],
+        },
+      ],
       items: kesiswaanItems,
     });
 
@@ -543,6 +572,33 @@ export class KepsekBriefingCollector implements IBriefingCollector {
           value: persentaseKbmTerlaksana,
           detail: `${sesiKbmTerlaksana} / ${totalSesiKbm} Sesi Terlaksana Hari Ini (Jurnal ${persentaseJurnal}%)`,
           color: persentaseKbmTerlaksana >= 90 ? 'blue' : 'amber',
+        },
+      ],
+      charts: [
+        {
+          type: 'pie',
+          title: 'Komposisi Kehadiran Guru (Hari Ini)',
+          subtitle: 'Distribusi kehadiran guru terjadwal pada KBM hari ini',
+          centerLabel: `${persentaseGuru}%`,
+          data: [
+            { label: 'Guru Hadir', value: guruHadir, color: 'emerald' },
+            { label: 'Izin / Sakit', value: guruTidakHadir, color: 'amber' },
+            {
+              label: 'Belum Tap',
+              value: Math.max(0, totalGuru - (guruHadir + guruTidakHadir)),
+              color: 'slate',
+            },
+          ],
+        },
+        {
+          type: 'bar',
+          title: 'Realisasi Sesi KBM & Jurnal (Hari Ini)',
+          subtitle: 'Perbandingan sesi terjadwal, terlaksana, dan inval',
+          data: [
+            { label: 'Terjadwal', value: totalSesiKbm, color: 'indigo', unit: 'Sesi' },
+            { label: 'Terlaksana', value: sesiKbmTerlaksana, color: 'emerald', unit: 'Sesi' },
+            { label: 'Sesi Inval', value: guruInvalCount, color: 'amber', unit: 'Sesi' },
+          ],
         },
       ],
       items: kurikulumItems.length > 0 ? kurikulumItems : undefined,
@@ -585,6 +641,29 @@ export class KepsekBriefingCollector implements IBriefingCollector {
             value: perangkatProgress.progresApprovalPct,
             detail: `${perangkatProgress.approvedCount} Disetujui • ${perangkatProgress.pendingCount} Pending • ${perangkatProgress.rejectedCount} Revisi (Total ${perangkatProgress.totalDokumen} dokumen)`,
             color: perangkatProgress.progresApprovalPct >= 80 ? 'emerald' : 'blue',
+          },
+        ],
+        charts: [
+          {
+            type: 'pie',
+            title: 'Proporsi Kepatuhan Guru (Perangkat Ajar)',
+            subtitle: 'Perbandingan guru yang sudah vs belum mengumpulkan',
+            centerLabel: `${perangkatProgress.progresGuruMengumpulkanPct}%`,
+            data: [
+              { label: 'Sudah Kumpul', value: perangkatProgress.guruSudahMengumpulkan, color: 'emerald' },
+              { label: 'Belum Kumpul', value: perangkatProgress.guruBelumMengumpulkan, color: 'rose' },
+            ],
+          },
+          {
+            type: 'bar',
+            title: 'Status Verifikasi Dokumen Perangkat Ajar',
+            subtitle: 'Distribusi status review dokumen oleh Kurikulum',
+            data: [
+              { label: 'Approved', value: perangkatProgress.approvedCount, color: 'emerald', unit: 'Dok' },
+              { label: 'Pending Review', value: perangkatProgress.pendingCount, color: 'amber', unit: 'Dok' },
+              { label: 'Perlu Revisi', value: perangkatProgress.rejectedCount, color: 'rose', unit: 'Dok' },
+              { label: 'Unggah Hari Ini', value: perangkatProgress.diunggahHariIni, color: 'blue', unit: 'Dok' },
+            ],
           },
         ],
       });
@@ -645,6 +724,23 @@ export class KepsekBriefingCollector implements IBriefingCollector {
                 : 'amber',
           },
         ],
+        charts: [
+          {
+            type: 'pie',
+            title: 'Segmentasi Adopsi Platform Guru',
+            subtitle: 'Proporsi guru aktif hari ini, sudah adopsi, dan belum pernah login',
+            centerLabel: `${adoptionProgress.progresAdopsiPct}%`,
+            data: [
+              { label: 'Aktif Hari Ini', value: adoptionProgress.guruAktifHariIni, color: 'emerald' },
+              {
+                label: 'Sudah Adopsi (Pasif Hari Ini)',
+                value: Math.max(0, adoptionProgress.guruSudahMasuk - adoptionProgress.guruAktifHariIni),
+                color: 'blue',
+              },
+              { label: 'Belum Pernah Login', value: adoptionProgress.guruBelumPernahMasuk, color: 'rose' },
+            ],
+          },
+        ],
         items: adoptionItems.length > 0 ? adoptionItems : undefined,
       });
     }
@@ -691,6 +787,35 @@ export class KepsekBriefingCollector implements IBriefingCollector {
             value: cbtProgress.progresTuntasPct,
             detail: `Rata-rata perolehan: ${cbtProgress.rataRataNilai} • ${cbtProgress.jumlahRemedial} peserta di bawah KKM (Remedial)`,
             color: cbtProgress.progresTuntasPct >= 80 ? 'emerald' : cbtProgress.progresTuntasPct >= 50 ? 'amber' : 'rose',
+          },
+        ],
+        charts: [
+          {
+            type: 'pie',
+            title: 'Proporsi Pelaksanaan & Ketuntasan Peserta CBT',
+            subtitle: 'Perbandingan peserta tuntas, remedial, sedang ujian, & belum mulai',
+            centerLabel: `${cbtProgress.progresPelaksanaanPct}%`,
+            data: [
+              {
+                label: 'Selesai (Tuntas ≥ KKM)',
+                value: Math.max(0, cbtProgress.sudahMelaksanakan - cbtProgress.jumlahRemedial),
+                color: 'emerald',
+              },
+              { label: 'Perlu Remedial (< KKM)', value: cbtProgress.jumlahRemedial, color: 'amber' },
+              { label: 'Sedang Mengerjakan', value: cbtProgress.sedangMengerjakan, color: 'blue' },
+              { label: 'Belum Melaksanakan', value: cbtProgress.belumMelaksanakan, color: 'slate' },
+            ],
+          },
+          {
+            type: 'bar',
+            title: 'Kesiapan Bank Soal & Integritas CBT',
+            subtitle: 'Rincian bank soal, sesi aktif, dan indikasi pelanggaran',
+            data: [
+              { label: 'Bank Terisi', value: cbtProgress.bankTerisiSoal, color: 'indigo', unit: 'Bank' },
+              { label: 'Bank Published', value: cbtProgress.bankPublished, color: 'emerald', unit: 'Bank' },
+              { label: 'Kecurangan', value: cbtProgress.jumlahKecurangan, color: 'rose', unit: 'Siswa' },
+              { label: 'Remedial', value: cbtProgress.jumlahRemedial, color: 'amber', unit: 'Siswa' },
+            ],
           },
         ],
         items:
@@ -741,6 +866,32 @@ export class KepsekBriefingCollector implements IBriefingCollector {
             },
           ]
         : undefined,
+      charts: raporReadiness
+        ? [
+            {
+              type: 'pie',
+              title: 'Distribusi Progres Input Nilai Guru',
+              subtitle: 'Proporsi penyelesaian input nilai rapor per guru pengampu',
+              centerLabel: `${nilaiSumatifPct}%`,
+              data: [
+                { label: 'Guru Tuntas 100%', value: raporReadiness.guruCompleted, color: 'emerald' },
+                { label: 'Dalam Proses (Parsial)', value: raporReadiness.guruPartial, color: 'amber' },
+                { label: 'Belum Menginput', value: raporReadiness.guruEmpty, color: 'rose' },
+              ],
+            },
+            {
+              type: 'bar',
+              title: 'Indeks Kesiapan Komponen Rapor (%)',
+              subtitle: 'Perbandingan kesiapan biodata, nilai sumatif, dan catatan walas',
+              maxValue: 100,
+              data: [
+                { label: 'Biodata Siswa', value: biodataSiapPct, color: 'blue', unit: '%' },
+                { label: 'Nilai Sumatif', value: nilaiSumatifPct, color: 'indigo', unit: '%' },
+                { label: 'Catatan Walas', value: raporReadiness.catatanWalasPct, color: 'emerald', unit: '%' },
+              ],
+            },
+          ]
+        : undefined,
     });
 
     // SEKSI 4: BP/BK & PEMBINAAN (SSOT & Scoped Konteks Akademik Aktif)
@@ -781,6 +932,22 @@ export class KepsekBriefingCollector implements IBriefingCollector {
               value: bpbkProgress.progresKonselingPct,
               detail: `${bpbkProgress.konselingSelesai} / ${bpbkProgress.totalKonseling} Sesi Tuntas`,
               color: bpbkProgress.progresKonselingPct >= 85 ? 'emerald' : 'blue',
+            },
+          ]
+        : undefined,
+      charts: bpbkProgress
+        ? [
+            {
+              type: 'bar',
+              title: 'Volume Layanan & Penanganan BP/BK',
+              subtitle: 'Rincian kasus, konseling, panggilan orang tua, dan home visit',
+              data: [
+                { label: 'Kasus Selesai', value: bpbkProgress.kasusSelesai, color: 'emerald', unit: 'Kasus' },
+                { label: 'Kasus Aktif', value: bpbkProgress.kasusAktif, color: 'rose', unit: 'Kasus' },
+                { label: 'Konseling Tuntas', value: bpbkProgress.konselingSelesai, color: 'blue', unit: 'Sesi' },
+                { label: 'Panggilan Ortu', value: bpbkProgress.pemanggilanTotal, color: 'amber', unit: 'Surat' },
+                { label: 'Home Visit', value: bpbkProgress.homeVisitTotal, color: 'indigo', unit: 'Kunjungan' },
+              ],
             },
           ]
         : undefined,
@@ -842,6 +1009,32 @@ export class KepsekBriefingCollector implements IBriefingCollector {
             color: 'blue',
           },
         ],
+        charts: [
+          {
+            type: 'bar',
+            title: 'Rata-Rata Capaian 4 Pilar Ketarunaan',
+            subtitle: 'Skor rata-rata Samapta, PBB, Disiplin, dan Mental (Skala 0-100)',
+            maxValue: 100,
+            data: [
+              { label: 'Samapta', value: ketarunaanProgress.rataRataSamapta, color: 'blue', unit: 'Poin' },
+              { label: 'PBB', value: ketarunaanProgress.rataRataPbb, color: 'indigo', unit: 'Poin' },
+              { label: 'Disiplin', value: ketarunaanProgress.rataRataDisiplin, color: 'emerald', unit: 'Poin' },
+              { label: 'Mental', value: ketarunaanProgress.rataRataMental, color: 'purple', unit: 'Poin' },
+            ],
+          },
+          {
+            type: 'pie',
+            title: 'Distribusi Predikat Nilai Taruna',
+            subtitle: 'Sebaran predikat A, B, C, dan D pada taruna yang telah dinilai',
+            centerLabel: `${ketarunaanProgress.rataRataNilaiAkhir}`,
+            data: [
+              { label: 'Predikat A (Sangat Baik)', value: ketarunaanProgress.predikatCount.A, color: 'emerald' },
+              { label: 'Predikat B (Baik)', value: ketarunaanProgress.predikatCount.B, color: 'blue' },
+              { label: 'Predikat C (Cukup)', value: ketarunaanProgress.predikatCount.C, color: 'amber' },
+              { label: 'Predikat D (Kurang)', value: ketarunaanProgress.predikatCount.D, color: 'rose' },
+            ],
+          },
+        ],
       });
     }
 
@@ -879,6 +1072,19 @@ export class KepsekBriefingCollector implements IBriefingCollector {
             value: progresSidangPklPct,
             detail: sidangProgressDetail,
             color: progresSidangPklPct >= 90 ? 'emerald' : 'blue',
+          },
+        ],
+        charts: [
+          {
+            type: 'bar',
+            title: 'Progres Penempatan, Presensi & Penilaian PKL',
+            subtitle: 'Perbandingan jumlah siswa PKL, kehadiran hari ini, nilai DUDI, dan sidang',
+            data: [
+              { label: 'Total PKL', value: totalPklAll || totalSiswaPklAktif, color: 'indigo', unit: 'Siswa' },
+              { label: 'Hadir Hari Ini', value: siswaPklHadir, color: 'emerald', unit: 'Siswa' },
+              { label: 'Sudah Nilai DUDI', value: pklNilaiTerisi, color: 'blue', unit: 'Siswa' },
+              { label: 'Selesai Sidang', value: pklSidangTerisi, color: 'purple', unit: 'Siswa' },
+            ],
           },
         ],
       });
