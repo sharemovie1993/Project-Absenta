@@ -746,6 +746,17 @@ export class KepsekBriefingCollector implements IBriefingCollector {
               { label: 'Belum Pernah Login', value: adoptionProgress.guruBelumPernahMasuk, color: 'rose' },
             ],
           },
+          {
+            type: 'bar',
+            title: 'Perbandingan Populasi & Aktivitas Digital Guru',
+            subtitle: 'Rincian total guru terdaftar vs adopsi & keaktifan harian',
+            data: [
+              { label: 'Total Guru', value: adoptionProgress.totalGuru, color: 'indigo', unit: 'Guru' },
+              { label: 'Sudah Adopsi', value: adoptionProgress.guruSudahMasuk, color: 'emerald', unit: 'Guru' },
+              { label: 'Aktif Hari Ini', value: adoptionProgress.guruAktifHariIni, color: 'blue', unit: 'Guru' },
+              { label: 'Belum Login', value: adoptionProgress.guruBelumPernahMasuk, color: 'rose', unit: 'Guru' },
+            ],
+          },
         ],
         items: adoptionItems.length > 0 ? adoptionItems : undefined,
       });
@@ -944,6 +955,18 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       charts: bpbkProgress
         ? [
             {
+              type: 'pie',
+              title: 'Proporsi Penyelesaian Kasus & Konseling BK',
+              subtitle: 'Perbandingan kasus/konseling yang telah selesai vs berjalan',
+              centerLabel: `${bpbkProgress.progresPenangananKasusPct}%`,
+              data: [
+                { label: 'Kasus Selesai', value: bpbkProgress.kasusSelesai, color: 'emerald' },
+                { label: 'Kasus Aktif', value: bpbkProgress.kasusAktif, color: 'rose' },
+                { label: 'Konseling Tuntas', value: bpbkProgress.konselingSelesai, color: 'blue' },
+                { label: 'Konseling Berjalan', value: bpbkProgress.konselingProses, color: 'amber' },
+              ],
+            },
+            {
               type: 'bar',
               title: 'Volume Layanan & Penanganan BP/BK',
               subtitle: 'Rincian kasus, konseling, panggilan orang tua, dan home visit',
@@ -1081,6 +1104,23 @@ export class KepsekBriefingCollector implements IBriefingCollector {
           },
         ],
         charts: [
+          {
+            type: 'pie',
+            title: 'Komposisi Kehadiran Harian Siswa PKL',
+            subtitle: 'Proporsi siswa PKL aktif yang lapor hadir vs belum/kendala hari ini',
+            centerLabel: `${
+              totalSiswaPklAktif > 0 ? Math.round((siswaPklHadir / totalSiswaPklAktif) * 100) : 0
+            }%`,
+            data: [
+              { label: 'Lapor Hadir Hari Ini', value: siswaPklHadir, color: 'emerald' },
+              { label: 'Kendala / Alpa', value: siswaPklKendala, color: 'rose' },
+              {
+                label: 'Belum Lapor Presensi',
+                value: Math.max(0, totalSiswaPklAktif - siswaPklHadir - siswaPklKendala),
+                color: 'slate',
+              },
+            ],
+          },
           {
             type: 'bar',
             title: 'Progres Penempatan, Presensi & Penilaian PKL',

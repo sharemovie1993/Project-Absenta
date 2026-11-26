@@ -101,12 +101,32 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
   const [copied, setCopied] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<BriefingKbmGalleryItem | null>(null);
   const [leaderboardScope, setLeaderboardScope] = useState<'today' | 'range'>('today');
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
   const toggleSection = (id: string) => {
     setOpenSections((prev) => ({
       ...prev,
       [id]: !prev[id],
     }));
+  };
+
+  const toggleAllSections = (open: boolean) => {
+    if (!briefing) return;
+    const next: Record<string, boolean> = {};
+    for (const s of briefing.sections) {
+      next[s.id] = open;
+    }
+    setOpenSections(next);
+  };
+
+  const jumpToSection = (id: string) => {
+    setOpenSections((prev) => ({ ...prev, [id]: true }));
+    setTimeout(() => {
+      const el = document.getElementById(`briefing-sec-${id}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 60);
   };
 
   const handlePrint = () => {
@@ -122,6 +142,9 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
       lines.push(`📅 ${briefing.tanggalStr}`);
       if (briefing.statusBadge) {
         lines.push(`🚦 Status Operasional: *${briefing.statusBadge.label}* (Indeks: ${briefing.statusBadge.score}%)`);
+      }
+      if (briefing.aiVerdict) {
+        lines.push(`🏆 Gelar AI Sekolah: *${briefing.aiVerdict.schoolTitle}* (Skor ${briefing.aiVerdict.overallScore}/100 • Grade ${briefing.aiVerdict.grade})`);
       }
       lines.push(``);
       lines.push(`📊 *RINGKASAN UTAMA:*`);
@@ -551,7 +574,14 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
       )}
 
       {/* ── 3. BENTO GRID METRICS UTAMA ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 print:grid-cols-4">
+      <div
+        className={cn(
+          'grid gap-3 sm:gap-4',
+          briefing.metrics.length === 5
+            ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 print:grid-cols-5'
+            : 'grid-cols-2 md:grid-cols-4 print:grid-cols-4'
+        )}
+      >
         {briefing.metrics.map((m: BriefingMetricItem) => {
           const statusColors = {
             success: 'border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400',
@@ -593,17 +623,142 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
         })}
       </div>
 
+      {/* ── 3b. QUICK JUMP NAVIGATION PILLS & COLLAPSE/EXPAND ALL ── */}
+      {briefing.sections.length > 1 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 sm:p-3 rounded-2xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 shadow-2xs print:hidden">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-1.5">
+              Lompat Divisi:
+            </span>
+            {briefing.sections.map((sec) => {
+              const shortNames: Record<string, string> = {
+                early_warning: '🚨 Radar Dini',
+                kesiswaan: 'Kesiswaan',
+                kurikulum: 'Kurikulum & KBM',
+                perangkat_ajar: 'Perangkat Ajar',
+                adopsi_platform: 'Adopsi Platform',
+                cbt_kurikulum: 'Event CBT',
+                penilaian_rapor: 'Rapor & Nilai',
+                bpbk: 'BP/BK',
+                ketarunaan: 'Ketarunaan',
+                hubin_pkl: 'Hubin & PKL',
+              };
+              return (
+                <button
+                  key={sec.id}
+                  type="button"
+                  onClick={() => jumpToSection(sec.id)}
+                  className={cn(
+                    'text-[11px] font-semibold px-2.5 py-1 rounded-lg border transition-all cursor-pointer',
+                    sec.id === 'early_warning'
+                      ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800'
+                      : 'bg-slate-50 text-slate-700 border-slate-200/80 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 dark:bg-slate-800/70 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-indigo-950/50 dark:hover:text-indigo-300'
+                  )}
+                >
+                  {shortNames[sec.id] || sec.category || sec.title}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+            <button
+              type="button"
+              onClick={() => toggleAllSections(true)}
+              className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60 cursor-pointer"
+            >
+              Buka Semua
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleAllSections(false)}
+              className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700 cursor-pointer"
+            >
+              Ringkas Semua
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── 4. SECTIONS PER DIVISI (DEEP DIVE ACCORDION) ── */}
       <div className="space-y-4">
         {briefing.sections.map((sec: BriefingSection) => {
           const isOpen = openSections[sec.id] ?? true;
           const isEarlyWarning = sec.id === 'early_warning';
 
+          const SECTION_THEME: Record<
+            string,
+            { icon: React.ReactNode; iconBox: string; badgeClass: string }
+          > = {
+            early_warning: {
+              icon: <AlertTriangle className="w-5 h-5" />,
+              iconBox: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+              badgeClass:
+                'bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-800',
+            },
+            kesiswaan: {
+              icon: <GraduationCap className="w-5 h-5" />,
+              iconBox: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+              badgeClass:
+                'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800',
+            },
+            kurikulum: {
+              icon: <BookOpen className="w-5 h-5" />,
+              iconBox: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
+              badgeClass:
+                'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800',
+            },
+            perangkat_ajar: {
+              icon: <FileText className="w-5 h-5" />,
+              iconBox: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
+              badgeClass:
+                'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/60 dark:text-violet-300 dark:border-violet-800',
+            },
+            adopsi_platform: {
+              icon: <Activity className="w-5 h-5" />,
+              iconBox: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
+              badgeClass:
+                'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800',
+            },
+            cbt_kurikulum: {
+              icon: <Award className="w-5 h-5" />,
+              iconBox: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+              badgeClass:
+                'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800',
+            },
+            penilaian_rapor: {
+              icon: <TrendingUp className="w-5 h-5" />,
+              iconBox: 'bg-teal-500/10 text-teal-600 dark:text-teal-400',
+              badgeClass:
+                'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-800',
+            },
+            bpbk: {
+              icon: <HeartHandshake className="w-5 h-5" />,
+              iconBox: 'bg-pink-500/10 text-pink-600 dark:text-pink-400',
+              badgeClass:
+                'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-950/60 dark:text-pink-300 dark:border-pink-800',
+            },
+            ketarunaan: {
+              icon: <ShieldCheck className="w-5 h-5" />,
+              iconBox: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+              badgeClass:
+                'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800',
+            },
+            hubin_pkl: {
+              icon: <Briefcase className="w-5 h-5" />,
+              iconBox: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
+              badgeClass:
+                'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800',
+            },
+          };
+
+          const secTheme = SECTION_THEME[sec.id] || SECTION_THEME.kurikulum;
+
           return (
             <div
               key={sec.id}
+              id={`briefing-sec-${sec.id}`}
               className={cn(
-                'rounded-2xl bg-white dark:bg-slate-900 border shadow-sm overflow-hidden print:border-black print:shadow-none transition-all',
+                'rounded-2xl bg-white dark:bg-slate-900 border shadow-sm overflow-hidden print:border-black print:shadow-none transition-all scroll-mt-4',
                 isEarlyWarning
                   ? 'border-rose-300 dark:border-rose-900/60 shadow-rose-500/5'
                   : 'border-slate-200 dark:border-slate-800'
@@ -621,15 +776,8 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
                 )}
               >
                 <div className="flex items-center gap-3">
-                  <div
-                    className={cn(
-                      'p-2 rounded-xl shrink-0',
-                      isEarlyWarning
-                        ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
-                        : 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400'
-                    )}
-                  >
-                    {isEarlyWarning ? <AlertTriangle className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
+                  <div className={cn('p-2.5 rounded-xl shrink-0', secTheme.iconBox)}>
+                    {secTheme.icon}
                   </div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
@@ -640,9 +788,7 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
                         <span
                           className={cn(
                             'text-[10px] font-bold px-2 py-0.5 rounded-full border',
-                            isEarlyWarning
-                              ? 'bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-800'
-                              : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-indigo-200/50'
+                            secTheme.badgeClass
                           )}
                         >
                           {sec.badge}
@@ -793,6 +939,12 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
                             text: 'text-emerald-700 dark:text-emerald-300',
                             lightBg: 'bg-emerald-50 dark:bg-emerald-950/40',
                           },
+                          blue: {
+                            stroke: '#3b82f6',
+                            bg: 'bg-blue-500',
+                            text: 'text-blue-700 dark:text-blue-300',
+                            lightBg: 'bg-blue-50 dark:bg-blue-950/40',
+                          },
                           indigo: {
                             stroke: '#6366f1',
                             bg: 'bg-indigo-500',
@@ -823,6 +975,12 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
                             text: 'text-violet-700 dark:text-violet-300',
                             lightBg: 'bg-violet-50 dark:bg-violet-950/40',
                           },
+                          purple: {
+                            stroke: '#a855f7',
+                            bg: 'bg-purple-500',
+                            text: 'text-purple-700 dark:text-purple-300',
+                            lightBg: 'bg-purple-50 dark:bg-purple-950/40',
+                          },
                           slate: {
                             stroke: '#94a3b8',
                             bg: 'bg-slate-400',
@@ -835,10 +993,12 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
                           (acc, item) => acc + Math.max(0, Number(item.value) || 0),
                           0
                         );
-                        const maxVal = Math.max(
-                          1,
-                          ...chart.data.map((d) => Math.max(0, Number(d.value) || 0))
-                        );
+                        const maxVal = chart.maxValue
+                          ? Math.max(1, chart.maxValue)
+                          : Math.max(
+                              1,
+                              ...chart.data.map((d) => Math.max(0, Number(d.value) || 0))
+                            );
 
                         let cumulativePct = 0;
 
@@ -911,11 +1071,13 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
                                       })}
                                   </svg>
                                   <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-1">
-                                    <span className="text-xs font-extrabold text-slate-800 dark:text-slate-100 leading-tight">
-                                      {totalValue.toLocaleString('id-ID')}
+                                    <span className="text-sm font-black text-slate-900 dark:text-white leading-tight">
+                                      {chart.centerLabel || totalValue.toLocaleString('id-ID')}
                                     </span>
-                                    <span className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-tight">
-                                      {chart.unit || 'Total'}
+                                    <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-tight">
+                                      {chart.centerLabel
+                                        ? `${totalValue.toLocaleString('id-ID')} ${chart.unit || 'Total'}`
+                                        : chart.unit || 'Total'}
                                     </span>
                                   </div>
                                 </div>
@@ -931,6 +1093,7 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
                                     const palette =
                                       COLOR_PALETTE[slice.color || 'indigo'] ||
                                       COLOR_PALETTE.indigo;
+                                    const sliceUnit = slice.unit || chart.unit;
                                     return (
                                       <div
                                         key={sIdx}
@@ -947,7 +1110,7 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
                                         <div className="flex items-center gap-1.5 shrink-0">
                                           <span className="text-[11px] font-bold text-slate-900 dark:text-white">
                                             {val.toLocaleString('id-ID')}
-                                            {chart.unit ? ` ${chart.unit}` : ''}
+                                            {sliceUnit ? ` ${sliceUnit}` : ''}
                                           </span>
                                           <span
                                             className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${palette.lightBg} ${palette.text}`}
@@ -965,8 +1128,9 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
                               <div className="space-y-2.5 my-auto py-1">
                                 {chart.data.map((bar, bIdx) => {
                                   const val = Math.max(0, Number(bar.value) || 0);
+                                  const barUnit = bar.unit || chart.unit;
                                   const widthPct =
-                                    chart.unit === '%'
+                                    barUnit === '%'
                                       ? Math.min(100, Math.max(val > 0 ? 4 : 0, val))
                                       : Math.min(
                                           100,
@@ -982,10 +1146,10 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
                                         </span>
                                         <span className="font-bold text-slate-900 dark:text-white shrink-0">
                                           {val.toLocaleString('id-ID')}
-                                          {chart.unit
-                                            ? chart.unit === '%'
+                                          {barUnit
+                                            ? barUnit === '%'
                                               ? '%'
-                                              : ` ${chart.unit}`
+                                              : ` ${barUnit}`
                                             : ''}
                                         </span>
                                       </div>
@@ -1006,48 +1170,90 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
                     </div>
                   )}
 
-                  {/* List Items (Catatan Kasus / Siswa Perhatian / Rombel Prestasi) */}
-                  {sec.items && sec.items.length > 0 && (
-                    <div className="space-y-2 pt-2">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                        Rincian Butir &amp; Tindak Lanjut:
-                      </span>
-                      <div className="divide-y divide-slate-100 dark:divide-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 overflow-hidden">
-                        {sec.items.map((item, itmIdx) => (
-                          <div
-                            key={itmIdx}
-                            className="p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs hover:bg-slate-100/50 dark:hover:bg-slate-800/40 transition-colors"
-                          >
-                            <div className="space-y-1 min-w-0">
-                              <p className="font-bold text-slate-800 dark:text-slate-200">
-                                {item.title}
-                              </p>
-                              {item.subtitle && (
-                                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                                  {item.subtitle}
-                                </p>
-                              )}
+                  {/* List Items (Catatan Kasus / Siswa Perhatian / Rombel Prestasi) - 2 Column Compact Grid */}
+                  {sec.items && sec.items.length > 0 && (() => {
+                    const isExpanded = expandedItems[sec.id] ?? false;
+                    const INITIAL_LIMIT = 6;
+                    const hasMore = sec.items.length > INITIAL_LIMIT;
+                    const visibleItems = isExpanded ? sec.items : sec.items.slice(0, INITIAL_LIMIT);
+
+                    return (
+                      <div className="space-y-2.5 pt-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            Rincian Butir &amp; Tindak Lanjut ({sec.items.length} Butir):
+                          </span>
+                          {hasMore && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setExpandedItems((prev) => ({
+                                  ...prev,
+                                  [sec.id]: !isExpanded,
+                                }))
+                              }
+                              className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline print:hidden cursor-pointer"
+                            >
+                              {isExpanded
+                                ? 'Ringkas Tampilan'
+                                : `Lihat Semua (${sec.items.length} Butir)`}
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                          {visibleItems.map((item, itmIdx) => (
+                            <div
+                              key={itmIdx}
+                              className="p-3 rounded-xl border border-slate-200/70 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/30 flex flex-col justify-between gap-2 text-xs hover:bg-slate-100/70 dark:hover:bg-slate-800/50 transition-colors"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="font-bold text-slate-800 dark:text-slate-100 leading-snug">
+                                    {item.title}
+                                  </p>
+                                  {item.subtitle && (
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                      {item.subtitle}
+                                    </p>
+                                  )}
+                                </div>
+                                {item.badge && (
+                                  <span
+                                    className={cn(
+                                      'text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0',
+                                      item.badgeColor ||
+                                        'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                                    )}
+                                  >
+                                    {item.badge}
+                                  </span>
+                                )}
+                              </div>
                               {item.note && (
-                                <p className="text-[10px] text-slate-600 dark:text-slate-400 italic bg-white/60 dark:bg-slate-900/40 px-2 py-0.5 rounded-md border border-slate-200/50 dark:border-slate-800/50">
+                                <p className="text-[10px] text-slate-600 dark:text-slate-400 italic bg-white/80 dark:bg-slate-900/50 px-2 py-1 rounded-lg border border-slate-200/60 dark:border-slate-800/60">
                                   💡 {item.note}
                                 </p>
                               )}
                             </div>
-                            {item.badge && (
-                              <span
-                                className={cn(
-                                  'text-[10px] font-bold px-2.5 py-0.5 rounded-full shrink-0 self-start sm:self-center',
-                                  item.badgeColor || 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                                )}
-                              >
-                                {item.badge}
-                              </span>
-                            )}
-                          </div>
-                        ))}
+                          ))}
+                        </div>
+                        {hasMore && !isExpanded && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedItems((prev) => ({
+                                ...prev,
+                                [sec.id]: true,
+                              }))
+                            }
+                            className="w-full py-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors print:hidden cursor-pointer"
+                          >
+                            + Tampilkan {sec.items.length - INITIAL_LIMIT} Butir Lainnya
+                          </button>
+                        )}
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Empty state bila tidak ada rincian kendala */}
                   {(!sec.stats || sec.stats.length === 0) &&
