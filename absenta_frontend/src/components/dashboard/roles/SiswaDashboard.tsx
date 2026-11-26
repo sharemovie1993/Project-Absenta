@@ -126,9 +126,9 @@ export const SiswaDashboard: React.FC = () => {
   const hasActiveStudentExam = activeStudentExams.length > 0;
   const isExamLockdown = hasActiveStudentExam;
   const effectiveTab: SiswaTabId =
-    isExamLockdown && activeTab !== 'cbt' && activeTab !== 'profil'
+    isExamLockdown && activeTab !== 'cbt'
       ? 'cbt'
-      : isExamsLoading && !rawTab
+      : isExamsLoading
       ? 'cbt'
       : activeTab;
 
@@ -139,7 +139,7 @@ export const SiswaDashboard: React.FC = () => {
   const [visitedTabs, setVisitedTabs] = useState<Set<SiswaTabId>>(() => new Set([effectiveTab]));
 
   useEffect(() => {
-    if (isExamLockdown && activeTab !== 'cbt' && activeTab !== 'profil') {
+    if (isExamLockdown && activeTab !== 'cbt') {
       setSearchParams({ tab: 'cbt' }, { replace: true });
     }
   }, [isExamLockdown, activeTab, setSearchParams]);
@@ -160,8 +160,8 @@ export const SiswaDashboard: React.FC = () => {
 
   const handleTabChange = useCallback(
     (newTab: SiswaTabId | string) => {
-      if (isExamLockdown && newTab !== 'cbt' && newTab !== 'profil') {
-        toast('Mode Fokus Ujian: Hanya Ujian CBT & Profil yang diizinkan.', { icon: '🔒' });
+      if (isExamLockdown && newTab !== 'cbt') {
+        toast('Mode Fokus Ujian: Hanya Ujian CBT yang diizinkan.', { icon: '🔒' });
         setSearchParams({ tab: 'cbt' }, { replace: true });
         return;
       }
@@ -338,12 +338,11 @@ export const SiswaDashboard: React.FC = () => {
     }
   }, [data.siswaProfile, data.user, hasActiveStudentExam, isExamsLoading]);
 
-  // Tab items config & categories (dibatasi ke Ujian CBT & Profil saat ada ujian aktif)
+  // Tab items config & categories (dibatasi penuh ke Ujian CBT saat ada ujian aktif)
   const categories: UniversalSubtabCategory[] = useMemo(() => {
     if (isExamLockdown) {
       return [
         { id: 'akademik', label: 'UJIAN CBT', icon: Laptop },
-        { id: 'layanan', label: 'AKUN SISWA', icon: User },
       ];
     }
     return [
@@ -357,7 +356,6 @@ export const SiswaDashboard: React.FC = () => {
     if (isExamLockdown) {
       return [
         { id: 'cbt', label: 'Ujian CBT', shortLabel: 'Ujian', icon: Laptop, category: 'akademik' },
-        { id: 'profil', label: 'Profil', shortLabel: 'Profil', icon: User, category: 'layanan' },
       ];
     }
 
