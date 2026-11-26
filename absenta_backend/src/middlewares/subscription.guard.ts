@@ -2,6 +2,10 @@ import { prisma } from '../utils/prisma';
 import { isSystemSuperAdmin } from '../utils/rbac';
 import { tenantEntitlementService } from '../modules/billing/services/tenant-entitlement.service';
 
+const SUBSCRIPTION_GUARD_CACHE_TTL_MS = 60 * 1000;
+const anySubCache = new Map<string, { valid: boolean; expiresAt: number }>();
+const serviceEntitlementCache = new Map<string, { valid: boolean; expiresAt: number }>();
+
 function getRouteConfig(request: any): any {
   return (
     (request as any)?.routeOptions?.config ||
@@ -142,16 +146,26 @@ export async function subscriptionGuard(
   // MULTI-SERVICE FIX: Check for ANY active subscription (not just 'CORE')
   // In multi-service SaaS, having any active subscription grants base platform access.
   // The per-service check below handles feature-specific access.
-  const anySub = await prisma.subscription.findFirst({
-    where: { 
-      tenant_id: tenantId, 
-      status: { in: ['ACTIVE', 'TRIAL'] as any },
-    },
-    orderBy: { created_at: 'desc' },
-    select: { id: true, status: true, end_date: true },
-  });
+  const nowMs = Date.now();
+  const cachedAnySub = anySubCache.get(tenantId);
+  let hasAnyValidSub: boolean;
+  if (cachedAnySub && nowMs < cachedAnySub.expiresAt) {
+    hasAnyValidSub = cachedAnySub.valid;
+  } else {
+    const anySub = await prisma.subscription.findFirst({
+      where: { 
+        tenant_id: tenantId, 
+        status: { in: ['ACTIVE', 'TRIAL'] as any },
+      },
+      orderBy: { created_at: 'desc' },
+      select: { id: true, status: true, end_date: true },
+    });
+    hasAnyValidSub = isValidSubscription(anySub);
+    if (anySubCache.size > 1000) anySubCache.clear();
+    anySubCache.set(tenantId, { valid: hasAnyValidSub, expiresAt: nowMs + SUBSCRIPTION_GUARD_CACHE_TTL_MS });
+  }
 
-  if (!isValidSubscription(anySub)) {
+  if (!hasAnyValidSub) {
     return reply.status(403).send({
       error: 'Subscription Required',
       reason: 'SUBSCRIPTION_REQUIRED',
@@ -160,6 +174,12 @@ export async function subscriptionGuard(
   }
 
   if (requiredServiceCode) {
+    const svcCacheKey = `${tenantId}:${requiredServiceCode}`;
+    const cachedSvc = serviceEntitlementCache.get(svcCacheKey);
+    if (cachedSvc && nowMs < cachedSvc.expiresAt && cachedSvc.valid) {
+      return;
+    }
+
     // 1. Check resolved tenant features from active plans and entitlements
     const features = await tenantEntitlementService.resolveTenantFeatures(tenantId);
     const upperFeatures = features.map(f => f.toUpperCase());
@@ -173,7 +193,7 @@ export async function subscriptionGuard(
     };
 
     const targetAliases = SERVICE_ALIASES[requiredServiceCode] || [requiredServiceCode];
-    const isEntitled = targetAliases.some(alias => upperFeatures.includes(alias));
+    let isEntitled = targetAliases.some(alias => upperFeatures.includes(alias));
 
     if (!isEntitled) {
       // 2. Fallback check for direct subscription record by service_code
@@ -186,7 +206,19 @@ export async function subscriptionGuard(
         select: { id: true, status: true, end_date: true },
       });
 
-      if (!isValidSubscription(svc)) {
+      if (isValidSubscription(svc)) {
+        isEntitled = true;
+      }
+    }
+
+    if (isEntitled) {
+      if (serviceEntitlementCache.size > 2000) serviceEntitlementCache.clear();
+      serviceEntitlementCache.set(svcCacheKey, { valid: true, expiresAt: nowMs + SUBSCRIPTION_GUARD_CACHE_TTL_MS });
+      return;
+    }
+
+    {
+      {
         // TRIAL EVALUATION POLICY:
         // Allows tenants to evaluate modules (Maksimal 10 Record CRUD).
         const method = String(request.method || 'GET').toUpperCase();

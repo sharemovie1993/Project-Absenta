@@ -5,7 +5,9 @@ import * as jwt from 'jsonwebtoken';
 import { getDomainBases } from '../utils/url-helper';
 
 const DOMAIN_TENANT_CACHE_TTL_MS = 5 * 60 * 1000;
+const TENANT_STATUS_CACHE_TTL_MS = 60 * 1000;
 const domainTenantCache = new Map<string, { tenantId: string | undefined; expiresAt: number }>();
+const tenantStatusCache = new Map<string, { tenant: { id: string; status: string } | null; expiresAt: number }>();
 
 export async function tenantMiddleware(
   request: any,
@@ -309,10 +311,21 @@ export async function tenantMiddleware(
   // Tenant Existence & Status Enforcement (Kill Switch)
   // Ensure tenant exists and is not SUSPENDED/DELETED before proceeding
   if (!systemSuperAdmin && request.tenantId) {
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: request.tenantId },
-      select: { id: true, status: true }
-    });
+    const cachedStatus = tenantStatusCache.get(request.tenantId);
+    let tenant: { id: string; status: string } | null;
+    if (cachedStatus && Date.now() < cachedStatus.expiresAt) {
+      tenant = cachedStatus.tenant;
+    } else {
+      tenant = await prisma.tenant.findUnique({
+        where: { id: request.tenantId },
+        select: { id: true, status: true }
+      });
+      if (tenantStatusCache.size > 1000) tenantStatusCache.clear();
+      tenantStatusCache.set(request.tenantId, {
+        tenant,
+        expiresAt: Date.now() + TENANT_STATUS_CACHE_TTL_MS,
+      });
+    }
 
     if (!tenant) {
       return reply.status(404).send({
