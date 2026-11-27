@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useRef, useState, useMemo, useEffect } from 'react';
 import {
   X,
   Printer,
@@ -29,6 +29,22 @@ interface DenahPrintModalProps {
   nodes: DenahElementNode[];
   mapGuideConfig?: DenahMapGuideConfig;
   imageGuideConfig?: DenahImageGuideConfig;
+  isBoxTransparent?: boolean;
+  boxOpacity?: number;
+}
+
+function applyAlphaToHex(color: string, alpha: number): string {
+  if (alpha >= 0.95) return color;
+  const hexMatch = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim());
+  if (!hexMatch) return color;
+  let hex = hexMatch[1];
+  if (hex.length === 3) {
+    hex = hex.split('').map((ch) => ch + ch).join('');
+  }
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 const KATEGORI_PRINT_STYLES: Record<string, { bg: string; border: string; text: string }> = {
@@ -57,6 +73,8 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
   nodes,
   mapGuideConfig,
   imageGuideConfig,
+  isBoxTransparent,
+  boxOpacity,
 }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [scaleMultiplier, setScaleMultiplier] = useState(1.0);
@@ -65,6 +83,22 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
   const [showImageLayer, setShowImageLayer] = useState(
     Boolean(imageGuideConfig?.enabled && imageGuideConfig?.url)
   );
+  const [printBoxOpacity, setPrintBoxOpacity] = useState<number>(() => {
+    if (isBoxTransparent === false) return 1;
+    if (typeof boxOpacity === 'number') return boxOpacity;
+    return 1;
+  });
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (isBoxTransparent === false) {
+      setPrintBoxOpacity(1);
+    } else if (typeof boxOpacity === 'number') {
+      setPrintBoxOpacity(boxOpacity);
+    } else {
+      setPrintBoxOpacity(1);
+    }
+  }, [isOpen, isBoxTransparent, boxOpacity]);
 
   // Standar Judul Dokumen Kedinasan & Penyelenggaraan Ujian Sekolah
   const defaultDocTitle = useMemo(() => {
@@ -273,6 +307,20 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
                 <span>{showImageLayer ? 'Gambar Denah: Aktif' : 'Gambar: Mati'}</span>
               </button>
             )}
+
+            {/* Toggle Solid vs Translucent Room Boxes */}
+            <button
+              type="button"
+              onClick={() => setPrintBoxOpacity((prev) => (prev >= 0.95 ? 0.8 : 1))}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg flex items-center gap-1.5 border transition-all cursor-pointer ${
+                printBoxOpacity >= 0.95
+                  ? 'bg-indigo-600 border-indigo-700 text-white shadow-xs'
+                  : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50'
+              }`}
+              title="Ubah tampilan kotak ruangan pada lembar cetak (Solid atau Transparan)"
+            >
+              <span>{printBoxOpacity >= 0.95 ? 'Kotak: Solid' : `Kotak: ${Math.round(printBoxOpacity * 100)}%`}</span>
+            </button>
 
             {/* Zoom Stepper for Fine-tuning Print Fit */}
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 mr-2">
@@ -489,11 +537,12 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
                       ? PRINT_TINGKAT_STYLES[detectedTingkat]
                       : null;
 
-                  const effectiveBg =
-                    node.warna_bg ||
-                    (showSatelliteLayer
-                      ? getNodeTranslucentBg(detectedTingkat, false, 0.35, node.kategori_ruang)
-                      : tingkatPrintStyle?.bg || style.bg);
+                  const isPrintTranslucent = printBoxOpacity < 0.95;
+                  const effectiveBg = isPrintTranslucent
+                    ? node.warna_bg
+                      ? applyAlphaToHex(node.warna_bg, printBoxOpacity)
+                      : getNodeTranslucentBg(detectedTingkat, false, printBoxOpacity, node.kategori_ruang)
+                    : node.warna_bg || tingkatPrintStyle?.bg || style.bg;
                   const effectiveBorder = node.warna_border || tingkatPrintStyle?.border || style.border;
                   const effectiveText = node.warna_teks || tingkatPrintStyle?.text || style.text;
                   const effectiveSubtext = node.warna_teks || tingkatPrintStyle?.subtext || style.text;

@@ -1384,6 +1384,8 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
         nodes={nodes}
         mapGuideConfig={mapGuideConfig}
         imageGuideConfig={imageGuideConfig}
+        isBoxTransparent={effectiveBoxTransparent}
+        boxOpacity={effectiveBoxTransparent ? boxOpacity : 1}
       />
 
       {/* Modal Ekspor & Impor Konfigurasi Denah (JSON) */}
