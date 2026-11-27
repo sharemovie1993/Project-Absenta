@@ -37,7 +37,7 @@ export interface BpbkMobileChildItem {
 export const BPBK_CATEGORIES: UniversalSubtabCategory[] = [
   {
     id: 'layanan',
-    label: 'Layanan & Kasus',
+    label: 'Layanan & Pemetaan',
     shortLabel: 'Layanan',
     icon: HeartHandshake,
   },
@@ -50,16 +50,16 @@ export const BPBK_CATEGORIES: UniversalSubtabCategory[] = [
 ];
 
 export const BPBK_SUBTABS_BASE: BpbkTabDefinition[] = [
-  // 🤝 KATEGORI 1: LAYANAN & KASUS
+  // 🤝 KATEGORI 1: LAYANAN & PEMETAAN (Identifikasi -> Asesmen -> Kasus -> Konseling)
   { id: 'ringkasan', label: 'Ringkasan', shortLabel: 'Ringkasan', category: 'layanan', icon: LayoutDashboard, targetPath: '/dashboard?tab=bpbk&subtab=ringkasan', color: 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400' },
+  { id: 'asesmen', label: 'Asesmen', shortLabel: 'Asesmen', category: 'layanan', icon: ClipboardList, targetPath: '/dashboard?tab=bpbk&subtab=asesmen', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
   { id: 'cases', label: 'Kasus', shortLabel: 'Kasus', category: 'layanan', icon: FileText, targetPath: '/dashboard?tab=bpbk&subtab=cases', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
   { id: 'konseling', label: 'Konseling', shortLabel: 'Konseling', category: 'layanan', icon: HeartHandshake, targetPath: '/dashboard?tab=bpbk&subtab=konseling', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
-  { id: 'pemanggilan', label: 'Panggilan', shortLabel: 'Panggilan', category: 'layanan', icon: MailOpen, targetPath: '/dashboard?tab=bpbk&subtab=pemanggilan', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
 
-  // 📋 KATEGORI 2: INTERVENSI & PELAPORAN
+  // 📋 KATEGORI 2: INTERVENSI & PELAPORAN (Eskalasi -> Pelaporan -> Struktur)
+  { id: 'pemanggilan', label: 'Panggilan', shortLabel: 'Panggilan', category: 'intervensi', icon: MailOpen, targetPath: '/dashboard?tab=bpbk&subtab=pemanggilan', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
   { id: 'homevisit', label: 'Visit', shortLabel: 'Visit', category: 'intervensi', icon: Home, targetPath: '/dashboard?tab=bpbk&subtab=homevisit', color: 'bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400' },
   { id: 'rujukan', label: 'Rujukan', shortLabel: 'Rujukan', category: 'intervensi', icon: Share2, targetPath: '/dashboard?tab=bpbk&subtab=rujukan', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
-  { id: 'asesmen', label: 'Asesmen', shortLabel: 'Asesmen', category: 'intervensi', icon: ClipboardList, targetPath: '/dashboard?tab=bpbk&subtab=asesmen', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
   { id: 'rekap', label: 'Cetak', shortLabel: 'Cetak', category: 'intervensi', icon: Printer, targetPath: '/dashboard?tab=bpbk&subtab=rekap', color: 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400' },
   { id: 'struktur_organisasi', label: 'Organisasi', shortLabel: 'Organisasi', category: 'intervensi', icon: Network, targetPath: '/dashboard?tab=bpbk&subtab=struktur_organisasi', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
 ];
