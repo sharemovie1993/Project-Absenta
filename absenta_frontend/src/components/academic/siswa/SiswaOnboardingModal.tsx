@@ -289,7 +289,6 @@ export const SiswaOnboardingModal: React.FC<SiswaOnboardingModalProps> = ({
     jenis_kelamin: 'L',
     no_hp: '',
     tinggi_badan: '' as number | string,
-    tinggi_badan: '' as number | string,
     berat_badan: '' as number | string,
     anak_ke: '' as number | string,
     agama: 'Islam',
