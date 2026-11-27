@@ -4,6 +4,7 @@ import { DashboardCommonHelper } from './dashboard-common.helper';
 import { Hari } from '@prisma/client';
 import { NilaiService } from '@/modules/rapor/services/nilai.service';
 import { CbtSettingsService } from '@/modules/cbt/services/cbt-settings.service';
+import { CbtJadwalService } from '@/modules/cbt/services/cbt-jadwal.service';
 import { HubinPenilaianService } from '@/modules/hubin/services/sub/hubin-penilaian.service';
 import { STRUKTUR_CODES } from '@/config/organization-structure';
 
@@ -1845,35 +1846,17 @@ export class DashboardActionHubService {
         prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } }),
       ]);
 
-      const mySchedules = await prisma.cbtJadwalUjian.findMany({
-        where: {
-          tenant_id: tenantId,
-          status: { notIn: ['COMPLETED', 'ARCHIVED'] },
-          ...(activeTp?.id ? { tahun_pelajaran_id: activeTp.id } : {}),
-          ...(activeSem?.id ? { semester_id: activeSem.id } : {}),
-          OR: [
-            { setting_keamanan: { path: ['pengawas_1_id'], equals: guruId } },
-            { setting_keamanan: { path: ['pengawas_2_id'], equals: guruId } },
-            { setting_keamanan: { path: ['proktor_id'], equals: guruId } },
-          ],
-        },
-        select: {
-          id: true,
-          nama_sesi: true,
-          tanggal_mulai: true,
-          tanggal_selesai: true,
-          status: true,
-          setting_keamanan: true,
-          durasi_menit: true,
-          BankSoal: {
-            select: {
-              judul: true,
-              Mapel: { select: { nama_mapel: true } },
-            },
-          },
-        },
-        orderBy: { tanggal_mulai: 'asc' },
+      // SSOT: Gunakan CbtJadwalService.list agar identik dengan Meja Pengawas & Onboarding (isolasi event aktif + non-remedial)
+      const jadwalRes = await CbtJadwalService.list(tenantId, {
+        pengawas_guru_id: guruId,
+        ...(activeTp?.id ? { tahun_pelajaran_id: activeTp.id } : {}),
+        ...(activeSem?.id ? { semester_id: activeSem.id } : {}),
+        sort_direction: 'asc',
+        limit: 500,
       });
+      const mySchedules = (jadwalRes?.items || []).filter(
+        (j: any) => j.status !== 'COMPLETED' && j.status !== 'ARCHIVED'
+      );
 
       if (!mySchedules || mySchedules.length === 0) return [];
 
@@ -1981,9 +1964,10 @@ export class DashboardActionHubService {
    */
   private async detectCbtLiveAuthorTasks(tenantId: string, guruId: string): Promise<UnifiedActionItem[]> {
     try {
-      const [activeTp, activeSem] = await Promise.all([
+      const [activeTp, activeSem, activeEvent] = await Promise.all([
         prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } }),
         prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } }),
+        CbtSettingsService.getActiveEvent(tenantId),
       ]);
 
       const liveSchedules = await prisma.cbtJadwalUjian.findMany({
@@ -1992,6 +1976,14 @@ export class DashboardActionHubService {
           status: { in: ['ACTIVE', 'PAUSED'] },
           ...(activeTp?.id ? { tahun_pelajaran_id: activeTp.id } : {}),
           ...(activeSem?.id ? { semester_id: activeSem.id } : {}),
+          ...(activeEvent?.id
+            ? {
+                OR: [
+                  { setting_keamanan: { path: ['event_id'], equals: activeEvent.id } },
+                  { BankSoal: { event_id: activeEvent.id } },
+                ],
+              }
+            : {}),
           BankSoal: {
             OR: [
               { guru_id: guruId },
