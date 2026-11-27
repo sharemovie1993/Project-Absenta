@@ -28,7 +28,7 @@ export interface KonselingSiswa {
   id: string;
   siswa_id: string;
   tanggal: string;
-  tipe: 'INDIVIDU' | 'KELOMPOK';
+  tipe: 'INDIVIDU' | 'KELOMPOK' | 'KARIR';
   kelompok_id?: string;
   masalah: string;
   solusi?: string;

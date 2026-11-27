@@ -41,16 +41,17 @@ export class BpbkAnalyticsService {
     ] = await Promise.all([
       // 1. Active Counseling
       prisma.konselingSiswa.count({
-        where: { tenant_id: tenantId, status: 'PROSES' }
+        where: { tenant_id: tenantId, status: 'PROSES', deleted_at: null }
       }),
       // 2. Pending Summons
       prisma.pemanggilanOrangTua.count({
-        where: { tenant_id: tenantId, status: { in: ['BARU', 'DIKIRIM'] } }
+        where: { tenant_id: tenantId, status: { in: ['BARU', 'DIKIRIM'] }, deleted_at: null }
       }),
       // 3. Month Home Visits
       prisma.homeVisit.count({
         where: {
           tenant_id: tenantId,
+          deleted_at: null,
           tanggal: { gte: startOfMonth }
         }
       }),
@@ -67,7 +68,7 @@ export class BpbkAnalyticsService {
       }),
       // 5. Recent Counselings (top 5)
       prisma.konselingSiswa.findMany({
-        where: { tenant_id: tenantId },
+        where: { tenant_id: tenantId, deleted_at: null },
         take: 5,
         orderBy: { tanggal: 'desc' },
         include: {

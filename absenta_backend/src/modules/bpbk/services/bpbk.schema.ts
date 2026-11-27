@@ -19,7 +19,7 @@ export const updateKasusBKSchema = kasusBKSchema.partial();
 export const konselingSiswaSchema = z.object({
   siswa_id: z.string().min(1, 'Siswa ID wajib diisi'),
   tanggal: z.union([z.date(), z.string()]).transform((v) => new Date(v)),
-  tipe: z.enum(['INDIVIDU', 'KELOMPOK']),
+  tipe: z.enum(['INDIVIDU', 'KELOMPOK', 'KARIR']),
   kelompok_id: optionalNullableId,
   masalah: z.string().min(1, 'Masalah wajib diisi'),
   solusi: optionalNullableString,

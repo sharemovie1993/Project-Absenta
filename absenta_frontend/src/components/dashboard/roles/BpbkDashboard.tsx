@@ -26,6 +26,7 @@ import toast from 'react-hot-toast';
 
 // Modular Subtabs
 import { BpbkBerandaTab } from './bpbk/tabs/BpbkBerandaTab';
+import { EwsBimbinganModal, type EwsCriticalStudent } from './bpbk/EwsBimbinganModal';
 import { BpbkCasesTab } from './bpbk/tabs/BpbkCasesTab';
 import { BpbkKonselingTab } from './bpbk/tabs/BpbkKonselingTab';
 import { BpbkPemanggilanTab } from './bpbk/tabs/BpbkPemanggilanTab';
@@ -180,6 +181,16 @@ export const BpbkDashboard: React.FC<BpbkDashboardProps> = () => {
       setIsRefreshing(false);
     }
   };
+
+  const [selectedEwsStudent, setSelectedEwsStudent] = useState<EwsCriticalStudent | null>(null);
+
+  const handleOpenBimbingModal = useCallback((student: EwsCriticalStudent) => {
+    setSelectedEwsStudent(student);
+  }, []);
+
+  const handleCloseBimbingModal = useCallback(() => {
+    setSelectedEwsStudent(null);
+  }, []);
 
   const handleOpenSiswaDetail = useCallback((id: string) => {
     setSelectedSiswaId(id);
@@ -392,6 +403,7 @@ export const BpbkDashboard: React.FC<BpbkDashboardProps> = () => {
                     loading={loadingStats}
                     onTabSelect={handleTabSelect}
                     onSelectSiswaDetail={handleOpenSiswaDetail}
+                    onBimbingSiswa={handleOpenBimbingModal}
                     onViewAllSiswa={() => navigate('/bpbk/siswa')}
                   />
                 )}
@@ -487,6 +499,17 @@ export const BpbkDashboard: React.FC<BpbkDashboardProps> = () => {
             )}
           </main>
         </div>
+
+        {/* Modal Tindak Lanjut Bimbingan EWS */}
+        <EwsBimbinganModal
+          isOpen={Boolean(selectedEwsStudent)}
+          student={selectedEwsStudent}
+          onClose={handleCloseBimbingModal}
+          onOpenFullProfile={(siswaId) => {
+            handleCloseBimbingModal();
+            navigate(`/bpbk/siswa/${siswaId}`);
+          }}
+        />
 
         {/* Modal Siswa Detail */}
         <Suspense fallback={null}>

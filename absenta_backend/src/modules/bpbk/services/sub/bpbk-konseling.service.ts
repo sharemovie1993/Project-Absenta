@@ -25,7 +25,7 @@ export class BpbkKonselingService extends BpbkCommonHelper {
   static async createKonseling(tenantId: string, data: {
     siswa_id: string;
     tanggal: Date;
-    tipe: 'INDIVIDU' | 'KELOMPOK';
+    tipe: 'INDIVIDU' | 'KELOMPOK' | 'KARIR';
     kelompok_id?: string | null;
     masalah: string;
     solusi?: string | null;
@@ -50,6 +50,10 @@ export class BpbkKonselingService extends BpbkCommonHelper {
       }
     });
 
+    if (res.kasus_bk_id) {
+      await prisma.kasusBK.updateMany({ where: { id: res.kasus_bk_id, tenant_id: tenantId, status: 'TERBUKA', deleted_at: null }, data: { status: 'PROSES' } });
+    }
+
     activityLogService.logEvent({
       event_type: 'COUNSELING_CREATE',
       tenant_id: tenantId,
@@ -65,7 +69,7 @@ export class BpbkKonselingService extends BpbkCommonHelper {
 
   static async updateKonseling(tenantId: string, id: string, data: {
     tanggal?: Date;
-    tipe?: 'INDIVIDU' | 'KELOMPOK';
+    tipe?: 'INDIVIDU' | 'KELOMPOK' | 'KARIR';
     kelompok_id?: string | null;
     masalah?: string;
     solusi?: string | null;
@@ -89,6 +93,9 @@ export class BpbkKonselingService extends BpbkCommonHelper {
       where: { id },
       data: updateData
     });
+    if (res.kasus_bk_id) {
+      await prisma.kasusBK.updateMany({ where: { id: res.kasus_bk_id, tenant_id: tenantId, status: 'TERBUKA', deleted_at: null }, data: { status: 'PROSES' } });
+    }
     activityLogService.logEvent({
       event_type: 'COUNSELING_UPDATE',
       tenant_id: tenantId,
@@ -140,6 +147,7 @@ export class BpbkKonselingService extends BpbkCommonHelper {
       entity_id: id,
       metadata: { newValue: res }
     });
+    await cacheInvalidationService.invalidateBpbkCache(tenantId, res.siswa_id);
     return res;
   }
 
@@ -210,6 +218,14 @@ export class BpbkKonselingService extends BpbkCommonHelper {
             select: {
               id: true,
               full_name: true
+            }
+          },
+          KasusBK: {
+            select: {
+              id: true,
+              judul: true,
+              kategori: true,
+              status: true
             }
           }
         }

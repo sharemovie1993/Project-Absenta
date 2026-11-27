@@ -30,6 +30,7 @@ export interface BpbkBerandaTabProps {
   loading: boolean;
   onTabSelect: (tabId: BpbkTabId) => void;
   onSelectSiswaDetail?: (siswaId: string) => void;
+  onBimbingSiswa?: (student: BpbkDashboardStats['criticalStudents'][number]) => void;
   onViewAllSiswa?: () => void;
 }
 
@@ -38,6 +39,7 @@ export const BpbkBerandaTab: React.FC<BpbkBerandaTabProps> = React.memo(({
   loading,
   onTabSelect,
   onSelectSiswaDetail,
+  onBimbingSiswa,
   onViewAllSiswa,
 }) => {
   // 1. Bento Grid Cells (Shopee-Grade Hairline 2x2 or 4x1)
@@ -250,11 +252,11 @@ export const BpbkBerandaTab: React.FC<BpbkBerandaTabProps> = React.memo(({
                       </Badge>
                     </td>
                     <td className="py-2.5 px-3 text-right">
-                      {onSelectSiswaDetail && (
+                      {(onBimbingSiswa || onSelectSiswaDetail) && (
                         <Button
                           variant="toolbarPrimary"
                           size="toolbar"
-                          onClick={() => onSelectSiswaDetail(student.id)}
+                          onClick={() => (onBimbingSiswa ? onBimbingSiswa(student) : onSelectSiswaDetail?.(student.id))}
                           className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-[10px] h-7 px-2.5 rounded-lg font-semibold"
                         >
                           Bimbing

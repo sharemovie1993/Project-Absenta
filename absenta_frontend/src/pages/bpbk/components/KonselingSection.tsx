@@ -439,7 +439,8 @@ export const KonselingSection: React.FC = React.memo(() => {
             options={[
               { value: '', label: 'Semua Tipe Sesi' },
               { value: 'INDIVIDU', label: 'Individu' },
-              { value: 'KELOMPOK', label: 'Kelompok' }
+              { value: 'KELOMPOK', label: 'Kelompok' },
+              { value: 'KARIR', label: 'Konseling Karir' }
             ]}
             value={selectedTipe}
             onValueChange={setSelectedTipe}
@@ -594,7 +595,8 @@ export const KonselingSection: React.FC = React.memo(() => {
                   id="tipe-sesi"
                   options={[
                     { value: 'INDIVIDU', label: 'Konseling Individu' },
-                    { value: 'KELOMPOK', label: 'Konseling Kelompok' }
+                    { value: 'KELOMPOK', label: 'Konseling Kelompok' },
+                    { value: 'KARIR', label: 'Konseling Karir' }
                   ]}
                   value={formData.tipe}
                   onValueChange={(val) => setFormData(prev => ({ ...prev, tipe: val }))}
