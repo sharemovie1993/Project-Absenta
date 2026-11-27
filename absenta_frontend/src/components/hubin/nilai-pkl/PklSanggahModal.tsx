@@ -209,8 +209,9 @@ export const PklSanggahModal: React.FC<PklSanggahModalProps> = ({
 
 export const PklSanggahRowButton: React.FC<{
   score: ScoreRow;
+  isComplete?: boolean;
   onOpen: (student: ScoreRow) => void;
-}> = ({ score, onOpen }) => {
+}> = ({ score, isComplete = false, onOpen }) => {
   const exemption = isPklRowExempted(score);
 
   if (exemption.exempted) {
@@ -229,6 +230,8 @@ export const PklSanggahRowButton: React.FC<{
       </button>
     );
   }
+
+  if (isComplete) return null;
 
   return (
     <button

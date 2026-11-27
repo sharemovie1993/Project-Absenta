@@ -663,7 +663,7 @@ export class DashboardActionHubService {
             total: totalBimbingan,
             percent: Math.round((assessedBimbingan / totalBimbingan) * 100),
             label: `${assessedBimbingan}/${totalBimbingan} Dinilai`,
-            variant: 'rose',
+            variant: unassessedBimbingan > 0 ? 'rose' : 'emerald',
           },
           action: {
             label: 'Input Nilai ➔',
@@ -724,7 +724,7 @@ export class DashboardActionHubService {
             total: totalSidang,
             percent: Math.round((assessedSidang / totalSidang) * 100),
             label: `${assessedSidang}/${totalSidang} Teruji`,
-            variant: 'rose',
+            variant: unassessedSidang > 0 ? 'rose' : 'emerald',
           },
           action: {
             label: 'Nilai Sidang ➔',

@@ -229,7 +229,7 @@ export const PklNilaiIndustriMobileCards: React.FC<PklNilaiIndustriMobileCardsPr
                       <Building2 size={12} className="shrink-0 opacity-75" />
                       <span className="truncate">{score.mitra_nama || 'Belum ada DUDI'}</span>
                     </div>
-                    <PklSanggahRowButton score={score} onOpen={setSanggahTarget} />
+                    <PklSanggahRowButton score={score} isComplete={isComplete} onOpen={setSanggahTarget} />
 
                     {/* Baris 3: Status Kelengkapan Nilai */}
                     <div className="flex items-center gap-2 pt-0.5 flex-wrap">

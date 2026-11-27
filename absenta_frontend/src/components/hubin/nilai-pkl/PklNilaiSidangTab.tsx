@@ -4,7 +4,7 @@ import { Card, Button, SearchableSelect } from '@/components/ui';
 import { AcademicFilterToolbar } from '@/components/common/academic-filter';
 import { Info, Lock, Save, FileText, Check, Printer, Sparkles, Edit3, Eraser, PenTool, CheckCircle2, Award } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ScoreRow } from './types';
+import { ScoreRow, evaluateSidangCompleteness } from './types';
 import { PklNilaiSidangMobileCards } from './PklNilaiSidangMobileCards';
 import { PengujiCombobox } from './PengujiCombobox';
 import { PklSidangCetakModal } from './PklSidangCetakModal';
@@ -307,7 +307,11 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
               <span className="text-[10px] opacity-75">🏢</span>
               <span className="truncate">{score.mitra_nama || '-'}</span>
             </div>
-            <PklSanggahRowButton score={score} onOpen={setSanggahTarget} />
+            <PklSanggahRowButton
+              score={score}
+              isComplete={evaluateSidangCompleteness(score).isComplete}
+              onOpen={setSanggahTarget}
+            />
           </div>
         );
       },

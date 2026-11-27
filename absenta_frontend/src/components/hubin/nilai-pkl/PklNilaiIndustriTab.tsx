@@ -3,7 +3,7 @@ import { Card, Button, SearchableSelect } from '@/components/ui';
 import { AcademicFilterToolbar } from '@/components/common/academic-filter';
 import { Save, RotateCcw, Copy, Printer, Lock, Edit3, Eraser } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ScoreRow } from './types';
+import { ScoreRow, evaluateDudiCompleteness } from './types';
 import { PklNilaiIndustriMobileCards } from './PklNilaiIndustriMobileCards';
 import { PklSanggahModal, PklSanggahRowButton } from './PklSanggahModal';
 import {
@@ -232,51 +232,56 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
               />
             </div>
 
-            {/* Baris 2: Tempat PKL */}
-            <div
-              className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium truncate flex items-center gap-1"
-              title={score.mitra_nama || 'Belum ada tempat PKL'}
-            >
-              <span className="text-[10px] opacity-75">🏢</span>
-              <span className="truncate">{score.mitra_nama || '-'}</span>
-            </div>
-            <PklSanggahRowButton score={score} onOpen={setSanggahTarget} />
+            <PklSanggahRowButton
+              score={score}
+              isComplete={evaluateDudiCompleteness(score).isComplete}
+              onOpen={setSanggahTarget}
+            />
           </div>
         );
       },
     },
     {
       key: 'penanggung_jawab_nama',
-      header: 'Pemilik / Pimpinan DUDI',
-      width: 140,
+      header: 'Perusahaan & Pemilik DUDI',
+      width: 155,
       renderCell: (score, index) => {
         const globalIndex = (currentPage - 1) * itemsPerPage + index + 1;
         return (
-          <div className="flex items-center gap-1 py-0.5 max-w-[135px]">
-            <input
-              id={`score-pemilik-${globalIndex}`}
-              aria-label={`Nama pemilik / pimpinan DUDI ${score.nama_siswa}`}
-              type="text"
-              placeholder={readOnly ? '-' : 'Nama Pemilik DUDI...'}
-              value={score.penanggung_jawab_nama || ''}
-              readOnly={readOnly}
-              disabled={readOnly}
-              onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'penanggung_jawab_nama', e.target.value)}
-              className={cn(
-                "w-full text-[10px] h-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1.5 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500",
-                readOnly && "border-transparent bg-transparent cursor-default px-0 text-slate-700 dark:text-slate-300 font-semibold"
+          <div className="space-y-0.5 py-0.5 max-w-[150px]">
+            <div
+              className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold truncate flex items-center gap-1"
+              title={score.mitra_nama || 'Belum ada tempat PKL'}
+            >
+              <span className="text-[10px] opacity-75">🏢</span>
+              <span className="truncate">{score.mitra_nama || '-'}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <input
+                id={`score-pemilik-${globalIndex}`}
+                aria-label={`Nama pemilik / pimpinan DUDI ${score.nama_siswa}`}
+                type="text"
+                placeholder={readOnly ? '-' : 'Nama Pemilik DUDI...'}
+                value={score.penanggung_jawab_nama || ''}
+                readOnly={readOnly}
+                disabled={readOnly}
+                onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'penanggung_jawab_nama', e.target.value)}
+                className={cn(
+                  "w-full text-[10px] h-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1.5 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500",
+                  readOnly && "border-transparent bg-transparent cursor-default px-0 text-slate-700 dark:text-slate-300 font-semibold"
+                )}
+              />
+              {!readOnly && score.mitra_nama && score.penanggung_jawab_nama && (
+                <button
+                  type="button"
+                  onClick={() => handleApplyToSameMitra(score.mitra_nama, score.instruktur_nama, score.penanggung_jawab_nama)}
+                  className="shrink-0 p-1 text-slate-400 hover:text-indigo-600 rounded transition-colors"
+                  title={`Salin nama pemilik "${score.penanggung_jawab_nama}" ke semua siswa di ${score.mitra_nama}`}
+                >
+                  <Copy size={11} />
+                </button>
               )}
-            />
-            {!readOnly && score.mitra_nama && score.penanggung_jawab_nama && (
-              <button
-                type="button"
-                onClick={() => handleApplyToSameMitra(score.mitra_nama, score.instruktur_nama, score.penanggung_jawab_nama)}
-                className="shrink-0 p-1 text-slate-400 hover:text-indigo-600 rounded transition-colors"
-                title={`Salin nama pemilik "${score.penanggung_jawab_nama}" ke semua siswa di ${score.mitra_nama}`}
-              >
-                <Copy size={11} />
-              </button>
-            )}
+            </div>
           </div>
         );
       },

@@ -351,7 +351,7 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
             const IconComp = DIVISION_ICON[item.division] || AlertCircle;
             const isCritical = item.urgency === 'CRITICAL';
             const isToday = item.urgency === 'TODAY';
-            const isEventTask = item.division === 'CBT' || item.id.startsWith('pkl_nilai_') || item.progress?.variant === 'rose';
+            const isEventTask = item.urgency !== 'INFO' && (item.division === 'CBT' || item.id.startsWith('pkl_nilai_') || item.progress?.variant === 'rose');
             const isUrgentOrEvent = isCritical || isEventTask;
 
             return (

@@ -291,7 +291,7 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
                       <Building2 className="w-3 h-3 text-indigo-500 shrink-0" />
                       <span className="truncate">{score.mitra_nama || 'Belum ditentukan'}</span>
                     </div>
-                    <PklSanggahRowButton score={score} onOpen={setSanggahTarget} />
+                    <PklSanggahRowButton score={score} isComplete={hasExamined} onOpen={setSanggahTarget} />
 
                     {/* Baris 3: Quick Badges (DUDI, Laporan, Sidang, Nilai Akhir) */}
                     <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
