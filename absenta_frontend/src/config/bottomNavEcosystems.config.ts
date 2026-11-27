@@ -31,6 +31,7 @@ import {
   Printer,
   Building2,
   CheckCircle2,
+  CheckSquare,
   Package,
   PiggyBank,
   ScanLine,
