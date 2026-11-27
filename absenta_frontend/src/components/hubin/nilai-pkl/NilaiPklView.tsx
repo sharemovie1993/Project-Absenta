@@ -320,6 +320,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
           sidang_sikap: item.nilai_json?.sidang_sikap ?? null,
           penguji_id: item.nilai_json?.penguji_id || null,
           penguji_nama: item.nilai_json?.penguji_nama || '',
+          penguji_foto: item.penguji_foto || null,
           catatan_sidang: item.nilai_json?.catatan_sidang || '',
           ttd_siswa: item.nilai_json?.ttd_siswa || null,
           waktu_ttd_siswa: item.nilai_json?.waktu_ttd_siswa || null,
@@ -340,6 +341,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
           pembimbing_id: item.Pembimbing?.id || item.pembimbing_id || '',
           pembimbing_nama: item.Pembimbing?.nama_guru || item.pembimbing_nama || '',
           pembimbing_nip: item.Pembimbing?.nip || '',
+          pembimbing_foto: item.Pembimbing?.foto || item.pembimbing_foto || null,
         };
       }));
     }

@@ -27,6 +27,7 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Button, Input, SearchableSelect } from '@/components/ui';
+import { PersonPhoto } from '@/components/ui/PersonPhoto';
 import { HubCard } from '@/components/ui/hub';
 import { ScoreRow, evaluateDudiCompleteness } from './types';
 import { PklDudiCetakModal, PklDudiDocType } from './PklDudiCetakModal';
@@ -236,6 +237,7 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
     const map = new Map<string, {
       nama: string;
       id?: string | null;
+      foto?: string | null;
       totalSiswa: number;
       sudahDinilai: number;
       belumDinilai: number;
@@ -251,6 +253,7 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
         existing = {
           nama,
           id: s.pembimbing_id,
+          foto: s.pembimbing_foto || null,
           totalSiswa: 0,
           sudahDinilai: 0,
           belumDinilai: 0,
@@ -258,6 +261,8 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
           totalNilai: 0,
         };
         map.set(nama, existing);
+      } else if (!existing.foto && s.pembimbing_foto) {
+        existing.foto = s.pembimbing_foto;
       }
 
       existing.totalSiswa += 1;
@@ -869,15 +874,23 @@ Terima kasih.
                   title={`Klik untuk memfilter daftar siswa khusus pembimbing ${pembimbing.nama}`}
                 >
                   <div className="flex items-start justify-between gap-1.5">
-                    <div className="min-w-0 flex-1">
-                      <div className={cn(
-                        "font-bold text-xs truncate",
-                        isSelected ? "text-emerald-900 dark:text-emerald-200" : "text-slate-900 dark:text-slate-100"
-                      )}>
-                        {pembimbing.nama}
-                      </div>
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                        {pembimbing.sudahDinilai} dari {pembimbing.totalSiswa} siswa dinilai
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <PersonPhoto
+                        name={pembimbing.nama}
+                        foto={pembimbing.foto}
+                        variant="circle"
+                        size="sm"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className={cn(
+                          "font-bold text-xs truncate",
+                          isSelected ? "text-emerald-900 dark:text-emerald-200" : "text-slate-900 dark:text-slate-100"
+                        )}>
+                          {pembimbing.nama}
+                        </div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          {pembimbing.sudahDinilai} dari {pembimbing.totalSiswa} siswa dinilai
+                        </div>
                       </div>
                     </div>
 

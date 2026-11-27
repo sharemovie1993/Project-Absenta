@@ -26,6 +26,7 @@ import { PklSidangCetakModal, PklDocType } from './PklSidangCetakModal';
 import { useJurusanOptions } from '@/hooks/useJurusanOptions';
 import { useAuthStore } from '@/store/authStore';
 import { UniversalSendWaModal } from '@/components/ui/UniversalSendWaModal';
+import { PersonPhoto } from '@/components/ui/PersonPhoto';
 import { getWaDocumentRecipients } from '@/api/whatsapp.api';
 import { cn } from '@/lib/utils';
 
@@ -218,6 +219,7 @@ export const PklMonitoringSidangTab: React.FC<PklMonitoringSidangTabProps> = Rea
     const map = new Map<string, {
       nama: string;
       id?: string | null;
+      foto?: string | null;
       totalSiswa: number;
       sudahDinilai: number;
       belumDinilai: number;
@@ -234,6 +236,7 @@ export const PklMonitoringSidangTab: React.FC<PklMonitoringSidangTabProps> = Rea
         existing = {
           nama,
           id: s.penguji_id,
+          foto: s.penguji_foto || null,
           totalSiswa: 0,
           sudahDinilai: 0,
           belumDinilai: 0,
@@ -242,6 +245,8 @@ export const PklMonitoringSidangTab: React.FC<PklMonitoringSidangTabProps> = Rea
           totalNilai: 0,
         };
         map.set(nama, existing);
+      } else if (!existing.foto && s.penguji_foto) {
+        existing.foto = s.penguji_foto;
       }
 
       existing.totalSiswa += 1;
@@ -758,15 +763,23 @@ Terima kasih.
                 >
                   {/* Nama Penguji & Status Selesai */}
                   <div className="flex items-start justify-between gap-1.5">
-                    <div className="min-w-0 flex-1">
-                      <div className={cn(
-                        "font-bold text-xs truncate",
-                        isSelected ? "text-indigo-900 dark:text-indigo-200" : "text-slate-900 dark:text-slate-100"
-                      )}>
-                        {penguji.nama}
-                      </div>
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                        {penguji.sudahDinilai} dari {penguji.totalSiswa} siswa dinilai
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <PersonPhoto
+                        name={penguji.nama}
+                        foto={penguji.foto}
+                        variant="circle"
+                        size="sm"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className={cn(
+                          "font-bold text-xs truncate",
+                          isSelected ? "text-indigo-900 dark:text-indigo-200" : "text-slate-900 dark:text-slate-100"
+                        )}>
+                          {penguji.nama}
+                        </div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          {penguji.sudahDinilai} dari {penguji.totalSiswa} siswa dinilai
+                        </div>
                       </div>
                     </div>
 

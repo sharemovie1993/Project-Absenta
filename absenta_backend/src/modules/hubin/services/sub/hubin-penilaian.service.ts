@@ -1111,7 +1111,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
               },
             },
             Mitra: { select: { id: true, nama: true, alamat: true } },
-            Pembimbing: { select: { id: true, nama_guru: true, nip: true } },
+            Pembimbing: { select: { id: true, nama_guru: true, nip: true, foto: true } },
           },
           orderBy: { Siswa: { nama_siswa: 'asc' } },
         });
@@ -1184,10 +1184,30 @@ export class HubinPenilaianService extends HubinCommonHelper {
           else if (st === 'HADIR' || st === 'TERLAMBAT') c.hadir += row._count.id;
         }
 
+        const pengujiIds = Array.from(
+          new Set(
+            list
+              .map((item) => (item.nilai_json as any)?.penguji_id)
+              .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+          )
+        );
+        const pengujiGurus = pengujiIds.length > 0
+          ? await prisma.guru.findMany({
+              where: { id: { in: pengujiIds }, tenant_id: tenantId },
+              select: { id: true, foto: true },
+            })
+          : [];
+        const pengujiFotoMap = new Map<string, string | null>(
+          pengujiGurus.map((g) => [g.id, g.foto || null])
+        );
+
         const enrichedList = list.map((item) => {
           const stats = countMap.get(item.id) || { sakit: 0, izin: 0, alpa: 0, hadir: 0 };
+          const pId = (item.nilai_json as any)?.penguji_id;
           return {
             ...item,
+            pembimbing_foto: item.Pembimbing?.foto || null,
+            penguji_foto: pId ? (pengujiFotoMap.get(pId) || null) : null,
             auto_sakit: stats.sakit,
             auto_izin: stats.izin,
             auto_alpa: stats.alpa,

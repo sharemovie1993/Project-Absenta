@@ -48,6 +48,7 @@ export interface ScoreRow {
   sidang_sikap?: number | null;
   penguji_id?: string | null;
   penguji_nama: string;
+  penguji_foto?: string | null;
   catatan_sidang: string;
   ttd_siswa?: string | null;
   waktu_ttd_siswa?: string | null;
@@ -68,6 +69,7 @@ export interface ScoreRow {
   pembimbing_id?: string;
   pembimbing_nama?: string;
   pembimbing_nip?: string;
+  pembimbing_foto?: string | null;
 }
 
 export interface RawPklItem {
@@ -75,6 +77,8 @@ export interface RawPklItem {
   siswa_pkl_id?: string;
   pembimbing_nama?: string;
   pembimbing_id?: string;
+  pembimbing_foto?: string | null;
+  penguji_foto?: string | null;
   Siswa?: { 
     id?: string;
     nama_siswa?: string; 
@@ -97,6 +101,7 @@ export interface RawPklItem {
     id?: string;
     nama_guru?: string;
     nip?: string;
+    foto?: string | null;
   };
   siswa_nama?: string;
   nis?: string;
