@@ -1304,8 +1304,6 @@ export const PrestasiView: React.FC<UniversalPrestasiViewProps> = React.memo(({
                   />
                 </div>
               </div>
-                />
-              </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <Button type="button" variant="outline" size="sm" onClick={handleCloseModal} className="cursor-pointer">
