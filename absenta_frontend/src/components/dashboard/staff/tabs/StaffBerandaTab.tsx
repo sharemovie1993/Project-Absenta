@@ -29,6 +29,8 @@ import {
   QrCode,
   LayoutGrid,
   Briefcase,
+  Sparkles,
+  Wallet,
 } from 'lucide-react';
 import { PersonPhoto } from '@/components/ui/PersonPhoto';
 import { 
@@ -1288,25 +1290,22 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                <Button
+                <button
                   type="button"
-                  variant="outline"
-                  size="sm"
                   onClick={() => onNavigateTab('koperasi')}
-                  className="text-xs font-bold gap-1.5"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-colors cursor-pointer"
                 >
                   <Wallet size={14} className="text-emerald-600" />
                   <span>Koperasi Saya</span>
-                </Button>
-                <Button
+                </button>
+                <button
                   type="button"
-                  size="sm"
                   onClick={() => onNavigateTab('profil')}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold gap-1.5"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-2xs"
                 >
                   <Users size={14} />
                   <span>Profil Staf</span>
-                </Button>
+                </button>
               </div>
             </div>
           </div>
