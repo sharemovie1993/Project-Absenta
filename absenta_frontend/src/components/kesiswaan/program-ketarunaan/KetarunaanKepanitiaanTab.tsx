@@ -46,6 +46,7 @@ interface KetarunaanKepanitiaanTabProps {
   sesiId: string | null;
   refetchSesi: () => void;
   guard?: any;
+  mode?: 'PRESENSI' | 'STRUKTUR' | 'PLOTING';
 }
 
 function statusBadge(status: string) {
@@ -74,6 +75,7 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
   sesiId,
   refetchSesi,
   guard,
+  mode,
 }) => {
   const qc = useQueryClient();
   const [panitiaModalOpen, setPanitiaModalOpen] = useState(false);
@@ -81,8 +83,10 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
   const [modalFilterCategory, setModalFilterCategory] = useState<'SEMUA' | 'MAPEL' | 'PEMBINA' | 'WALIKELAS'>('SEMUA');
   const [forceIncidentalMode, setForceIncidentalMode] = useState(false);
 
-  // View Mode: 'STRUKTUR' (Bagan Org Chart), 'PLOTING' (Tabel Ploting Panitia), 'PRESENSI' (Terminal Pos)
-  const [viewMode, setViewMode] = useState<'STRUKTUR' | 'PLOTING' | 'PRESENSI'>('STRUKTUR');
+  // View Mode: 'PRESENSI' (Terminal Pos - default), 'STRUKTUR' (Bagan Org Chart), 'PLOTING' (Tabel Ploting Panitia)
+  const [internalViewMode, setInternalViewMode] = useState<'STRUKTUR' | 'PLOTING' | 'PRESENSI'>(mode || 'PRESENSI');
+  const viewMode = mode || internalViewMode;
+  const setViewMode = setInternalViewMode;
 
   // Kepanitiaan (Ploting Panitia) Query
   const { 
@@ -359,61 +363,63 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
         </div>
       </div>
 
-      {/* ── Sub-Navigation Switcher Antarmuka Kepanitiaan ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setViewMode('STRUKTUR')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              viewMode === 'STRUKTUR'
-                ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
-          >
-            <LayoutGrid size={15} />
-            <span>Bagan Struktur Organisasi</span>
-          </button>
+      {/* ── Sub-Navigation Switcher Antarmuka Kepanitiaan (Hanya jika mode tidak dikunci dari Sidebar Subtab) ── */}
+      {!mode && (
+        <div className="flex flex-wrap items-center justify-between gap-3 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setViewMode('PRESENSI')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                viewMode === 'PRESENSI'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <Radio size={15} />
+              <span>Terminal Presensi Lapangan</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                {hadirCount}/{totalCount}
+              </span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setViewMode('PLOTING')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              viewMode === 'PLOTING'
-                ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
-          >
-            <TableProperties size={15} />
-            <span>Tabel Ploting Panitia</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
-              {panitiaMembers.length}
-            </span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('STRUKTUR')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                viewMode === 'STRUKTUR'
+                  ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <LayoutGrid size={15} />
+              <span>Bagan Struktur Organisasi</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setViewMode('PRESENSI')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              viewMode === 'PRESENSI'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
-          >
-            <Radio size={15} />
-            <span>Terminal Presensi Lapangan</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
-              {hadirCount}/{totalCount}
-            </span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('PLOTING')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                viewMode === 'PLOTING'
+                  ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <TableProperties size={15} />
+              <span>Tabel Ploting Panitia</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
+                {panitiaMembers.length}
+              </span>
+            </button>
+          </div>
+
+          <div className="text-[11px] text-slate-400 pr-2 hidden md:block">
+            {viewMode === 'STRUKTUR' && 'Visual Hierarki Komando'}
+            {viewMode === 'PLOTING' && `${panitiaMembers.length} Anggota Panitia Terploting`}
+            {viewMode === 'PRESENSI' && '1-Tap 2-Record Terminal Siaga'}
+          </div>
         </div>
-
-        <div className="text-[11px] text-slate-400 pr-2 hidden md:block">
-          {viewMode === 'STRUKTUR' && 'Visual Hierarki Komando'}
-          {viewMode === 'PLOTING' && `${panitiaMembers.length} Anggota Panitia Terploting`}
-          {viewMode === 'PRESENSI' && '1-Tap 2-Record Terminal Siaga'}
-        </div>
-      </div>
+      )}
 
       {/* ── VIEW 1: BAGAN STRUKTUR ORGANISASI ── */}
       {viewMode === 'STRUKTUR' && (

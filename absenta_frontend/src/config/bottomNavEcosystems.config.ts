@@ -1263,12 +1263,12 @@ export function getKetarunaanTabs(currentSubtab?: string): MobileBottomTabItem[]
       isActive: () => false,
     },
     {
-      id: 'ketarunaan_penilaian',
-      label: 'Nilai & Sertifikat',
-      shortLabel: 'Penilaian',
-      icon: Award,
-      targetPath: '/dashboard?tab=ketarunaan&subtab=penilaian',
-      isActive: (p, t) => t === 'ketarunaan' && (!currentSubtab || currentSubtab === 'penilaian'),
+      id: 'ketarunaan_ringkasan',
+      label: 'Ringkasan & Monitoring',
+      shortLabel: 'Ringkasan',
+      icon: Activity,
+      targetPath: '/dashboard?tab=ketarunaan&subtab=ringkasan',
+      isActive: (p, t) => t === 'ketarunaan' && (currentSubtab === 'ringkasan' || currentSubtab === 'statistik'),
     },
     {
       id: 'ketarunaan_menu',
@@ -1276,30 +1276,39 @@ export function getKetarunaanTabs(currentSubtab?: string): MobileBottomTabItem[]
       shortLabel: 'Menu Taruna',
       icon: LayoutGrid,
       targetPath: '/dashboard?tab=ketarunaan',
-      isActive: (p, t) => t === 'ketarunaan' && Boolean(currentSubtab && !['penilaian', 'kepanitiaan', 'statistik'].includes(currentSubtab)),
+      isActive: (p, t) =>
+        t === 'ketarunaan' &&
+        Boolean(
+          currentSubtab &&
+            !['ringkasan', 'statistik', 'terminal_absensi', 'kepanitiaan', 'penilaian'].includes(currentSubtab)
+        ),
       children: [
-        { id: 'kepanitiaan', label: 'Pos & Presensi', icon: Users, targetPath: '/dashboard?tab=ketarunaan&subtab=kepanitiaan', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
+        { id: 'ringkasan', label: 'Ringkasan (Monitoring)', icon: Activity, targetPath: '/dashboard?tab=ketarunaan&subtab=ringkasan', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
+        { id: 'terminal_absensi', label: 'Terminal Absensi', icon: ScanLine, targetPath: '/dashboard?tab=ketarunaan&subtab=terminal_absensi', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
+        { id: 'penilaian', label: 'Penilaian & Sertifikat', icon: Award, targetPath: '/dashboard?tab=ketarunaan&subtab=penilaian', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
         { id: 'laporan_kelas', label: 'Rekap Rombel', icon: BookOpen, targetPath: '/dashboard?tab=ketarunaan&subtab=laporan_kelas', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
         { id: 'laporan_tim', label: 'Pembina & Walas', icon: FileText, targetPath: '/dashboard?tab=ketarunaan&subtab=laporan_tim', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
-        { id: 'penilaian', label: 'Nilai & Sertifikat', icon: Award, targetPath: '/dashboard?tab=ketarunaan&subtab=penilaian', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
-        { id: 'statistik', label: 'Monitoring & Tren', icon: Activity, targetPath: '/dashboard?tab=ketarunaan&subtab=statistik', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
+        { id: 'struktur_organisasi', label: 'Bagan Struktur Organisasi', icon: Layers, targetPath: '/dashboard?tab=ketarunaan&subtab=struktur_organisasi', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
+        { id: 'ploting_panitia', label: 'Tabel Ploting Panitia', icon: Users, targetPath: '/dashboard?tab=ketarunaan&subtab=ploting_panitia', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
       ],
     },
     {
-      id: 'ketarunaan_kepanitiaan',
-      label: 'Pos & Presensi',
-      shortLabel: 'Presensi',
-      icon: Users,
-      targetPath: '/dashboard?tab=ketarunaan&subtab=kepanitiaan',
-      isActive: (p, t) => t === 'ketarunaan' && currentSubtab === 'kepanitiaan',
+      id: 'ketarunaan_terminal',
+      label: 'Terminal Absensi',
+      shortLabel: 'Terminal',
+      icon: ScanLine,
+      targetPath: '/dashboard?tab=ketarunaan&subtab=terminal_absensi',
+      isActive: (p, t) =>
+        t === 'ketarunaan' &&
+        (!currentSubtab || currentSubtab === 'terminal_absensi' || currentSubtab === 'kepanitiaan'),
     },
     {
-      id: 'ketarunaan_statistik',
-      label: 'Monitoring & Tren',
-      shortLabel: 'Monitoring',
-      icon: Activity,
-      targetPath: '/dashboard?tab=ketarunaan&subtab=statistik',
-      isActive: (p, t) => t === 'ketarunaan' && currentSubtab === 'statistik',
+      id: 'ketarunaan_penilaian',
+      label: 'Penilaian & Sertifikat',
+      shortLabel: 'Penilaian',
+      icon: Award,
+      targetPath: '/dashboard?tab=ketarunaan&subtab=penilaian',
+      isActive: (p, t) => t === 'ketarunaan' && currentSubtab === 'penilaian',
     },
   ];
 }

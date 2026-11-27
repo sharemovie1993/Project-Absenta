@@ -6,15 +6,20 @@ import {
   Shield,
   Users,
   BarChart2,
-  Lock,
   LayoutList,
   FileText,
   Activity,
   SlidersHorizontal,
   FileSpreadsheet,
+  Radio,
+  LayoutGrid,
+  TableProperties,
+  Clock,
+  Lock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { SectionCard } from '@/components/ui/SectionCard';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
@@ -22,6 +27,7 @@ import {
   UniversalEcosystemTopbar,
   UniversalMobileSubtabSidebar,
   useMobileSubtabSidebar,
+  type UniversalSubtabItem,
 } from './common';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { HubBentoGrid, type HubBentoCell } from '@/components/ui/hub';
@@ -31,15 +37,12 @@ import {
   getKetarunaanSesiHariIni,
 } from '@/api/kesiswaan/programKetarunaan.api';
 
-// Tab utama above-the-fold static import, sub-tab lainnya React.lazy (Zero Network Leak & Keep-Alive)
-import { KetarunaanPenilaianTab } from '@/components/kesiswaan/program-ketarunaan/KetarunaanPenilaianTab';
-import {
-  KetarunaanWorkdeskFlightDeck,
-} from '@/components/kesiswaan/program-ketarunaan/KetarunaanWorkdeskFlightDeck';
+// Sub-tab modular components (Keep-Alive + Lazy-Mount)
+import { KetarunaanKepanitiaanTab } from '@/components/kesiswaan/program-ketarunaan/KetarunaanKepanitiaanTab';
 
-const KetarunaanKepanitiaanTab = lazy(() =>
-  import('@/components/kesiswaan/program-ketarunaan/KetarunaanKepanitiaanTab').then((m) => ({
-    default: m.KetarunaanKepanitiaanTab,
+const KetarunaanPenilaianTab = lazy(() =>
+  import('@/components/kesiswaan/program-ketarunaan/KetarunaanPenilaianTab').then((m) => ({
+    default: m.KetarunaanPenilaianTab,
   }))
 );
 const KetarunaanStatistikTab = lazy(() =>
@@ -74,7 +77,43 @@ const HARI_LABEL: Record<string, string> = {
   MINGGU: 'Minggu',
 };
 
-export type KetarunaanSubtabId = 'penilaian' | 'statistik' | 'laporan_kelas' | 'laporan_tim' | 'kepanitiaan';
+function formatWaktu(w?: string | null) {
+  if (!w) return '-';
+  return w.length === 5 ? w : w.slice(0, 5);
+}
+
+export type KetarunaanSubtabId =
+  | 'ringkasan'
+  | 'terminal_absensi'
+  | 'penilaian'
+  | 'laporan_kelas'
+  | 'laporan_tim'
+  | 'struktur_organisasi'
+  | 'ploting_panitia';
+
+function normalizeKetarunaanSubtab(raw: string | null): KetarunaanSubtabId {
+  if (!raw) return 'terminal_absensi';
+  switch (raw) {
+    case 'ringkasan':
+    case 'statistik':
+      return 'ringkasan';
+    case 'terminal_absensi':
+    case 'kepanitiaan':
+      return 'terminal_absensi';
+    case 'penilaian':
+      return 'penilaian';
+    case 'laporan_kelas':
+      return 'laporan_kelas';
+    case 'laporan_tim':
+      return 'laporan_tim';
+    case 'struktur_organisasi':
+      return 'struktur_organisasi';
+    case 'ploting_panitia':
+      return 'ploting_panitia';
+    default:
+      return 'terminal_absensi';
+  }
+}
 
 export interface KetarunaanDashboardProps {
   user?: {
@@ -87,23 +126,18 @@ export interface KetarunaanDashboardProps {
 export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.memo(() => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const subtabParam = searchParams.get('subtab') as KetarunaanSubtabId | null;
+  const subtabParam = searchParams.get('subtab');
 
-  const validTabs: KetarunaanSubtabId[] = ['penilaian', 'statistik', 'laporan_kelas', 'laporan_tim', 'kepanitiaan'];
-
-  const [activeTab, setActiveTab] = useState<KetarunaanSubtabId>(() => {
-    if (subtabParam && validTabs.includes(subtabParam)) {
-      return subtabParam;
-    }
-    return 'penilaian';
-  });
+  // Default pertama kali ditampilkan adalah Terminal Presensi ('terminal_absensi')
+  const [activeTab, setActiveTab] = useState<KetarunaanSubtabId>(() =>
+    normalizeKetarunaanSubtab(subtabParam)
+  );
 
   // Keep-Alive Cache: Catat tab yang pernah dibuka (0ms Instant Switch)
   const [visitedTabs, setVisitedTabs] = useState<Set<KetarunaanSubtabId>>(
     () => new Set([activeTab])
   );
 
-  // Mobile Filter Collapsible State & Mobile Subtab Sidebar
   const queryClient = useQueryClient();
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [isStagingModalOpen, setIsStagingModalOpen] = useState(false);
@@ -112,10 +146,11 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
 
   // Synchronize Tab with URL
   useEffect(() => {
-    if (subtabParam && validTabs.includes(subtabParam) && subtabParam !== activeTab) {
-      setActiveTab(subtabParam);
+    const resolved = normalizeKetarunaanSubtab(subtabParam);
+    if (resolved !== activeTab) {
+      setActiveTab(resolved);
     }
-  }, [subtabParam, activeTab]);
+  }, [subtabParam]);
 
   useEffect(() => {
     setVisitedTabs((prev) => {
@@ -128,7 +163,7 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
 
   const handleTabChange = useCallback(
     (tabId: string) => {
-      const validId = tabId as KetarunaanSubtabId;
+      const validId = normalizeKetarunaanSubtab(tabId);
       setActiveTab(validId);
       setVisitedTabs((prev) => (prev.has(validId) ? prev : new Set(prev).add(validId)));
       setSearchParams(
@@ -144,7 +179,7 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
     [setSearchParams]
   );
 
-  // Konteks Akademik Terpadu
+  // Konteks Akademik Terpadu (Sidebar Variant SSOT)
   const academicFilter = useAcademicFilter({
     enableTp: true,
     enableSemester: true,
@@ -153,6 +188,8 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
 
   const selectedTpId = academicFilter.values.tahunPelajaranId;
   const selectedSemId = academicFilter.values.semesterId;
+  const tpTahun = academicFilter.selectedTahunPelajaranNama || '';
+  const semNama = academicFilter.selectedSemesterNama || '';
 
   // 1. Guard Status
   const { data: guard, isLoading: isGuardLoading, refetch: refetchGuard } = useQuery({
@@ -161,14 +198,14 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
     staleTime: 60 * 1000,
   });
 
-  const jadwalKegiatanId = guard?.jadwal_kegiatan_id;
+  const jadwalKegiatanId = guard?.jadwal_kegiatan_id ?? null;
 
   // 2. Sesi Hari Ini
   const { data: sesiData, isLoading: isSesiLoading, refetch: refetchSesi } = useQuery({
     queryKey: ['ketarunaan-sesi-hari-ini', jadwalKegiatanId],
     queryFn: () =>
       getKetarunaanSesiHariIni({
-        jadwal_kegiatan_id: jadwalKegiatanId,
+        jadwal_kegiatan_id: jadwalKegiatanId ?? undefined,
         tanggal: new Date().toISOString().slice(0, 10),
       }),
     enabled: Boolean(guard?.is_active && jadwalKegiatanId),
@@ -207,7 +244,7 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
     return list.map((h: string) => HARI_LABEL[h] || h).join(', ');
   }, [guard]);
 
-  // Shopee-Grade Mobile Hub Bento Cells (Strictly Max 2 Lines, Hairline 1px Dividers)
+  // Shopee-Grade Mobile Hub Bento Cells
   const bentoCells: HubBentoCell[] = useMemo(() => {
     const ringkasan = stats?.ringkasan_periode;
     const summaryTerkini = stats?.latest;
@@ -259,7 +296,7 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
         iconColorClass: guard?.is_active
           ? 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60'
           : 'text-slate-500 bg-slate-100 dark:bg-slate-800',
-        onClick: () => handleTabChange('kepanitiaan'),
+        onClick: () => handleTabChange('terminal_absensi'),
       },
       {
         id: 'totalPertemuan',
@@ -267,34 +304,93 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
         value: loading ? '...' : `${stats?.trend?.length ?? 0} Sesi`,
         icon: BarChart2,
         iconColorClass: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60',
-        onClick: () => handleTabChange('statistik'),
+        onClick: () => handleTabChange('ringkasan'),
       },
     ];
   }, [stats, guard, isStatsLoading, isGuardLoading, handleTabChange]);
 
-  const navTabs = useMemo(
-    () => [
-      { id: 'kepanitiaan', label: 'Pos & Presensi', shortLabel: 'Presensi', icon: Users },
-      { id: 'laporan_kelas', label: 'Rekap Rombel', shortLabel: 'Rombel', icon: LayoutList },
-      { id: 'laporan_tim', label: 'Pembina & Walas', shortLabel: 'Pembina', icon: FileText },
-      { id: 'penilaian', label: 'Nilai & Sertifikat', shortLabel: 'Penilaian', icon: Medal },
-      { id: 'statistik', label: 'Monitoring & Tren', shortLabel: 'Monitoring', icon: Activity },
-    ],
-    []
-  );
+  // Susunan Subtab Sidebar:
+  // 1. Ringkasan (Berisi Monitoring)
+  // 2. Terminal Absensi (Default saat pertama kali dibuka)
+  // 3. Penilaian
+  // 4. Rekap Rombel
+  // 5. Pembina & Walas
+  // 6. Bagan Struktur Organisasi
+  // 7. Tabel Ploting Panitia
+  const navTabs: UniversalSubtabItem[] = useMemo(() => {
+    const totalPertemuan = stats?.trend?.length ?? 0;
+    const avgPersenSiswa = stats?.ringkasan_periode?.avg_persen_siswa ?? stats?.latest?.persen_hadir_siswa ?? null;
+    const shortKelasLabel = academicFilter.selectedKelasLabel
+      ? academicFilter.selectedKelasLabel.split(' - ')[0].trim()
+      : undefined;
+
+    return [
+      {
+        id: 'ringkasan',
+        label: 'Ringkasan',
+        shortLabel: 'Ringkasan',
+        icon: Activity,
+        badge: totalPertemuan > 0 ? `${totalPertemuan} Sesi` : undefined,
+      },
+      {
+        id: 'terminal_absensi',
+        label: 'Terminal Absensi',
+        shortLabel: 'Terminal Absensi',
+        icon: Radio,
+        badge: sesiId ? 'Aktif' : undefined,
+        badgeColor: 'bg-emerald-500 text-white',
+      },
+      {
+        id: 'penilaian',
+        label: 'Penilaian',
+        shortLabel: 'Penilaian',
+        icon: Medal,
+        badge: shortKelasLabel,
+      },
+      {
+        id: 'laporan_kelas',
+        label: 'Rekap Rombel',
+        shortLabel: 'Rekap Rombel',
+        icon: LayoutList,
+        badge: avgPersenSiswa !== null ? `${avgPersenSiswa}%` : undefined,
+      },
+      {
+        id: 'laporan_tim',
+        label: 'Pembina & Walas',
+        shortLabel: 'Pembina & Walas',
+        icon: FileText,
+      },
+      {
+        id: 'struktur_organisasi',
+        label: 'Bagan Struktur Organisasi',
+        shortLabel: 'Struktur Organisasi',
+        icon: LayoutGrid,
+      },
+      {
+        id: 'ploting_panitia',
+        label: 'Tabel Ploting Panitia',
+        shortLabel: 'Ploting Panitia',
+        icon: TableProperties,
+      },
+    ];
+  }, [stats, sesiId, academicFilter.selectedKelasLabel]);
 
   const currentSubtabTitle = useMemo(() => {
     switch (activeTab) {
-      case 'kepanitiaan':
-        return 'Pos & Presensi Ketarunaan';
+      case 'ringkasan':
+        return 'Ringkasan & Monitoring';
+      case 'terminal_absensi':
+        return 'Terminal Absensi Ketarunaan';
+      case 'penilaian':
+        return 'Penilaian & Sertifikat Taruna';
       case 'laporan_kelas':
         return 'Rekap Kehadiran Rombel';
       case 'laporan_tim':
         return 'Audit Pembina & Walas';
-      case 'penilaian':
-        return 'Nilai & Sertifikat Taruna';
-      case 'statistik':
-        return 'Monitoring & Statistik';
+      case 'struktur_organisasi':
+        return 'Bagan Struktur Organisasi';
+      case 'ploting_panitia':
+        return 'Tabel Ploting Panitia';
       default:
         return 'Dashboard Ketarunaan';
     }
@@ -302,7 +398,7 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
 
   return (
     <InfraErrorBoundary>
-      <div className="w-full max-w-full min-w-0 space-y-2.5 sm:space-y-3 pb-8">
+      <div className="space-y-4 w-full max-w-full min-w-0 pb-8">
         {/* 1. Universal Topbar Ramping */}
         <UniversalEcosystemTopbar
           ecosystem="ketarunaan"
@@ -323,9 +419,15 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
                 <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-300" />
                 <span className="hidden sm:inline">Staging Presensi</span>
               </Button>
-              <span className="hidden md:inline-flex text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/20 text-white backdrop-blur-xs border border-white/30">
-                🎖️ Tim Pembina Taruna
-              </span>
+              <button
+                type="button"
+                onClick={() => navigate('/kesiswaan/jadwal-kegiatan')}
+                className="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/20 hover:bg-white/30 text-white backdrop-blur-xs border border-white/30 cursor-pointer transition-colors"
+                title="Pengaturan Jadwal & Agenda Ketarunaan"
+              >
+                <Lock className="w-3 h-3 text-amber-200" />
+                <span>Pengaturan Agenda</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setShowMobileFilter((prev) => !prev)}
@@ -360,7 +462,7 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
           isOpen={isMobileSidebarOpen}
           onClose={() => setIsMobileSidebarOpen(false)}
           title="Program Ketarunaan"
-          subtitle={`${academicFilter.selectedTahunPelajaranNama ? `TP ${academicFilter.selectedTahunPelajaranNama}` : 'Aktif'} • ${academicFilter.selectedSemesterNama || ''}`}
+          subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • ${semNama}`}
           roleBadge="KETARUNAAN"
           scope="ketarunaan"
           roleIcon={Medal}
@@ -369,151 +471,262 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
           onSelectTab={(tabId) => handleTabChange(tabId)}
         />
 
-        {/* 2. Shopee-Grade Hairline Bento Grid (1 Card Container, 2 Lines Max) */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xs">
-          <HubBentoGrid cells={bentoCells} columns={4} />
+        {/* 2. Desktop 2-Column Layout (>= lg: Left Sidebar Controls + Wide Main Content Canvas) */}
+        <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-6 items-start">
+          {/* Left Column: Sidebar Controls (Desktop sticky & independent scroll) */}
+          <aside className="hidden lg:block sticky top-20 max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain role-dashboard-sidebar-scroll pr-1.5 space-y-3 pb-12">
+            {/* Identitas Ketarunaan Ringkas & Minimalis (Ecosystem Banner Accent) */}
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-rose-600 via-rose-600 to-red-700 text-white shadow-xs space-y-2.5 border border-rose-500/40 relative overflow-hidden">
+              <div className="absolute -top-6 -right-6 w-20 h-20 bg-white/10 rounded-full blur-xl pointer-events-none" aria-hidden="true" />
+              <div className="flex items-center gap-3 relative z-10">
+                <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-xs border border-white/30 text-white flex items-center justify-center font-black text-xs tracking-wider shrink-0 overflow-hidden shadow-xs">
+                  <Medal className="w-5 h-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-rose-100/90 block leading-tight drop-shadow-2xs">
+                    Korps Pembina
+                  </span>
+                  <h2 className="text-sm font-black text-white tracking-wider truncate uppercase drop-shadow-2xs">
+                    Ketarunaan
+                  </h2>
+                </div>
+              </div>
+
+              {/* Info Jadwal & Periode Aktif */}
+              <div className="pt-2 border-t border-white/20 space-y-1 text-[11px] text-white/90 relative z-10">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-rose-100/80">Periode Aktif</span>
+                  <span className="font-bold text-white text-[10px] bg-white/20 backdrop-blur-xs border border-white/25 px-2 py-0.5 rounded-md truncate max-w-[120px]">
+                    {tpTahun ? `TP ${tpTahun}` : 'Aktif'}
+                  </span>
+                </div>
+                {guard?.jadwal_waktu_mulai && (
+                  <div className="flex items-center gap-1 text-[10px] text-rose-100/90 truncate pt-0.5">
+                    <Clock className="w-3 h-3 shrink-0" />
+                    <span className="truncate">
+                      {hariAktifLabel ? `${hariAktifLabel} • ` : ''}
+                      {formatWaktu(guard.jadwal_waktu_mulai)}–{formatWaktu(guard.jadwal_waktu_selesai)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Academic Filter Toolbar (Sidebar Variant SSOT) */}
+            <AcademicFilterToolbar
+              {...academicFilter.toolbarProps}
+              variant="sidebar"
+            />
+
+            {/* Navigasi Menu Vertikal Sidebar */}
+            <nav className="p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1">
+              {navTabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => handleTabChange(tab.id)}
+                    className={cn(
+                      'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left',
+                      isActive
+                        ? 'bg-rose-600 text-white shadow-xs font-extrabold'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    )}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{tab.label}</span>
+                    </div>
+                    {tab.badge !== undefined && tab.badge !== null && (
+                      <span
+                        className={cn(
+                          'px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none shrink-0 ml-1.5',
+                          isActive
+                            ? 'bg-white/20 text-white'
+                            : tab.badgeColor || 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                        )}
+                      >
+                        {tab.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+          </aside>
+
+          {/* Right Column: Main Content Area */}
+          <main className="min-w-0 flex-1 space-y-3">
+            {/* Shopee-Grade Hairline Bento Grid */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xs">
+              <HubBentoGrid cells={bentoCells} columns={4} />
+            </div>
+
+            {/* Area Kerja Aktif Sesuai Subtab Terpilih (Keep-Alive Cache) */}
+            <SectionCard fullWidth noPadding className="overflow-hidden border border-slate-200/80 dark:border-slate-800">
+              <div className="bg-white dark:bg-slate-900">
+                {/* 1. RINGKASAN (MONITORING & STATISTIK) */}
+                {visitedTabs.has('ringkasan') && (
+                  <div
+                    role="tabpanel"
+                    aria-hidden={activeTab !== 'ringkasan'}
+                    className={cn('w-full min-w-0', activeTab === 'ringkasan' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                  >
+                    <Suspense
+                      fallback={
+                        <div className="p-4 space-y-2.5">
+                          {[1, 2, 3].map((itemKey) => (
+                            <Skeleton key={itemKey} className="h-12 rounded-2xl" />
+                          ))}
+                        </div>
+                      }
+                    >
+                      <KetarunaanStatistikTab
+                        jadwalKegiatanId={jadwalKegiatanId}
+                        tahunPelajaranId={selectedTpId}
+                        semesterId={selectedSemId}
+                      />
+                    </Suspense>
+                  </div>
+                )}
+
+                {/* 2. TERMINAL ABSENSI (DEFAULT PERTAMA KALI DIBUKA) */}
+                {visitedTabs.has('terminal_absensi') && (
+                  <div
+                    role="tabpanel"
+                    aria-hidden={activeTab !== 'terminal_absensi'}
+                    className={cn('w-full min-w-0', activeTab === 'terminal_absensi' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                  >
+                    <KetarunaanKepanitiaanTab
+                      jadwalKegiatanId={jadwalKegiatanId}
+                      sesiId={sesiId}
+                      refetchSesi={refetchSesi}
+                      guard={guard}
+                      mode="PRESENSI"
+                    />
+                  </div>
+                )}
+
+                {/* 3. PENILAIAN & SERTIFIKAT */}
+                {visitedTabs.has('penilaian') && (
+                  <div
+                    role="tabpanel"
+                    aria-hidden={activeTab !== 'penilaian'}
+                    className={cn('w-full min-w-0', activeTab === 'penilaian' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                  >
+                    <Suspense
+                      fallback={
+                        <div className="p-4 space-y-2.5">
+                          {[1, 2, 3].map((itemKey) => (
+                            <Skeleton key={itemKey} className="h-12 rounded-2xl" />
+                          ))}
+                        </div>
+                      }
+                    >
+                      <KetarunaanPenilaianTab
+                        tahunPelajaranId={selectedTpId}
+                        tahunPelajaranNama={academicFilter.selectedTahunPelajaranNama}
+                        semesterId={selectedSemId}
+                        semesterNama={academicFilter.selectedSemesterNama}
+                        kelasId={academicFilter.values.kelasId}
+                        kelasNama={academicFilter.selectedKelasLabel}
+                        jurusanId={academicFilter.values.jurusanId}
+                      />
+                    </Suspense>
+                  </div>
+                )}
+
+                {/* 4. REKAP ROMBEL */}
+                {visitedTabs.has('laporan_kelas') && (
+                  <div
+                    role="tabpanel"
+                    aria-hidden={activeTab !== 'laporan_kelas'}
+                    className={cn('w-full min-w-0', activeTab === 'laporan_kelas' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                  >
+                    <Suspense
+                      fallback={
+                        <div className="p-4 space-y-2.5">
+                          {[1, 2, 3].map((itemKey) => (
+                            <Skeleton key={itemKey} className="h-12 rounded-2xl" />
+                          ))}
+                        </div>
+                      }
+                    >
+                      <KetarunaanLaporanKelasTab
+                        jadwalKegiatanId={jadwalKegiatanId}
+                        sesiId={sesiId}
+                        tahunPelajaranId={selectedTpId}
+                        semesterId={selectedSemId}
+                      />
+                    </Suspense>
+                  </div>
+                )}
+
+                {/* 5. PEMBINA & WALAS */}
+                {visitedTabs.has('laporan_tim') && (
+                  <div
+                    role="tabpanel"
+                    aria-hidden={activeTab !== 'laporan_tim'}
+                    className={cn('w-full min-w-0', activeTab === 'laporan_tim' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                  >
+                    <Suspense
+                      fallback={
+                        <div className="p-4 space-y-2.5">
+                          {[1, 2, 3].map((itemKey) => (
+                            <Skeleton key={itemKey} className="h-12 rounded-2xl" />
+                          ))}
+                        </div>
+                      }
+                    >
+                      <KetarunaanLaporanTimTab
+                        jadwalKegiatanId={jadwalKegiatanId}
+                        sesiId={sesiId}
+                        tahunPelajaranId={selectedTpId}
+                        semesterId={selectedSemId}
+                      />
+                    </Suspense>
+                  </div>
+                )}
+
+                {/* 6. BAGAN STRUKTUR ORGANISASI */}
+                {visitedTabs.has('struktur_organisasi') && (
+                  <div
+                    role="tabpanel"
+                    aria-hidden={activeTab !== 'struktur_organisasi'}
+                    className={cn('w-full min-w-0', activeTab === 'struktur_organisasi' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                  >
+                    <KetarunaanKepanitiaanTab
+                      jadwalKegiatanId={jadwalKegiatanId}
+                      sesiId={sesiId}
+                      refetchSesi={refetchSesi}
+                      guard={guard}
+                      mode="STRUKTUR"
+                    />
+                  </div>
+                )}
+
+                {/* 7. TABEL PLOTING PANITIA */}
+                {visitedTabs.has('ploting_panitia') && (
+                  <div
+                    role="tabpanel"
+                    aria-hidden={activeTab !== 'ploting_panitia'}
+                    className={cn('w-full min-w-0', activeTab === 'ploting_panitia' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                  >
+                    <KetarunaanKepanitiaanTab
+                      jadwalKegiatanId={jadwalKegiatanId}
+                      sesiId={sesiId}
+                      refetchSesi={refetchSesi}
+                      guard={guard}
+                      mode="PLOTING"
+                    />
+                  </div>
+                )}
+              </div>
+            </SectionCard>
+          </main>
         </div>
-
-        {/* 3. Meja Kerja Ketarunaan (Workflow Stepper 5 Tahap + Filter Akademik Desktop) */}
-        <KetarunaanWorkdeskFlightDeck
-          activeStep={activeTab}
-          onSelectStep={(step) => handleTabChange(step)}
-          guard={guard}
-          hariAktifLabel={hariAktifLabel}
-          sesiId={sesiId}
-          stats={stats}
-          totalKelasCount={Math.max(1, (academicFilter.kelasOptions?.length || 1) - (academicFilter.toolbarProps.allowAllKelas ? 1 : 0))}
-          selectedTahunPelajaranNama={academicFilter.selectedTahunPelajaranNama}
-          selectedSemesterNama={academicFilter.selectedSemesterNama}
-          selectedKelasLabel={academicFilter.selectedKelasLabel}
-          onOpenSettings={() => navigate('/kesiswaan/jadwal-kegiatan')}
-          onOpenStaging={() => setIsStagingModalOpen(true)}
-          onRefresh={handleRefresh}
-          isRefreshing={isRefreshing || isGuardLoading || isSesiLoading}
-          filterToolbarNode={<AcademicFilterToolbar {...academicFilter.toolbarProps} variant="compact" />}
-        />
-
-        {/* 4. Area Kerja Aktif Sesuai Tahap Terpilih (Keep-Alive + Zero Double Padding) */}
-        <SectionCard fullWidth noPadding className="overflow-hidden border border-slate-200/80 dark:border-slate-800">
-          <div className="bg-white dark:bg-slate-900">
-            {visitedTabs.has('penilaian') && (
-              <div
-                role="tabpanel"
-                aria-hidden={activeTab !== 'penilaian'}
-                className={cn('w-full min-w-0', activeTab === 'penilaian' ? 'block animate-in fade-in duration-100' : 'hidden')}
-              >
-                <KetarunaanPenilaianTab
-                  tahunPelajaranId={selectedTpId}
-                  tahunPelajaranNama={academicFilter.selectedTahunPelajaranNama}
-                  semesterId={selectedSemId}
-                  semesterNama={academicFilter.selectedSemesterNama}
-                  kelasId={academicFilter.values.kelasId}
-                  kelasNama={academicFilter.selectedKelasLabel}
-                  jurusanId={academicFilter.values.jurusanId}
-                />
-              </div>
-            )}
-
-            {visitedTabs.has('statistik') && (
-              <div
-                role="tabpanel"
-                aria-hidden={activeTab !== 'statistik'}
-                className={cn('w-full min-w-0', activeTab === 'statistik' ? 'block animate-in fade-in duration-100' : 'hidden')}
-              >
-                <Suspense
-                  fallback={
-                    <div className="p-4 space-y-2.5">
-                      {[1, 2, 3].map((itemKey) => (
-                        <Skeleton key={itemKey} className="h-12 rounded-2xl" />
-                      ))}
-                    </div>
-                  }
-                >
-                  <KetarunaanStatistikTab
-                    jadwalKegiatanId={jadwalKegiatanId}
-                    tahunPelajaranId={selectedTpId}
-                    semesterId={selectedSemId}
-                  />
-                </Suspense>
-              </div>
-            )}
-
-            {visitedTabs.has('laporan_kelas') && (
-              <div
-                role="tabpanel"
-                aria-hidden={activeTab !== 'laporan_kelas'}
-                className={cn('w-full min-w-0', activeTab === 'laporan_kelas' ? 'block animate-in fade-in duration-100' : 'hidden')}
-              >
-                <Suspense
-                  fallback={
-                    <div className="p-4 space-y-2.5">
-                      {[1, 2, 3].map((itemKey) => (
-                        <Skeleton key={itemKey} className="h-12 rounded-2xl" />
-                      ))}
-                    </div>
-                  }
-                >
-                  <KetarunaanLaporanKelasTab
-                    jadwalKegiatanId={jadwalKegiatanId}
-                    sesiId={sesiId}
-                    tahunPelajaranId={selectedTpId}
-                    semesterId={selectedSemId}
-                  />
-                </Suspense>
-              </div>
-            )}
-
-            {visitedTabs.has('laporan_tim') && (
-              <div
-                role="tabpanel"
-                aria-hidden={activeTab !== 'laporan_tim'}
-                className={cn('w-full min-w-0', activeTab === 'laporan_tim' ? 'block animate-in fade-in duration-100' : 'hidden')}
-              >
-                <Suspense
-                  fallback={
-                    <div className="p-4 space-y-2.5">
-                      {[1, 2, 3].map((itemKey) => (
-                        <Skeleton key={itemKey} className="h-12 rounded-2xl" />
-                      ))}
-                    </div>
-                  }
-                >
-                  <KetarunaanLaporanTimTab
-                    jadwalKegiatanId={jadwalKegiatanId}
-                    sesiId={sesiId}
-                    tahunPelajaranId={selectedTpId}
-                    semesterId={selectedSemId}
-                  />
-                </Suspense>
-              </div>
-            )}
-
-            {visitedTabs.has('kepanitiaan') && (
-              <div
-                role="tabpanel"
-                aria-hidden={activeTab !== 'kepanitiaan'}
-                className={cn('w-full min-w-0', activeTab === 'kepanitiaan' ? 'block animate-in fade-in duration-100' : 'hidden')}
-              >
-                <Suspense
-                  fallback={
-                    <div className="p-4 space-y-2.5">
-                      {[1, 2, 3].map((itemKey) => (
-                        <Skeleton key={itemKey} className="h-12 rounded-2xl" />
-                      ))}
-                    </div>
-                  }
-                >
-                  <KetarunaanKepanitiaanTab
-                    jadwalKegiatanId={jadwalKegiatanId}
-                    sesiId={sesiId}
-                    refetchSesi={refetchSesi}
-                    guard={guard}
-                  />
-                </Suspense>
-              </div>
-            )}
-          </div>
-        </SectionCard>
 
         {/* Universal Attendance Staging Modal (Hub Penampung Presensi Spreadsheet) */}
         {isStagingModalOpen && (

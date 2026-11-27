@@ -46,6 +46,7 @@ export function normalizeRoleToScope(roleBadge?: string, scope?: string): string
   if (clean.includes('bp') || clean.includes('bk')) return 'bpbk';
   if (clean.includes('toolman')) return 'toolman';
   if (clean.includes('ekskul') || clean.includes('ekstra')) return 'ekskul';
+  if (clean.includes('ketarunaan') || clean.includes('taruna')) return 'ketarunaan';
   if (clean.includes('pkl') || clean.includes('pembimbing')) return 'pembimbing_pkl';
   if (clean.includes('satpam') || clean.includes('gerbang')) return 'satpam';
   if (clean.includes('koperasi')) return 'koperasi';
@@ -81,6 +82,8 @@ export function checkScopeMatchesUrlTab(scope: string, currentTab: string): bool
       return currentTab === 'toolman';
     case 'ekskul':
       return currentTab === 'ekskul';
+    case 'ketarunaan':
+      return currentTab === 'ketarunaan';
     case 'pembimbing_pkl':
       return currentTab === 'pembimbing_pkl';
     case 'satpam':
