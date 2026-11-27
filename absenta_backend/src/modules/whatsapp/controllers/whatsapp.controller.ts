@@ -192,7 +192,9 @@ export class WhatsappController {
         if (isConnected) {
           try {
             groups = await waGatewayService.getParticipatingGroups(sessionKey, forceRefresh);
-          } catch {}
+          } catch (groupErr: any) {
+            console.warn(`[WA-Controller] getDocumentTargets(${sessionKey}) group fetch warn:`, groupErr?.message || groupErr);
+          }
         } else if (includeQr) {
           try {
             qr = await waGatewayService.getQRBase64(sessionKey);

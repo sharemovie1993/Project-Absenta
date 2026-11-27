@@ -894,13 +894,17 @@ export const waGatewayServiceLocal = {
   async getParticipatingGroups(tenantId: string, forceRefresh = false) {
     const redis = getRedisConnection();
     const cacheKey = getGroupsCacheKey(tenantId);
+    const backupKey = `${cacheKey}:backup`;
 
     if (!forceRefresh && redis) {
       try {
         const cached = await redis.get(cacheKey);
         if (cached) {
-          console.log(`[WA-Pool:${tenantId}] Groups: Serving from Redis cache.`);
-          return JSON.parse(cached);
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            console.log(`[WA-Pool:${tenantId}] Groups: Serving ${parsed.length} groups from Redis cache.`);
+            return parsed;
+          }
         }
       } catch (cacheErr: any) {
         console.warn(`[WA-Pool:${tenantId}] Redis cache read error:`, cacheErr.message);
@@ -916,7 +920,7 @@ export const waGatewayServiceLocal = {
       console.log(`[WA-Pool:${tenantId}] Groups: Fetching live dari WA server...`);
       const fetchPromise = entry.sock.groupFetchAllParticipating();
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('TIMEOUT_GROUP_FETCH')), 15_000)
+        setTimeout(() => reject(new Error('TIMEOUT_GROUP_FETCH')), 20_000)
       );
 
       const groups = await Promise.race([fetchPromise, timeoutPromise]);
@@ -931,9 +935,11 @@ export const waGatewayServiceLocal = {
         isCommunity: !!g.isCommunity,
       }));
 
-      if (redis) {
+      if (redis && groupList.length > 0) {
         try {
-          await redis.set(cacheKey, JSON.stringify(groupList), 'EX', WA_GROUPS_CACHE_TTL_SECONDS);
+          const serialized = JSON.stringify(groupList);
+          await redis.set(cacheKey, serialized, 'EX', WA_GROUPS_CACHE_TTL_SECONDS);
+          await redis.set(backupKey, serialized, 'EX', 86400);
           console.log(`[WA-Pool:${tenantId}] Groups: ${groupList.length} grup di-cache ke Redis (TTL ${WA_GROUPS_CACHE_TTL_SECONDS}s).`);
         } catch (cacheErr: any) {
           console.warn(`[WA-Pool:${tenantId}] Redis cache write error:`, cacheErr.message);
@@ -942,9 +948,22 @@ export const waGatewayServiceLocal = {
 
       return groupList;
     } catch (err: any) {
+      // Stale-while-revalidate fallback: gunakan daftar grup terakhir yang valid jika fetch live timeout/gagal
+      if (redis) {
+        try {
+          const backup = await redis.get(backupKey);
+          if (backup) {
+            const parsedBackup = JSON.parse(backup);
+            if (Array.isArray(parsedBackup) && parsedBackup.length > 0) {
+              console.warn(`[WA-Pool:${tenantId}] Live fetch gagal (${err.message}), menggunakan ${parsedBackup.length} grup dari backup cache.`);
+              return parsedBackup;
+            }
+          }
+        } catch (_) {}
+      }
       if (err.message === 'TIMEOUT_GROUP_FETCH') {
-        console.error(`[WA-Pool:${tenantId}] groupFetchAllParticipating timeout (15s). Koneksi mungkin zombie.`);
-        throw new Error('Pengambilan daftar grup WA timeout (15 detik). Pastikan koneksi WA stabil.');
+        console.error(`[WA-Pool:${tenantId}] groupFetchAllParticipating timeout (20s). Koneksi mungkin zombie.`);
+        throw new Error('Pengambilan daftar grup WA timeout (20 detik). Pastikan koneksi WA stabil.');
       }
       console.error(`[WA-Pool:${tenantId}] Failed to fetch participating groups:`, err.message);
       throw err;
@@ -1106,7 +1125,11 @@ export async function callMasterViaRpc(method: string, tenantId: string, args: a
 
   const reqId = randomUUID();
   const resChannel = `wa:cluster:rpc:res:${reqId}`;
-  const rpcTimeoutMs = (method === 'sendDocument' || method === 'sendImage') ? 35000 : 15000;
+  const rpcTimeoutMs = (method === 'sendDocument' || method === 'sendImage')
+    ? 35000
+    : method === 'getParticipatingGroups'
+    ? 25000
+    : 15000;
 
   return new Promise(async (resolve, reject) => {
     let sub: any = null;

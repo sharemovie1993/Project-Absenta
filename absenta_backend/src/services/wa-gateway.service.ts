@@ -65,8 +65,11 @@ export const waGatewayService = {
         try {
           const cached = await redis.get(getGroupsCacheKey(tenantId));
           if (cached) {
-            console.log(`[WA-Pool:${tenantId}] Groups: Serving from Redis cache (local process check).`);
-            return JSON.parse(cached);
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              console.log(`[WA-Pool:${tenantId}] Groups: Serving ${parsed.length} groups from Redis cache (local process check).`);
+              return parsed;
+            }
           }
         } catch (_) {}
       }
