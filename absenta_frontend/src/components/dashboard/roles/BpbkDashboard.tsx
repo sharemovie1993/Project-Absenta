@@ -46,8 +46,8 @@ import {
 } from './bpbk/bpbkNavigation.config';
 
 const Modal = lazy(() => import('@/components/ui/Modal').then((m) => ({ default: m.Modal })));
-const SiswaForm = lazy(() =>
-  import('@/components/academic/siswa/SiswaForm').then((m) => ({ default: m.SiswaForm }))
+const SiswaDetailView = lazy(() =>
+  import('@/components/academic/siswa/SiswaDetailView').then((m) => ({ default: m.SiswaDetailView }))
 );
 const PelanggaranPage = lazy(() => import('@/pages/kesiswaan/PelanggaranPage'));
 const PrestasiView = lazy(() =>
@@ -559,11 +559,10 @@ export const BpbkDashboard: React.FC<BpbkDashboardProps> = () => {
               }
             >
               {selectedSiswaId && (
-                <SiswaForm
+                <SiswaDetailView
                   siswaId={selectedSiswaId}
-                  mode="view"
-                  onSuccess={handleDetailSuccess}
-                  onCancel={handleCloseDetail}
+                  onBack={handleCloseDetail}
+                  canEdit={false}
                 />
               )}
             </Suspense>

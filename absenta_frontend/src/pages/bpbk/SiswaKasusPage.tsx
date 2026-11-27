@@ -7,7 +7,7 @@ import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { formatDate } from '../../utils/layoutUtils';
 
 const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ default: m.Modal })));
-const SiswaForm = lazy(() => import('../../components/academic/siswa/SiswaForm').then(m => ({ default: m.SiswaForm })));
+const SiswaDetailView = lazy(() => import('../../components/academic/siswa/SiswaDetailView').then(m => ({ default: m.SiswaDetailView })));
 
 export default React.memo(function SiswaKasusPage() {
   const queryClient = useQueryClient();
@@ -61,11 +61,10 @@ export default React.memo(function SiswaKasusPage() {
           <Modal isOpen={isDetailOpen} onClose={handleCloseDetail} title="Profil Lengkap & Linimasa Siswa" size="4xl">
             <Suspense fallback={<div className="p-12 flex justify-center"><Loader /></div>}>
               {selectedSiswaId && (
-                <SiswaForm
+                <SiswaDetailView
                   siswaId={selectedSiswaId}
-                  mode="view"
-                  onSuccess={handleDetailSuccess}
-                  onCancel={handleCloseDetail}
+                  onBack={handleCloseDetail}
+                  canEdit={false}
                 />
               )}
             </Suspense>
