@@ -1257,7 +1257,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
           </main>
         </div>
       </div>
-    ) : (
+    ) : (isPureGerbang || hasGerbangDuty) ? (
         /* TERMINAL SCANNER (Khusus Staf Satpam / Gerbang Non-Guru) */
         <div className="space-y-4">
           <Suspense
@@ -1269,6 +1269,53 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
           >
             <GateInputModule />
           </Suspense>
+        </div>
+      ) : (
+        /* BERANDA STAF TU / TENAGA KEPENDIDIKAN (Tanpa Penugasan Struktural & Non-Gerbang) */
+        <div className="space-y-4">
+          <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-[11px] font-bold mb-2">
+                  <Sparkles size={12} />
+                  <span>Beranda Staf &amp; Tenaga Kependidikan</span>
+                </div>
+                <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">
+                  Selamat Datang, {guruNama || user?.full_name || 'Staf'}
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  Anda masuk sebagai Tenaga Kependidikan / Staf tanpa penugasan unit struktural aktif. Gunakan menu di bawah untuk mengakses layanan kepegawaian dan koperasi.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onNavigateTab('koperasi')}
+                  className="text-xs font-bold gap-1.5"
+                >
+                  <Wallet size={14} className="text-emerald-600" />
+                  <span>Koperasi Saya</span>
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => onNavigateTab('profil')}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold gap-1.5"
+                >
+                  <Users size={14} />
+                  <span>Profil Staf</span>
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <TeacherActionHubWidget
+            summary={actionHubData.summary}
+            actions={actionHubData.actions}
+            isLoading={false}
+          />
         </div>
       )}
 
