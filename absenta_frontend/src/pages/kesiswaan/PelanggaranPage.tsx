@@ -158,7 +158,7 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const urlContext = searchParams.get('context') || searchParams.get('tab') || searchParams.get('mode');
 
-  const { isKesiswaan, isKurikulum, isKepsek, isAdmin, can } = useCapabilities();
+  const { isKesiswaan, isKurikulum, isKepsek, isAdmin, isBpbk, can } = useCapabilities();
 
   // Deteksi apakah user memegang Double Jabatan (Wali Kelas + Pimpinan/Struktur Sekolah)
   const isDualRoleUser = useMemo(() => {
@@ -201,7 +201,6 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
 
   const confirm = useConfirm();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { can, isAdmin, isBpbk } = useCapabilities();
   const canDeleteViolation = isAdmin || can('affairs.violations.delete');
   const canCounsel = isBpbk || isAdmin || can('bk.konseling.create') || can('bk.counselings.create');
 
