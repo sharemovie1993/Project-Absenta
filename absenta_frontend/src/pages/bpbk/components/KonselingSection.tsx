@@ -23,7 +23,7 @@ import { MobileAcademicList } from '../../../components/academic/shared/MobileAc
 
 const Modal = lazy(() => import('../../../components/ui/Modal').then(m => ({ default: m.Modal })));
 const SmartStudentPicker = lazy(() => import('../../../components/common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
-const SiswaDetailView = lazy(() => import('../../../components/academic/siswa/SiswaDetailView').then(m => ({ default: m.SiswaDetailView })));
+const BpbkSiswaHistoryView = lazy(() => import('./BpbkSiswaHistoryView').then(m => ({ default: m.BpbkSiswaHistoryView })));
 
 const konselingFormSchema = z.object({
   siswa_id: z.string().min(1, 'Siswa wajib dipilih'),
@@ -1091,23 +1091,17 @@ export const KonselingSection: React.FC = React.memo(() => {
           )}
         </Modal>
       </Suspense>
-      {/* Modal Riwayat & Rekam Jejak Siswa In-Place */}
+      {/* Modal Riwayat & Rekam Jejak BP/BK Siswa In-Place */}
       <Suspense fallback={null}>
         <Modal
           isOpen={Boolean(historySiswaId)}
           onClose={() => setHistorySiswaId(null)}
-          title="Riwayat & Rekam Jejak Siswa"
-          size="4xl"
+          title="Riwayat & Rekam Jejak BP/BK Siswa"
+          size="3xl"
         >
           {historySiswaId && (
             <Suspense fallback={<div className="p-10 flex justify-center"><Loader /></div>}>
-              <SiswaDetailView
-                siswaId={historySiswaId}
-                onSuccess={() => {
-                  setHistorySiswaId(null);
-                  invalidateBpbkCache();
-                }}
-              />
+              <BpbkSiswaHistoryView siswaId={historySiswaId} />
             </Suspense>
           )}
         </Modal>

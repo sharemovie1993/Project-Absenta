@@ -165,6 +165,12 @@ export default function ParentDashboard() {
     }
     return name.slice(0, 2).toUpperCase();
   }, [student.nama_siswa]);
+
+  const bkSummonsNotifs = useMemo(() => {
+    return notifications.filter(
+      (n) => n.type === 'BK_SUMMONS_ISSUED' || n.title?.toLowerCase().includes('pemanggilan')
+    );
+  }, [notifications]);
   if (!data || !student) {
     return <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-500 space-y-3">
         <RefreshCw size={28} className="animate-spin text-emerald-600" />
@@ -356,6 +362,81 @@ export default function ParentDashboard() {
         }} transition={{
           duration: 0.2
         }} className="space-y-5 sm:space-y-6">
+              {/* Banner Panggilan Resmi Orang Tua (BP/BK) */}
+              {bkSummonsNotifs.length > 0 && (
+                <div className="p-4 sm:p-5 rounded-3xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-300/80 dark:border-amber-800/70 shadow-sm space-y-3">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-2xl bg-amber-500/20 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+                        <AlertTriangle size={18} />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-400 block">
+                          Pemberitahuan Resmi Sekolah (BP/BK)
+                        </span>
+                        <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                          Surat Pemanggilan Orang Tua / Wali ({bkSummonsNotifs.length})
+                        </h3>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleTabChange('chat')}
+                      className="h-8 px-3 text-xs font-bold border-amber-400 text-amber-800 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                    >
+                      <MessageCircle size={13} className="mr-1.5" />
+                      Hubungi Sekolah
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {bkSummonsNotifs.map((notif) => {
+                      const summonsStatus = String(notif.data?.status || 'DIKIRIM').toUpperCase();
+                      const statusBadge =
+                        summonsStatus === 'HADIR'
+                          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
+                          : summonsStatus === 'TIDAK_HADIR'
+                          ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30'
+                          : 'bg-amber-500/20 text-amber-800 dark:text-amber-200 border-amber-500/40';
+                      return (
+                        <div
+                          key={notif.id}
+                          className="p-3.5 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-amber-200/80 dark:border-amber-800/50 space-y-1.5"
+                        >
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <span className={cn('px-2 py-0.5 rounded-md text-[10px] font-mono font-extrabold uppercase border', statusBadge)}>
+                                {summonsStatus === 'BARU' ? 'DIJADWALKAN' : summonsStatus}
+                              </span>
+                              <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                                {notif.title}
+                              </span>
+                            </div>
+                            <span className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400">
+                              {new Date(notif.created_at).toLocaleDateString('id-ID', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                              })}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                            {notif.message}
+                          </p>
+                          {notif.data?.keterangan_pertemuan && (
+                            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 pt-0.5">
+                              Catatan Pertemuan: {notif.data.keterangan_pertemuan}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* 3 Metric Cards Grid (Adopsi Layout Gambar 1) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
                 {/* Card 1: Kehadiran di Sekolah Hari Ini */}
@@ -503,36 +584,49 @@ export default function ParentDashboard() {
                       );
                     })}
 
-                    {notifications.map((notif) => (
-                      <div key={notif.id} className="p-4 sm:p-5 rounded-2xl bg-slate-50/90 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-300 dark:hover:border-slate-700 transition-all">
-                        <div className="flex items-start gap-3.5 min-w-0">
-                          <div className="w-10 h-10 rounded-2xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
-                            <Bell size={20} />
-                          </div>
-                          <div className="space-y-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap text-[10px] font-bold">
-                              <span className="px-2 py-0.5 rounded-md font-mono uppercase tracking-wider border bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30">
-                                PEMBERITAHUAN
-                              </span>
+                    {notifications.map((notif) => {
+                      const isBkSummons = notif.type === 'BK_SUMMONS_ISSUED';
+                      return (
+                        <div key={notif.id} className="p-4 sm:p-5 rounded-2xl bg-slate-50/90 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+                          <div className="flex items-start gap-3.5 min-w-0">
+                            <div className={cn(
+                              "w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 mt-0.5",
+                              isBkSummons
+                                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                : "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400"
+                            )}>
+                              {isBkSummons ? <AlertTriangle size={20} /> : <Bell size={20} />}
                             </div>
-                            <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-snug">
-                              {notif.title}
-                            </h4>
-                            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                              {notif.message}
-                            </p>
+                            <div className="space-y-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap text-[10px] font-bold">
+                                <span className={cn(
+                                  "px-2 py-0.5 rounded-md font-mono uppercase tracking-wider border",
+                                  isBkSummons
+                                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                                    : "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30"
+                                )}>
+                                  {isBkSummons ? 'PANGGILAN BP/BK' : 'PEMBERITAHUAN'}
+                                </span>
+                              </div>
+                              <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-snug">
+                                {notif.title}
+                              </h4>
+                              <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                                {notif.message}
+                              </p>
+                            </div>
                           </div>
-                        </div>
 
-                        <span className="text-xs font-mono font-extrabold text-slate-500 dark:text-slate-400 shrink-0 self-end sm:self-auto">
-                          {new Date(notif.created_at).toLocaleTimeString('id-ID', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}{' '}
-                          WIB
-                        </span>
-                      </div>
-                    ))}
+                          <span className="text-xs font-mono font-extrabold text-slate-500 dark:text-slate-400 shrink-0 self-end sm:self-auto">
+                            {new Date(notif.created_at).toLocaleTimeString('id-ID', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}{' '}
+                            WIB
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

@@ -325,7 +325,12 @@ export const UniversalSendWaModal: React.FC<UniversalSendWaModalProps> = ({
               <div className="flex items-center gap-1 p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold">
                 <button
                   type="button"
-                  onClick={() => setActiveTab('GROUP')}
+                  onClick={() => {
+                    setActiveTab('GROUP');
+                    if (selectedTarget && selectedTarget.badge !== 'GROUP') {
+                      setSelectedTarget(null);
+                    }
+                  }}
                   className={cn(
                     'px-2.5 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1',
                     activeTab === 'GROUP'
@@ -338,7 +343,12 @@ export const UniversalSendWaModal: React.FC<UniversalSendWaModalProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setActiveTab('GURU')}
+                  onClick={() => {
+                    setActiveTab('GURU');
+                    if (selectedTarget && selectedTarget.badge !== 'GURU') {
+                      setSelectedTarget(null);
+                    }
+                  }}
                   className={cn(
                     'px-2.5 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1',
                     activeTab === 'GURU'
@@ -351,7 +361,12 @@ export const UniversalSendWaModal: React.FC<UniversalSendWaModalProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setActiveTab('MANUAL')}
+                  onClick={() => {
+                    setActiveTab('MANUAL');
+                    if (selectedTarget && selectedTarget.badge !== 'MANUAL') {
+                      setSelectedTarget(null);
+                    }
+                  }}
                   className={cn(
                     'px-2.5 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1',
                     activeTab === 'MANUAL'
