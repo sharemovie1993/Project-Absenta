@@ -50,7 +50,8 @@ export interface ActionRoleGroup {
 const ROLE_GROUP_RULES: Array<{ prefixes: string[]; group: ActionRoleGroup }> = [
   { prefixes: ['kbm_journal_', 'perangkat_', 'rapor_task_', 'cbt_bank_soal_', 'cbt_author_live_'], group: { key: 'GURU', label: 'Sebagai Guru', order: 1 } },
   { prefixes: ['kaprog_'], group: { key: 'KAPROG', label: 'Sebagai Kajur', order: 2 } },
-  { prefixes: ['kurikulum_'], group: { key: 'KURIKULUM', label: 'Sebagai Kurikulum', order: 3 } },
+  { prefixes: ['hubin_staff_'], group: { key: 'HUBIN', label: 'Sebagai Staf Hubin', order: 3 } },
+  { prefixes: ['kurikulum_'], group: { key: 'KURIKULUM', label: 'Sebagai Kurikulum', order: 4 } },
   { prefixes: ['walas_'], group: { key: 'WALIKELAS', label: 'Sebagai Wali Kelas', order: 4 } },
   { prefixes: ['pkl_nilai_pembimbing_'], group: { key: 'PEMBIMBING_PKL', label: 'Sebagai Pembimbing PKL', order: 5 } },
   { prefixes: ['pkl_nilai_sidang_'], group: { key: 'PENGUJI_PKL', label: 'Sebagai Penguji Sidang PKL', order: 6 } },
@@ -123,6 +124,7 @@ export class DashboardActionHubService {
       guruId ? this.detectCbtLiveAuthorTasks(tenantId, guruId) : Promise.resolve([]),
       guruId ? this.detectCbtPengawasTasks(tenantId, guruId) : Promise.resolve([]),
       this.detectKaprogTpDudiTasks(tenantId, userId, guruId),
+      this.detectHubinStaffPklReminderTasks(tenantId, userId),
     ]);
 
     // 3. Konsolidasi seluruh item yang sukses diambil
@@ -1062,6 +1064,219 @@ export class DashboardActionHubService {
 
       return items;
     } catch (error) {
+      return [];
+    }
+  }
+
+  // --- DETECTOR 4C: Staf Hubin — Ingatkan Kaprog Terkait Nilai PKL & Sidang Belum Tuntas ---
+  private async detectHubinStaffPklReminderTasks(
+    tenantId: string,
+    userId: string
+  ): Promise<UnifiedActionItem[]> {
+    try {
+      const now = new Date();
+      const hubinAssignment = await prisma.organizationalAssignment.findFirst({
+        where: {
+          user_id: userId,
+          tenant_id: tenantId,
+          is_active: true,
+          AND: [
+            { OR: [{ start_date: null }, { start_date: { lte: now } }] },
+            { OR: [{ end_date: null }, { end_date: { gte: now } }] },
+          ],
+          Position: {
+            OR: [
+              { code: STRUKTUR_CODES.HUBIN },
+              { code: { contains: 'HUBIN', mode: 'insensitive' } },
+              { name: { contains: 'Hubin', mode: 'insensitive' } },
+              { name: { contains: 'Hubungan Industri', mode: 'insensitive' } },
+            ],
+          },
+        },
+        select: { id: true },
+      });
+
+      if (!hubinAssignment) return [];
+
+      const [activeTp, jurusans] = await Promise.all([
+        prisma.tahunPelajaran.findFirst({
+          where: { tenant_id: tenantId, is_active: true },
+          select: { id: true },
+        }),
+        prisma.jurusan.findMany({
+          where: { tenant_id: tenantId },
+          select: { id: true, nama: true, singkatan: true },
+          orderBy: { nama: 'asc' },
+        }),
+      ]);
+
+      if (!jurusans || jurusans.length === 0) return [];
+
+      const summaries = await Promise.all(
+        jurusans.map(async (j) => {
+          try {
+            const pklSummary = await this.hubinPenilaianService.getKaprogPklSummary(
+              tenantId,
+              '',
+              j.id,
+              undefined,
+              { tahunPelajaranId: activeTp?.id }
+            );
+            return { jurusan: j, pklSummary };
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      let totalSiswaAll = 0;
+      let totalSudahNilai = 0;
+      let totalBelumNilai = 0;
+      let totalSudahSidang = 0;
+      let totalBelumSidang = 0;
+      const incompleteNilaiJurusans: string[] = [];
+      const incompleteSidangJurusans: string[] = [];
+
+      for (const entry of summaries) {
+        if (!entry || !entry.pklSummary) continue;
+        const ps = (entry.pklSummary as any).penilaianStatus || {};
+        const total = ps.totalSiswaPkl || 0;
+        if (total === 0) continue;
+
+        const label = entry.jurusan.singkatan || entry.jurusan.nama;
+        const sudahNilai = ps.sudahDinilaiDudi || 0;
+        const belumNilai = ps.belumDinilaiDudi || 0;
+        const sudahSidang = ps.sudahSidang || 0;
+        const belumSidang = ps.belumSidang || 0;
+
+        totalSiswaAll += total;
+        totalSudahNilai += sudahNilai;
+        totalBelumNilai += belumNilai;
+        totalSudahSidang += sudahSidang;
+        totalBelumSidang += belumSidang;
+
+        if (belumNilai > 0) incompleteNilaiJurusans.push(`${label} (${belumNilai})`);
+        if (belumSidang > 0) incompleteSidangJurusans.push(`${label} (${belumSidang})`);
+      }
+
+      if (totalSiswaAll === 0) return [];
+
+      const items: UnifiedActionItem[] = [];
+      const percentNilai = Math.round((totalSudahNilai / totalSiswaAll) * 100);
+      const percentSidang = Math.round((totalSudahSidang / totalSiswaAll) * 100);
+
+      // Kanal 1: Pengingat Nilai PKL (DUDI) ke Kaprog
+      if (totalBelumNilai > 0) {
+        const previewJurusan = incompleteNilaiJurusans.slice(0, 4).join(', ') +
+          (incompleteNilaiJurusans.length > 4 ? ` +${incompleteNilaiJurusans.length - 4} jurusan` : '');
+        items.push({
+          id: `hubin_staff_reminder_nilai_pkl_${tenantId}`,
+          division: 'HUBIN',
+          urgency: 'CRITICAL',
+          title: 'Ingatkan Kaprog: Nilai PKL Belum Tuntas',
+          subtitle: `Anda sebagai Staf Hubin. Ada ${totalBelumNilai} dari ${totalSiswaAll} siswa PKL belum lengkap nilai DUDI pada ${incompleteNilaiJurusans.length} jurusan (${previewJurusan}). Segera ingatkan Kaprog terkait!`,
+          badgeText: `${totalBelumNilai} Belum Tuntas`,
+          progress: {
+            current: totalSudahNilai,
+            total: totalSiswaAll,
+            percent: percentNilai,
+            label: `${totalSudahNilai}/${totalSiswaAll} Siswa (${percentNilai}%)`,
+            variant: 'rose',
+          },
+          action: {
+            label: 'Pantau Nilai PKL ➔',
+            type: 'NAVIGATE',
+            target: '/dashboard?tab=hubin&subtab=nilai',
+          },
+          sourceModule: {
+            table: 'SiswaPkl',
+            entityId: tenantId,
+          },
+        });
+      } else {
+        items.push({
+          id: `hubin_staff_reminder_nilai_pkl_${tenantId}`,
+          division: 'HUBIN',
+          urgency: 'INFO',
+          title: 'Monitoring Nilai PKL Seluruh Jurusan',
+          subtitle: `Anda sebagai Staf Hubin. Seluruh nilai PKL (${totalSiswaAll} siswa) di semua jurusan telah tuntas dilengkapi.`,
+          badgeText: 'Tuntas',
+          progress: {
+            current: totalSiswaAll,
+            total: totalSiswaAll,
+            percent: 100,
+            label: `${totalSiswaAll}/${totalSiswaAll} Siswa (100%)`,
+            variant: 'emerald',
+          },
+          action: {
+            label: 'Lihat Nilai PKL ➔',
+            type: 'NAVIGATE',
+            target: '/dashboard?tab=hubin&subtab=nilai',
+          },
+          sourceModule: {
+            table: 'SiswaPkl',
+            entityId: tenantId,
+          },
+        });
+      }
+
+      // Kanal 2: Pengingat Nilai Sidang PKL ke Kaprog
+      if (totalBelumSidang > 0) {
+        const previewSidang = incompleteSidangJurusans.slice(0, 4).join(', ') +
+          (incompleteSidangJurusans.length > 4 ? ` +${incompleteSidangJurusans.length - 4} jurusan` : '');
+        items.push({
+          id: `hubin_staff_reminder_nilai_sidang_${tenantId}`,
+          division: 'HUBIN',
+          urgency: 'CRITICAL',
+          title: 'Ingatkan Kaprog: Nilai Sidang PKL Belum Tuntas',
+          subtitle: `Anda sebagai Staf Hubin. Ada ${totalBelumSidang} dari ${totalSiswaAll} siswa PKL belum lengkap nilai Sidang pada ${incompleteSidangJurusans.length} jurusan (${previewSidang}). Segera ingatkan Kaprog terkait!`,
+          badgeText: `${totalBelumSidang} Belum Tuntas`,
+          progress: {
+            current: totalSudahSidang,
+            total: totalSiswaAll,
+            percent: percentSidang,
+            label: `${totalSudahSidang}/${totalSiswaAll} Siswa (${percentSidang}%)`,
+            variant: 'rose',
+          },
+          action: {
+            label: 'Pantau Nilai Sidang ➔',
+            type: 'NAVIGATE',
+            target: '/dashboard?tab=hubin&subtab=nilai',
+          },
+          sourceModule: {
+            table: 'SiswaPkl',
+            entityId: tenantId,
+          },
+        });
+      } else {
+        items.push({
+          id: `hubin_staff_reminder_nilai_sidang_${tenantId}`,
+          division: 'HUBIN',
+          urgency: 'INFO',
+          title: 'Monitoring Nilai Sidang PKL Seluruh Jurusan',
+          subtitle: `Anda sebagai Staf Hubin. Seluruh nilai Sidang PKL (${totalSiswaAll} siswa) di semua jurusan telah tuntas dilengkapi.`,
+          badgeText: 'Tuntas',
+          progress: {
+            current: totalSiswaAll,
+            total: totalSiswaAll,
+            percent: 100,
+            label: `${totalSiswaAll}/${totalSiswaAll} Siswa (100%)`,
+            variant: 'emerald',
+          },
+          action: {
+            label: 'Lihat Nilai Sidang ➔',
+            type: 'NAVIGATE',
+            target: '/dashboard?tab=hubin&subtab=nilai',
+          },
+          sourceModule: {
+            table: 'SiswaPkl',
+            entityId: tenantId,
+          },
+        });
+      }
+
+      return items;
+    } catch {
       return [];
     }
   }
