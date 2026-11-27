@@ -412,18 +412,89 @@ export class ParentDataService {
   }
 
   /**
-   * Get Notifications (Placeholder)
+   * Get Notifications (Pemanggilan Orang Tua BP/BK yang ortu_notified=true & non-SENSITIVE)
    */
-  async getNotifications(_siswaId: string, page: number = 1, limit: number = 20) {
-    // Stub implementation
+  async getNotifications(siswaId: string, page: number = 1, limit: number = 20) {
+    const safePage = Math.max(1, page);
+    const safeLimit = Math.min(50, Math.max(1, limit));
+    const skip = (safePage - 1) * safeLimit;
+
+    const where = {
+      siswa_id: siswaId,
+      deleted_at: null,
+      ortu_notified: true,
+      visibility: { not: 'SENSITIVE' },
+    };
+
+    const [summonsList, total] = await Promise.all([
+      prisma.pemanggilanOrangTua.findMany({
+        where,
+        orderBy: { created_at: 'desc' },
+        skip,
+        take: safeLimit,
+        select: {
+          id: true,
+          tanggal_pemanggilan: true,
+          tanggal_pertemuan: true,
+          waktu_pertemuan: true,
+          tempat_pertemuan: true,
+          alasan: true,
+          keterangan_pertemuan: true,
+          status: true,
+          created_at: true,
+        },
+      }),
+      prisma.pemanggilanOrangTua.count({ where }),
+    ]);
+
+    const data = summonsList.map((s) => {
+      const tglTarget = s.tanggal_pertemuan || s.tanggal_pemanggilan;
+      const tglLabel = tglTarget
+        ? new Date(tglTarget).toLocaleDateString('id-ID', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          })
+        : '-';
+      const waktuPart = s.waktu_pertemuan ? ` pukul ${s.waktu_pertemuan}` : '';
+      const tempatPart = s.tempat_pertemuan ? ` di ${s.tempat_pertemuan}` : '';
+
+      const title =
+        s.status === 'HADIR'
+          ? 'Pemanggilan Orang Tua (Hadir / Selesai)'
+          : s.status === 'TIDAK_HADIR'
+          ? 'Pemanggilan Orang Tua (Tidak Hadir)'
+          : 'Pemanggilan Orang Tua (BP/BK)';
+
+      return {
+        id: `bk-summons-${s.id}`,
+        title,
+        message: `Jadwal pertemuan: ${tglLabel}${waktuPart}${tempatPart}. Keperluan: ${s.alasan}`,
+        type: 'BK_SUMMONS_ISSUED',
+        is_read: s.status === 'HADIR' || s.status === 'TIDAK_HADIR',
+        created_at: s.created_at.toISOString(),
+        data: {
+          summons_id: s.id,
+          status: s.status,
+          tanggal_pemanggilan: s.tanggal_pemanggilan.toISOString(),
+          tanggal_pertemuan: s.tanggal_pertemuan ? s.tanggal_pertemuan.toISOString() : null,
+          waktu_pertemuan: s.waktu_pertemuan,
+          tempat_pertemuan: s.tempat_pertemuan,
+          alasan: s.alasan,
+          keterangan_pertemuan: s.keterangan_pertemuan,
+        },
+      };
+    });
+
     return {
-      data: [],
+      data,
       meta: {
-        page,
-        limit,
-        total: 0,
-        total_pages: 0
-      }
+        page: safePage,
+        limit: safeLimit,
+        total,
+        total_pages: Math.ceil(total / safeLimit),
+      },
     };
   }
 
