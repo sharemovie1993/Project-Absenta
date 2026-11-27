@@ -1314,22 +1314,22 @@ export class DashboardActionHubService {
    */
   private async detectCbtBankSoalTasks(tenantId: string, guruId: string): Promise<UnifiedActionItem[]> {
     try {
-      const [activeTp, tenantInfo, activeEvent] = await Promise.all([
+      const [activeTp, sekolahInfo, activeEvent] = await Promise.all([
         prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } }),
-        prisma.tenant.findUnique({ where: { id: tenantId }, select: { jenjang: true, durasi_smk: true } }),
+        prisma.sekolah.findFirst({ where: { tenant_id: tenantId }, select: { jenjang: true, durasi_smk: true } }),
         CbtSettingsService.getActiveEvent(tenantId),
       ]);
       if (!activeTp) return [];
 
       // Cakupan tingkat mutlak: ikuti target_tingkat event aktif, atau rentang jenjang tenant jika belum diset
-      const jenjangUpper = String(tenantInfo?.jenjang || 'SMK').toUpperCase();
+      const jenjangUpper = String(sekolahInfo?.jenjang || 'SMK').toUpperCase();
       const defaultTingkatByJenjang =
         jenjangUpper === 'SD' || jenjangUpper === 'MI'
           ? [1, 2, 3, 4, 5, 6]
           : jenjangUpper === 'SMP' || jenjangUpper === 'MTS'
           ? [7, 8, 9]
           : jenjangUpper === 'SMK' || jenjangUpper === 'MAK'
-          ? tenantInfo?.durasi_smk === '4_TAHUN'
+          ? sekolahInfo?.durasi_smk === '4_TAHUN'
             ? [10, 11, 12, 13]
             : [10, 11, 12]
           : [10, 11, 12];
