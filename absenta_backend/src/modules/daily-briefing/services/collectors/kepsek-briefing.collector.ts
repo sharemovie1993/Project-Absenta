@@ -254,7 +254,7 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       const hubinService = new HubinService();
       const [hubinSettings, hubinSummary] = await Promise.all([
         hubinService.getSettings(tenantId, activeTp?.id),
-        hubinService.getKaprogPklSummary(tenantId, undefined, { tahunPelajaranId: activeTp?.id }),
+        hubinService.getKaprogPklSummary(tenantId, '', undefined, undefined, { tahunPelajaranId: activeTp?.id }),
       ]);
       if (hubinSettings?.assessmentMode) {
         pklAssessmentMode = hubinSettings.assessmentMode;

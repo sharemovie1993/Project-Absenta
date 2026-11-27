@@ -1402,18 +1402,25 @@ export class HubinPenilaianService extends HubinCommonHelper {
   async getKaprogPklSummary(
     tenantId: string, 
     userId: string, 
-    targetJurusanId?: string,
+    targetJurusanId?: string | { tahunPelajaranId?: string; semesterId?: string },
     orgScope?: any,
     options?: { tahunPelajaranId?: string; semesterId?: string }
   ) {
-    let jurusanId = targetJurusanId;
+    let resolvedOptions = options;
+    let jurusanId: string | undefined;
+    if (typeof targetJurusanId === 'object' && targetJurusanId !== null) {
+      resolvedOptions = targetJurusanId;
+      jurusanId = undefined;
+    } else {
+      jurusanId = targetJurusanId;
+    }
     let jurusanInfo: { id: string; nama: string; singkatan: string | null } | null = null;
 
     // 1. Resolve Jurusan Kaprog jika tidak dispesifikasikan secara eksplisit
     if (!jurusanId) {
       if (orgScope?.is_unit_restricted && Array.isArray(orgScope?.unit_ids) && orgScope.unit_ids.length > 0) {
         jurusanId = orgScope.unit_ids[0];
-      } else {
+      } else if (userId) {
         const assignment = await prisma.organizationalAssignment.findFirst({
           where: {
             tenant_id: tenantId,
@@ -1455,10 +1462,10 @@ export class HubinPenilaianService extends HubinCommonHelper {
       ];
     }
 
-    if (options?.tahunPelajaranId || options?.semesterId) {
+    if (resolvedOptions?.tahunPelajaranId || resolvedOptions?.semesterId) {
       pklWhere.SiswaAkademik = {
-        ...(options.tahunPelajaranId ? { tahun_pelajaran_id: options.tahunPelajaranId } : {}),
-        ...(options.semesterId ? { semester_id: options.semesterId } : {})
+        ...(resolvedOptions.tahunPelajaranId ? { tahun_pelajaran_id: resolvedOptions.tahunPelajaranId } : {}),
+        ...(resolvedOptions.semesterId ? { semester_id: resolvedOptions.semesterId } : {})
       };
     }
 
