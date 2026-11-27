@@ -757,7 +757,7 @@ export class BpbkAnalyticsService {
   }
 
   static async getStudentRiskTrend(tenantId: string, siswaId: string) {
-    await this.verifyOwner('siswa', siswaId, tenantId);
+    await BpbkCommonHelper.verifyOwner('siswa', siswaId, tenantId);
 
     const snapshots = await prisma.ewsSnapshot.findMany({
       where: { tenant_id: tenantId, siswa_id: siswaId },
@@ -816,7 +816,7 @@ export class BpbkAnalyticsService {
         date: c.tanggal.toISOString().split('T')[0],
         type: 'COUNSELING',
         title: `Konseling ${c.tipe === 'INDIVIDU' ? 'Individu' : 'Kelompok'}`,
-        description: `Status: ${c.status}. Masalah: ${c.masalah.slice(0, 60)}...`
+        description: `Status: ${c.status}. Masalah: ${(c.masalah || '').slice(0, 60)}...`
       });
     });
 
@@ -825,7 +825,7 @@ export class BpbkAnalyticsService {
         date: v.tanggal.toISOString().split('T')[0],
         type: 'HOMEVISIT',
         title: `Home Visit`,
-        description: `Alasan: ${v.alasan.slice(0, 60)}...`
+        description: `Alasan: ${(v.alasan || '').slice(0, 60)}...`
       });
     });
 
@@ -834,7 +834,7 @@ export class BpbkAnalyticsService {
         date: s.tanggal_pemanggilan.toISOString().split('T')[0],
         type: 'SUMMONS',
         title: `Pemanggilan Orang Tua`,
-        description: `Alasan: ${s.alasan.slice(0, 60)}... Status: ${s.status}`
+        description: `Alasan: ${(s.alasan || '').slice(0, 60)}... Status: ${s.status}`
       });
     });
 
