@@ -293,10 +293,18 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
 
   // ── Query Adaptif: Guru Sebagai Penguji Sidang PKL ──
   const effectiveGuruId = guruId || user?.guru_profile?.id || user?.id;
+  const userCaps: string[] = Array.isArray((user as any)?.capabilities) ? (user as any).capabilities : [];
+  const rawRole = String(user?.role?.name || (typeof user?.role === 'string' ? user.role : (user as any)?.roleName) || '').toUpperCase();
+  const canReadHubinRekap =
+    ['ADMIN', 'SUPER_ADMIN', 'DEVELOPER'].includes(rawRole) ||
+    userCaps.includes('hubin.pkl.view.list') ||
+    userCaps.includes('hubin.guidance.manage') ||
+    userCaps.includes('*');
+
   const { data: mySidangData } = useQuery({
     queryKey: ['my-penguji-sidang-students', effectiveGuruId],
     queryFn: async () => {
-      if (!effectiveGuruId) return [];
+      if (!effectiveGuruId || !canReadHubinRekap) return [];
       const res = await hubinApi.getRekapPklSiswa({
         status: 'ELIGIBLE',
       }).catch(() => null);
@@ -308,7 +316,8 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
         return Boolean(pId && pId === effectiveGuruId);
       });
     },
-    enabled: Boolean(effectiveGuruId) && isActualTeachingStaff,
+    enabled: Boolean(effectiveGuruId) && isActualTeachingStaff && canReadHubinRekap,
+    retry: false,
     staleTime: 3 * 60 * 1000,
   });
 

@@ -33,6 +33,12 @@ export function useMyPengujiSidang() {
       ''
   ).toUpperCase();
   const isSiswa = rawRole === 'SISWA';
+  const userCaps: string[] = Array.isArray((user as any)?.capabilities) ? (user as any).capabilities : [];
+  const canReadHubinRekap =
+    ['ADMIN', 'SUPER_ADMIN', 'DEVELOPER'].includes(rawRole) ||
+    userCaps.includes('hubin.pkl.view.list') ||
+    userCaps.includes('hubin.guidance.manage') ||
+    userCaps.includes('*');
 
   const effectiveGuruId = isSiswa
     ? null
@@ -45,7 +51,7 @@ export function useMyPengujiSidang() {
   const { data: mySidangData, isLoading, refetch } = useQuery({
     queryKey: ['my-penguji-sidang-students', effectiveGuruId],
     queryFn: async () => {
-      if (!effectiveGuruId || isSiswa) return [];
+      if (!effectiveGuruId || isSiswa || !canReadHubinRekap) return [];
       const res = await hubinApi
         .getRekapPklSiswa({
           status: 'ELIGIBLE',
@@ -58,7 +64,8 @@ export function useMyPengujiSidang() {
         return Boolean(pId && pId === effectiveGuruId);
       });
     },
-    enabled: Boolean(effectiveGuruId) && !isSiswa,
+    enabled: Boolean(effectiveGuruId) && !isSiswa && canReadHubinRekap,
+    retry: false,
     staleTime: 5 * 1000, // ⚡ 5 detik: Sangat responsif terhadap perubahan ploting
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
