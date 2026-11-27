@@ -77,7 +77,7 @@ const Settings: React.FC<SettingsProps> = React.memo(({ hideLayout = false, init
   const canEditProfile = isAdmin || isKoperasiHead || can('cooperative.members.manage') || can('cooperative.settings.manage');
   const canEditCategories = isAdmin || isKoperasiHead || isKoperasiFinance || can('cooperative.savings.types.manage');
   const canManageShu = isAdmin || isKoperasiHead || isKoperasiFinance || can('cooperative.shu.manage') || can('cooperative.shu.view.report');
-  const canViewDelegation = isKoperasiHead || can('cooperative.settings.view') || can('cooperative.members.manage');
+  const canViewDelegation = isKoperasiHead;
 
   // Local Form state for profile
   const [formData, setFormData] = useState<CooperativeSettings>({

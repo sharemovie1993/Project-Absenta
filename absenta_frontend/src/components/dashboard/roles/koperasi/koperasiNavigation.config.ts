@@ -36,6 +36,8 @@ export interface KoperasiTabDefinition {
   color?: string;
   targetPath: string;
   dividerBefore?: boolean;
+  /** Hanya tampil untuk pemegang jabatan KETUA_KOPERASI */
+  chairmanOnly?: boolean;
   /** Jika diisi, user wajib memiliki minimal salah satu capability berikut */
   anyOfCapabilities?: string[];
 }
@@ -372,6 +374,7 @@ export const KOPERASI_SUBTABS_BASE: KoperasiTabDefinition[] = [
     icon: ShieldCheck,
     targetPath: '/dashboard?tab=koperasi&subtab=delegasi_ketua',
     color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
+    chairmanOnly: true,
     anyOfCapabilities: [
       'cooperative.settings.view',
       'cooperative.settings.update',
@@ -389,8 +392,12 @@ export interface KoperasiTabBadges {
 
 export function hasKoperasiTabAccess(
   tab: KoperasiTabDefinition,
-  canFn?: (capability: string) => boolean
+  canFn?: (capability: string) => boolean,
+  options?: { isKoperasiHead?: boolean }
 ): boolean {
+  if (tab.chairmanOnly && !options?.isKoperasiHead) {
+    return false;
+  }
   if (!canFn || !tab.anyOfCapabilities || tab.anyOfCapabilities.length === 0) {
     return true;
   }
@@ -399,9 +406,10 @@ export function hasKoperasiTabAccess(
 
 export function getKoperasiNavTabs(
   badges?: KoperasiTabBadges,
-  canFn?: (capability: string) => boolean
+  canFn?: (capability: string) => boolean,
+  options?: { isKoperasiHead?: boolean }
 ): (KoperasiNavTabItem & { category: KoperasiTabCategory })[] {
-  return KOPERASI_SUBTABS_BASE.filter((tab) => hasKoperasiTabAccess(tab, canFn))?.map((tab) => {
+  return KOPERASI_SUBTABS_BASE.filter((tab) => hasKoperasiTabAccess(tab, canFn, options))?.map((tab) => {
     let badge: string | undefined;
     let badgeColor: string | undefined;
 
@@ -440,9 +448,10 @@ export function getVisibleKoperasiCategories(
 }
 
 export function getKoperasiMobileChildren(
-  canFn?: (capability: string) => boolean
+  canFn?: (capability: string) => boolean,
+  options?: { isKoperasiHead?: boolean }
 ): KoperasiMobileChildItem[] {
-  return KOPERASI_SUBTABS_BASE.filter((tab) => hasKoperasiTabAccess(tab, canFn))?.map((tab) => ({
+  return KOPERASI_SUBTABS_BASE.filter((tab) => hasKoperasiTabAccess(tab, canFn, options))?.map((tab) => ({
     id: tab.id,
     label: tab.label,
     shortLabel: tab.shortLabel,

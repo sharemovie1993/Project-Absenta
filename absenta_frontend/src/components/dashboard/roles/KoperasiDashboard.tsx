@@ -288,8 +288,8 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
   );
 
   const navTabs = useMemo(
-    () => getKoperasiNavTabs(navBadges, canCoopCap),
-    [navBadges, canCoopCap]
+    () => getKoperasiNavTabs(navBadges, canCoopCap, { isKoperasiHead }),
+    [navBadges, canCoopCap, isKoperasiHead]
   );
 
   const visibleCategories = useMemo(
