@@ -342,6 +342,9 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
           pembimbing_nama: item.Pembimbing?.nama_guru || item.pembimbing_nama || '',
           pembimbing_nip: item.Pembimbing?.nip || '',
           pembimbing_foto: item.Pembimbing?.foto || item.pembimbing_foto || null,
+          siswa_status: (item as any).siswa_status || (item.Siswa as any)?.status || 'AKTIF',
+          siswa_alasan_keluar: (item as any).siswa_alasan_keluar || (item.Siswa as any)?.alasan_keluar || null,
+          pkl_sanggah: (item as any).pkl_sanggah || (item.nilai_json as any)?.pkl_sanggah || null,
         };
       }));
     }

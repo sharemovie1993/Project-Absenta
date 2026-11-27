@@ -227,4 +227,28 @@ export class HubinPenilaianController {
       return reply.status(500).send({ success: false, message: error.message });
     }
   }
+
+  async submitPklSanggah(request: AuthenticatedRequest, reply: any) {
+    try {
+      const { id } = request.params as any;
+      const userId = request.user?.id || (request.user as any)?.userId;
+      const userName = (request.user as any)?.full_name || (request.user as any)?.email || 'Guru';
+      const data = await this.hubinService.submitPklSanggah(request.tenantId!, id, userId, userName, request.body as any);
+      return reply.status(200).send({ success: true, message: 'Sanggah berhasil dicatat & siswa dikecualikan dari tagihan WA', data });
+    } catch (error: any) {
+      return reply.status(400).send({ success: false, message: error.message });
+    }
+  }
+
+  async reviewPklSanggah(request: AuthenticatedRequest, reply: any) {
+    try {
+      const { id } = request.params as any;
+      const userId = request.user?.id || (request.user as any)?.userId;
+      const userName = (request.user as any)?.full_name || (request.user as any)?.email || 'Admin/Hubin';
+      const data = await this.hubinService.reviewPklSanggah(request.tenantId!, id, userId, userName, request.body as any);
+      return reply.status(200).send({ success: true, message: 'Status sanggah berhasil diperbarui', data });
+    } catch (error: any) {
+      return reply.status(400).send({ success: false, message: error.message });
+    }
+  }
 }

@@ -616,14 +616,23 @@ export class DashboardActionHubService {
           soft_kerjasama: true,
           soft_kejujuran: true,
           soft_tanggung_jawab: true,
+          nilai_json: true,
+          Siswa: { select: { status: true } },
         },
       });
 
       const isPositiveScore = (v: unknown) => v !== null && v !== undefined && v !== '' && !Number.isNaN(Number(v)) && Number(v) > 0;
+      const isExemptedPkl = (row: any) => {
+        const st = String(row?.Siswa?.status || 'AKTIF').toUpperCase();
+        const sanggah = (row?.nilai_json as any)?.pkl_sanggah;
+        return st !== 'AKTIF' || (sanggah?.active === true && sanggah?.status !== 'REJECTED');
+      };
 
-      if (bimbinganStudents.length > 0) {
-        const totalBimbingan = bimbinganStudents.length;
-        const assessedBimbingan = bimbinganStudents.filter((s) => {
+      const activeBimbinganStudents = bimbinganStudents.filter((s) => !isExemptedPkl(s));
+
+      if (activeBimbinganStudents.length > 0) {
+        const totalBimbingan = activeBimbinganStudents.length;
+        const assessedBimbingan = activeBimbinganStudents.filter((s) => {
           const all8Scores = [
             s.hard_kompetensi_teknis,
             s.hard_sop_k3lh,
@@ -682,12 +691,15 @@ export class DashboardActionHubService {
         select: {
           id: true,
           nilai_json: true,
+          Siswa: { select: { status: true } },
         },
       });
 
-      if (sidangStudents.length > 0) {
-        const totalSidang = sidangStudents.length;
-        const assessedSidang = sidangStudents.filter((s) => {
+      const activeSidangStudents = sidangStudents.filter((s) => !isExemptedPkl(s));
+
+      if (activeSidangStudents.length > 0) {
+        const totalSidang = activeSidangStudents.length;
+        const assessedSidang = activeSidangStudents.filter((s) => {
           const nJson = (s.nilai_json as any) || {};
           return [
             nJson.sidang_portofolio,

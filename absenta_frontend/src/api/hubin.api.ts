@@ -292,6 +292,10 @@ export const hubinApi = {
     semester_id?: string;
     pembimbing_id?: string;
   }) => requestWithFallback<any>('get', '/hubin/penempatan/rekap', { params }),
+  submitPklSanggah: (id: string, data: { alasan: string; catatan: string }) =>
+    requestWithFallback<any>('post', `/hubin/penempatan/${id}/sanggah`, { data }),
+  reviewPklSanggah: (id: string, data: { decision: 'APPROVE' | 'REJECT'; review_note?: string }) =>
+    requestWithFallback<any>('put', `/hubin/penempatan/${id}/sanggah/review`, { data }),
   upsertSettingDeskripsiPkl: (data: { mitra_id: string; jurusan_id?: string; tahun_pelajaran_id?: string; deskripsi_tp: string }) => requestWithFallback<any>('post', '/hubin/deskripsi-tp', { data }),
   saveDeskripsiTp: (data: { id?: string; mitra_id: string; jurusan_id?: string; tahun_pelajaran_id?: string; deskripsi_tp: string }) => requestWithFallback<any>('post', '/hubin/deskripsi-tp', { data }),
   rolloverDeskripsiTp: (data: { jurusan_id?: string; to_tahun_pelajaran_id?: string; from_tahun_pelajaran_id?: string }) => requestWithFallback<any>('post', '/hubin/deskripsi-tp/rollover', { data }),

@@ -18,6 +18,17 @@ export interface HubinAssessmentSettings {
   weightSidang?: number;
 }
 
+export interface PklSanggahInfo {
+  active?: boolean;
+  alasan?: string;
+  catatan?: string;
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  submitted_by?: string;
+  submitted_by_name?: string;
+  submitted_at?: string;
+  review_note?: string;
+}
+
 export interface ScoreRow {
   siswa_pkl_id: string;
   nama_siswa: string;
@@ -70,6 +81,49 @@ export interface ScoreRow {
   pembimbing_nama?: string;
   pembimbing_nip?: string;
   pembimbing_foto?: string | null;
+  siswa_status?: string | null;
+  siswa_alasan_keluar?: string | null;
+  pkl_sanggah?: PklSanggahInfo | null;
+}
+
+export function isPklRowExempted(row: {
+  siswa_status?: string | null;
+  siswa_alasan_keluar?: string | null;
+  pkl_sanggah?: PklSanggahInfo | null;
+}): {
+  exempted: boolean;
+  reasonLabel: string;
+  isAutoMaster: boolean;
+  isSanggah: boolean;
+  sanggahStatus?: string;
+} {
+  const st = String(row?.siswa_status || 'AKTIF').trim().toUpperCase();
+  if (st && st !== 'AKTIF') {
+    return {
+      exempted: true,
+      reasonLabel: `Status Siswa: ${st}${row.siswa_alasan_keluar ? ` (${row.siswa_alasan_keluar})` : ''}`,
+      isAutoMaster: true,
+      isSanggah: false,
+    };
+  }
+  const s = row?.pkl_sanggah;
+  if (s?.active && s?.status !== 'REJECTED') {
+    const labelMap: Record<string, string> = {
+      SISWA_KELUAR: 'Siswa Keluar',
+      MUTASI_SEKOLAH: 'Mutasi Sekolah',
+      DIBATALKAN_DUDI: 'Dibatalkan DUDI',
+      TIDAK_HADIR_TOTAL: 'Tidak Pernah Hadir',
+      LAINNYA: 'Lainnya',
+    };
+    return {
+      exempted: true,
+      reasonLabel: labelMap[s.alasan || ''] || s.alasan || 'Disanggah Guru',
+      isAutoMaster: false,
+      isSanggah: true,
+      sanggahStatus: s.status || 'PENDING',
+    };
+  }
+  return { exempted: false, reasonLabel: '', isAutoMaster: false, isSanggah: false };
 }
 
 export interface RawPklItem {

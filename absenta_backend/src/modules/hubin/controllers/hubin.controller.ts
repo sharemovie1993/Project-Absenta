@@ -88,4 +88,6 @@ export class HubinController {
   async rolloverSettingDeskripsiPkl(...args: any[]) { return (this.penilaian as any).rolloverSettingDeskripsiPkl(...args); }
   async getKaprogSummary(...args: any[]) { return (this.penilaian as any).getKaprogSummary(...args); }
   async getSertifikatPklData(...args: any[]) { return (this.penilaian as any).getSertifikatPklData(...args); }
+  async submitPklSanggah(...args: any[]) { return (this.penilaian as any).submitPklSanggah(...args); }
+  async reviewPklSanggah(...args: any[]) { return (this.penilaian as any).reviewPklSanggah(...args); }
 }

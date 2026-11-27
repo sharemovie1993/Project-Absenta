@@ -1093,6 +1093,8 @@ export class HubinPenilaianService extends HubinCommonHelper {
                 tempat_lahir: true,
                 tanggal_lahir: true,
                 foto: true,
+                status: true,
+                alasan_keluar: true,
                 kelas_id: true,
                 jurusan_id: true,
                 Jurusan: { select: { id: true, nama: true, singkatan: true } },
@@ -1208,6 +1210,9 @@ export class HubinPenilaianService extends HubinCommonHelper {
             ...item,
             pembimbing_foto: item.Pembimbing?.foto || null,
             penguji_foto: pId ? (pengujiFotoMap.get(pId) || null) : null,
+            siswa_status: item.Siswa?.status || 'AKTIF',
+            siswa_alasan_keluar: item.Siswa?.alasan_keluar || null,
+            pkl_sanggah: (item.nilai_json as any)?.pkl_sanggah || null,
             auto_sakit: stats.sakit,
             auto_izin: stats.izin,
             auto_alpa: stats.alpa,
@@ -1512,6 +1517,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
           select: {
             id: true,
             nama_siswa: true,
+            status: true,
             Kelas: { select: { id: true, nama_kelas: true } }
           }
         }
@@ -1541,46 +1547,55 @@ export class HubinPenilaianService extends HubinCommonHelper {
     const isPositiveNum = (v: unknown) => v !== null && v !== undefined && v !== '' && !Number.isNaN(Number(v)) && Number(v) > 0;
 
     for (const p of siswaPklList) {
-      // Nilai DUDI / Pembimbing PKL: Wajib lengkap 8 aspek nilai + Nama Pimpinan DUDI + Nama Instruktur
-      const dudiAspects = [
-        p.hard_kompetensi_teknis,
-        p.hard_sop_k3lh,
-        p.hard_alur_bisnis,
-        p.soft_kedisiplinan,
-        p.soft_kerajinan_inisiatif,
-        p.soft_kerjasama,
-        p.soft_kejujuran,
-        p.soft_tanggung_jawab,
-      ];
-      const all8DudiFilled = dudiAspects.every(isPositiveNum);
-      const hasPimpinan = typeof p.penanggung_jawab_nama === 'string' && p.penanggung_jawab_nama.trim().length > 0;
-      const hasInstruktur = typeof p.instruktur_nama === 'string' && p.instruktur_nama.trim().length > 0;
-      const isAssessed = all8DudiFilled && hasPimpinan && hasInstruktur;
-
-      if (isAssessed) {
-        sudahDinilaiDudi++;
-      } else {
-        belumDinilaiDudi++;
-        if (p.pembimbing_id) {
-          unassessedPembimbingSet.add(p.pembimbing_id);
-        }
-      }
-
-      // Nilai Sidang / Laporan: Wajib lengkap 4 aspek nilai sidang (portofolio, materi, komunikasi, sikap)
       const nJson = (p.nilai_json as any) || {};
-      const sidangAspects = [
-        nJson.sidang_portofolio,
-        nJson.sidang_materi,
-        nJson.sidang_komunikasi,
-        nJson.sidang_sikap,
-      ];
-      if (sidangAspects.every(isPositiveNum)) {
-        sudahSidang++;
+      const siswaStatus = String((p.Siswa as any)?.status || 'AKTIF').toUpperCase();
+      const isExempted =
+        siswaStatus !== 'AKTIF' ||
+        (nJson?.pkl_sanggah?.active === true && nJson?.pkl_sanggah?.status !== 'REJECTED');
+
+      if (isExempted) {
+        totalSiswaPkl = Math.max(0, totalSiswaPkl - 1);
       } else {
-        belumSidang++;
-        const pKey = nJson.penguji_id || nJson.penguji_nama;
-        if (pKey) {
-          unassessedPengujiSet.add(String(pKey));
+        // Nilai DUDI / Pembimbing PKL: Wajib lengkap 8 aspek nilai + Nama Pimpinan DUDI + Nama Instruktur
+        const dudiAspects = [
+          p.hard_kompetensi_teknis,
+          p.hard_sop_k3lh,
+          p.hard_alur_bisnis,
+          p.soft_kedisiplinan,
+          p.soft_kerajinan_inisiatif,
+          p.soft_kerjasama,
+          p.soft_kejujuran,
+          p.soft_tanggung_jawab,
+        ];
+        const all8DudiFilled = dudiAspects.every(isPositiveNum);
+        const hasPimpinan = typeof p.penanggung_jawab_nama === 'string' && p.penanggung_jawab_nama.trim().length > 0;
+        const hasInstruktur = typeof p.instruktur_nama === 'string' && p.instruktur_nama.trim().length > 0;
+        const isAssessed = all8DudiFilled && hasPimpinan && hasInstruktur;
+
+        if (isAssessed) {
+          sudahDinilaiDudi++;
+        } else {
+          belumDinilaiDudi++;
+          if (p.pembimbing_id) {
+            unassessedPembimbingSet.add(p.pembimbing_id);
+          }
+        }
+
+        // Nilai Sidang / Laporan: Wajib lengkap 4 aspek nilai sidang (portofolio, materi, komunikasi, sikap)
+        const sidangAspects = [
+          nJson.sidang_portofolio,
+          nJson.sidang_materi,
+          nJson.sidang_komunikasi,
+          nJson.sidang_sikap,
+        ];
+        if (sidangAspects.every(isPositiveNum)) {
+          sudahSidang++;
+        } else {
+          belumSidang++;
+          const pKey = nJson.penguji_id || nJson.penguji_nama;
+          if (pKey) {
+            unassessedPengujiSet.add(String(pKey));
+          }
         }
       }
 
@@ -1749,6 +1764,95 @@ export class HubinPenilaianService extends HubinCommonHelper {
   /**
    * 📜 GET SERTIFIKAT PKL DATA (HALAMAN DEPAN & BELAKANG)
    */
+  async submitPklSanggah(
+    tenantId: string,
+    siswaPklId: string,
+    userId: string,
+    userName: string,
+    body: { alasan?: string; catatan?: string }
+  ) {
+    const alasan = String(body?.alasan || 'SISWA_KELUAR').trim();
+    const catatan = String(body?.catatan || '').trim();
+    if (catatan.length < 5) {
+      throw new Error('Catatan sanggah wajib diisi minimal 5 karakter');
+    }
+
+    const pkl = await prisma.siswaPkl.findFirst({
+      where: { id: siswaPklId, tenant_id: tenantId },
+      select: { id: true, nilai_json: true },
+    });
+    if (!pkl) throw new Error('Data penempatan PKL tidak ditemukan');
+
+    const prevJson = (pkl.nilai_json as Record<string, any>) || {};
+    const sanggahObj = {
+      active: true,
+      alasan,
+      catatan,
+      status: 'PENDING',
+      submitted_by: userId,
+      submitted_by_name: userName || 'Guru',
+      submitted_at: new Date().toISOString(),
+    };
+
+    const updated = await prisma.siswaPkl.update({
+      where: { id: siswaPklId },
+      data: {
+        nilai_json: {
+          ...prevJson,
+          pkl_sanggah: sanggahObj,
+        },
+      },
+      select: { id: true, status: true, nilai_json: true },
+    });
+
+    void cacheInvalidationService.invalidatePklCache(tenantId);
+    void cacheInvalidationService.invalidateHubinCache(tenantId);
+    return { ...updated, pkl_sanggah: sanggahObj };
+  }
+
+  async reviewPklSanggah(
+    tenantId: string,
+    siswaPklId: string,
+    userId: string,
+    userName: string,
+    body: { decision?: 'APPROVE' | 'REJECT'; review_note?: string }
+  ) {
+    const decision = body?.decision === 'REJECT' ? 'REJECT' : 'APPROVE';
+    const pkl = await prisma.siswaPkl.findFirst({
+      where: { id: siswaPklId, tenant_id: tenantId },
+      select: { id: true, status: true, nilai_json: true },
+    });
+    if (!pkl) throw new Error('Data penempatan PKL tidak ditemukan');
+
+    const prevJson = (pkl.nilai_json as Record<string, any>) || {};
+    const prevSanggah = prevJson.pkl_sanggah || {};
+    const nextSanggah = {
+      ...prevSanggah,
+      active: decision === 'APPROVE',
+      status: decision === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+      reviewed_by: userId,
+      reviewed_by_name: userName || 'Admin/Hubin',
+      reviewed_at: new Date().toISOString(),
+      review_note: String(body?.review_note || '').trim() || undefined,
+    };
+
+    const updated = await prisma.siswaPkl.update({
+      where: { id: siswaPklId },
+      data: {
+        ...(decision === 'APPROVE' ? { status: 'BATAL' } : {}),
+        nilai_json: {
+          ...prevJson,
+          pkl_sanggah: nextSanggah,
+        },
+      },
+      select: { id: true, status: true, nilai_json: true },
+    });
+
+    void cacheInvalidationService.invalidatePklCache(tenantId);
+    void cacheInvalidationService.invalidateHubinCache(tenantId);
+    return { ...updated, pkl_sanggah: nextSanggah };
+  }
+
   async getSertifikatPklData(tenantId: string, siswaPklId: string) {
     const pkl = await prisma.siswaPkl.findFirst({
       where: { id: siswaPklId, tenant_id: tenantId },

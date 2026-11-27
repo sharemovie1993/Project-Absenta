@@ -29,8 +29,9 @@ import toast from 'react-hot-toast';
 import { Button, Input, SearchableSelect } from '@/components/ui';
 import { PersonPhoto } from '@/components/ui/PersonPhoto';
 import { HubCard } from '@/components/ui/hub';
-import { ScoreRow, evaluateDudiCompleteness } from './types';
+import { ScoreRow, evaluateDudiCompleteness, isPklRowExempted } from './types';
 import { PklDudiCetakModal, PklDudiDocType } from './PklDudiCetakModal';
+import { PklSanggahModal } from './PklSanggahModal';
 import { useJurusanOptions } from '@/hooks/useJurusanOptions';
 import { useAuthStore } from '@/store/authStore';
 import { UniversalSendWaModal } from '@/components/ui/UniversalSendWaModal';
@@ -265,6 +266,10 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
         existing.foto = s.pembimbing_foto;
       }
 
+      if (isPklRowExempted(s).exempted) {
+        continue;
+      }
+
       existing.totalSiswa += 1;
 
       // Status penilaian DUDI wajib memeriksa kelengkapan 8 komponen nilai + Nama Pimpinan + Nama Instruktur
@@ -334,6 +339,8 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
     return map;
   }, [guruRecipients]);
 
+  const [sanggahTarget, setSanggahTarget] = useState<ScoreRow | null>(null);
+
   const [waModalConfig, setWaModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -365,6 +372,7 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
 
     // Cari siswa bimbingan dari pembimbing ini yang belum selesai dinilai lengkap (8 aspek + pimpinan + instruktur)
     const unassessedStudents = jurusanFilteredScores.filter((s) => {
+      if (isPklRowExempted(s).exempted) return false;
       const nama = s.pembimbing_nama ? s.pembimbing_nama.trim() : 'Belum Diploting';
       if (nama !== pembimbing.nama) return false;
       return !evaluateDudiCompleteness(s).isComplete;
@@ -1255,6 +1263,17 @@ Terima kasih.
                             {score.nama_kelas || '-'}
                           </span>
                         </div>
+                        {isPklRowExempted(score).exempted && (
+                          <button
+                            type="button"
+                            onClick={() => setSanggahTarget(score)}
+                            className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800 text-[9.5px] font-bold cursor-pointer"
+                            title={score.pkl_sanggah?.catatan || isPklRowExempted(score).reasonLabel}
+                          >
+                            <AlertTriangle size={10} />
+                            <span>{isPklRowExempted(score).reasonLabel}</span>
+                          </button>
+                        )}
                       </td>
 
                       {/* Mitra DUDI */}
@@ -1312,16 +1331,28 @@ Terima kasih.
                           <div className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[135px]" title={score.pembimbing_nama}>
                             {score.pembimbing_nama || <span className="text-amber-500 italic">Belum Diploting</span>}
                           </div>
-                          {score.pembimbing_nama && !isFullyComplete && (
-                            <button
-                              type="button"
-                              onClick={() => handleColekSingleStudent(score)}
-                              className="p-1 rounded-md text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 shrink-0 transition-colors cursor-pointer"
-                              title={`Colek Pembimbing (${score.pembimbing_nama}) via WhatsApp untuk melengkapi ${dudiCheck.missingItems.join(', ')}`}
-                            >
-                              <MessageCircle size={13} />
-                            </button>
-                          )}
+                          <div className="flex items-center gap-1 shrink-0">
+                            {!isFullyComplete && !isPklRowExempted(score).exempted && (
+                              <button
+                                type="button"
+                                onClick={() => setSanggahTarget(score)}
+                                className="p-1 rounded-md text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors cursor-pointer"
+                                title="Sanggah / Tandai siswa sudah keluar agar tidak terjaring Colek WA"
+                              >
+                                <AlertTriangle size={13} />
+                              </button>
+                            )}
+                            {score.pembimbing_nama && !isFullyComplete && !isPklRowExempted(score).exempted && (
+                              <button
+                                type="button"
+                                onClick={() => handleColekSingleStudent(score)}
+                                className="p-1 rounded-md text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 shrink-0 transition-colors cursor-pointer"
+                                title={`Colek Pembimbing (${score.pembimbing_nama}) via WhatsApp untuk melengkapi ${dudiCheck.missingItems.join(', ')}`}
+                              >
+                                <MessageCircle size={13} />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </td>
 
@@ -1480,6 +1511,14 @@ Terima kasih.
           }}
         />
       )}
+
+      {/* ── Modal Sanggah / Siswa Keluar ── */}
+      <PklSanggahModal
+        isOpen={Boolean(sanggahTarget)}
+        onClose={() => setSanggahTarget(null)}
+        student={sanggahTarget}
+        canReview={Boolean(canManageAll || isHubin || isKaprog)}
+      />
     </div>
   );
 });
