@@ -1597,14 +1597,15 @@ export class HubinPenilaianService extends HubinCommonHelper {
             unassessedPengujiSet.add(String(pKey));
           }
         }
-      }
 
-      // Ploting Guru Penguji Sidang
-      const pengujiId = (p.nilai_json as any)?.penguji_id;
-      if (pengujiId) {
-        sudahDiplotPenguji++;
-      } else {
-        belumDiplotPenguji++;
+        // Ploting Guru Penguji Sidang
+        const pengujiId = nJson.penguji_id;
+        const pengujiNama = String(nJson.penguji_nama || '').trim();
+        if (pengujiId || (pengujiNama.length > 0 && pengujiNama.toLowerCase() !== 'belum diploting')) {
+          sudahDiplotPenguji++;
+        } else {
+          belumDiplotPenguji++;
+        }
       }
 
       if (p.mitra_id && p.Mitra) {

@@ -276,7 +276,8 @@ export const PklMonitoringSidangTab: React.FC<PklMonitoringSidangTabProps> = Rea
     }
 
     return Array.from(map.values()).map((p) => {
-      const persentase = p.totalSiswa > 0 ? Math.round((p.sudahDinilai / p.totalSiswa) * 100) : 0;
+      const rawPct = p.totalSiswa > 0 ? Math.round((p.sudahDinilai / p.totalSiswa) * 100) : 0;
+      const persentase = p.belumDinilai > 0 ? Math.min(99, rawPct) : rawPct;
       const avgNilai = p.scoredCount > 0 ? (p.totalNilai / p.scoredCount).toFixed(1) : '-';
       return {
         ...p,
@@ -400,7 +401,9 @@ export const PklMonitoringSidangTab: React.FC<PklMonitoringSidangTabProps> = Rea
       }
 
       item.totalSiswa += 1;
-      if (s.penguji_nama && s.penguji_nama.trim().length > 0) {
+      const pNama = (s.penguji_nama || '').trim();
+      const hasPenguji = Boolean(s.penguji_id) || (pNama.length > 0 && pNama.toLowerCase() !== 'belum diploting');
+      if (hasPenguji) {
         item.sudahDiplot += 1;
       } else {
         item.belumDiplot += 1;
@@ -408,10 +411,13 @@ export const PklMonitoringSidangTab: React.FC<PklMonitoringSidangTabProps> = Rea
     }
 
     return Array.from(map.values())
-      .map((item) => ({
-        ...item,
-        persentase: item.totalSiswa > 0 ? Math.round((item.sudahDiplot / item.totalSiswa) * 100) : 100,
-      }))
+      .map((item) => {
+        const rawPct = item.totalSiswa > 0 ? Math.round((item.sudahDiplot / item.totalSiswa) * 100) : 100;
+        return {
+          ...item,
+          persentase: item.belumDiplot > 0 ? Math.min(99, rawPct) : rawPct,
+        };
+      })
       .sort((a, b) => b.belumDiplot - a.belumDiplot || a.jurusanSingkatan.localeCompare(b.jurusanSingkatan));
   }, [canMonitorKaprogPloting, scores, kaprogDirectory, rawJurusanList]);
 

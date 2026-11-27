@@ -286,7 +286,8 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
     }
 
     return Array.from(map.values()).map((p) => {
-      const persentase = p.totalSiswa > 0 ? Math.round((p.sudahDinilai / p.totalSiswa) * 100) : 0;
+      const rawPct = p.totalSiswa > 0 ? Math.round((p.sudahDinilai / p.totalSiswa) * 100) : 0;
+      const persentase = p.belumDinilai > 0 ? Math.min(99, rawPct) : rawPct;
       const avgNilai = p.scoredCount > 0 ? (p.totalNilai / p.scoredCount).toFixed(1) : '-';
       return {
         ...p,
