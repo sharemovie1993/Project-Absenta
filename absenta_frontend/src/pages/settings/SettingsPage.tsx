@@ -264,10 +264,8 @@ const SettingsPage: React.FC<UniversalSettingsViewProps> = ({
   }, []);
 
   const isCloudVpsPublic = useMemo(() => {
-    const fromApi = systemInfo?.deploy_scenario;
-    const fromEnv = (import.meta.env.VITE_DEPLOY_SCENARIO || '').toLowerCase().trim();
-    return fromApi === 'saas-public' || fromEnv === 'saas-public';
-  }, [systemInfo]);
+    return false;
+  }, []);
 
   const tabs = useMemo(() => {
     if (isTenantUser) {

@@ -13,27 +13,14 @@ export type DeployScenario = 'saas-public' | 'saas-local' | 'onpremise';
 export const VALID_DEPLOY_SCENARIOS: readonly DeployScenario[] = ['saas-public', 'saas-local', 'onpremise'] as const;
 
 export function getDeployScenario(): DeployScenario {
-  const raw = (process.env.DEPLOY_SCENARIO || '').trim();
+  const raw = (process.env.DEPLOY_SCENARIO || '').trim().toLowerCase();
 
-  if (raw === 'saas-public' || raw === 'saas-local' || raw === 'onpremise') {
+  if (raw === 'saas-local' || raw === 'saas-public' || raw === 'onpremise') {
     return raw;
   }
 
-  // Backward-compatibility: legacy 'saas' maps to 'saas-local'
-  if (raw === 'saas') {
-    return 'saas-local';
-  }
-
-  // If completely empty in development, default to 'saas-local'
-  if (!raw) {
-    if (process.env.NODE_ENV !== 'production') {
-      return 'saas-local';
-    }
-  }
-
-  throw new Error(
-    `[FATAL CONFIG] Nilai DEPLOY_SCENARIO '${raw}' tidak valid! Wajib salah satu dari: 'saas-public', 'saas-local', atau 'onpremise'.`
-  );
+  // Standar Paten Ekosistem Absenta: Unified Hybrid Multi-Tenant Platform ('saas-local')
+  return 'saas-local';
 }
 
 /**
