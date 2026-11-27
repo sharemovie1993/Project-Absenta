@@ -483,7 +483,7 @@ export const PklMonitoringSidangTab: React.FC<PklMonitoringSidangTabProps> = Rea
 Mengingatkan perihal penginputan *Nilai Sidang PKL* peserta didik Jurusan *${deptName}*.
 Saat ini tercatat masih ada *${penguji.belumDinilai} dari ${penguji.totalSiswa} siswa* uji sidang Anda yang belum tuntas dinilai.${studentListSection}
 Mohon kesediaannya untuk segera melengkapi penilaian melalui Meja Penguji / Menu Sidang PKL pada aplikasi Absenta:
-${window.location.origin}/dashboard?tab=penguji_pkl
+${window.location.origin}/dashboard?tab=ringkasan&subtab=sidang_guru
 
 Atas perhatian dan kerjasamanya, kami sampaikan terima kasih.
 — _Ketua Program Keahlian ${deptName} (${senderName})_`;
@@ -526,7 +526,7 @@ Mengingatkan untuk segera merampungkan pengisian nilai sidang PKL bagi siswa ber
 ${rincianPenguji}
 
 Akses penilaian dapat dibuka pada link berikut:
-${window.location.origin}/dashboard?tab=penguji_pkl
+${window.location.origin}/dashboard?tab=ringkasan&subtab=sidang_guru
 
 Terima kasih atas dedikasi dan kerjasamanya.
 — _Ketua Program Keahlian ${deptName} (${senderName})_`;
@@ -626,7 +626,7 @@ Mohon bantuannya untuk menginputkan *Nilai Sidang PKL* bagi peserta didik beriku
 - *Mitra*: ${score.mitra_nama || '-'}
 
 Penilaian dapat diisi langsung pada aplikasi Absenta:
-${window.location.origin}/dashboard?tab=penguji_pkl
+${window.location.origin}/dashboard?tab=ringkasan&subtab=sidang_guru
 
 Terima kasih.
 — _Ketua Program Keahlian ${deptName} (${senderName})_`;

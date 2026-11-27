@@ -395,7 +395,7 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
 Mengingatkan perihal penginputan *Nilai Sidang & Capaian PKL* peserta didik Jurusan *${deptName}*.
 Saat ini tercatat masih ada *${pembimbing.belumDinilai} dari ${pembimbing.totalSiswa} siswa* bimbingan Anda yang belum tuntas dinilai.${studentListSection}
 Mohon kesediaannya untuk segera melengkapi penilaian melalui Meja Bimbingan / Menu Penilaian PKL pada aplikasi Absenta:
-${window.location.origin}/dashboard?tab=pembimbing_pkl
+${window.location.origin}/dashboard?tab=pembimbing_pkl&subtab=penilaian
 
 Atas perhatian dan kerjasamanya, kami sampaikan terima kasih.
 — _Ketua Program Keahlian ${deptName} (${senderName})_`;
@@ -438,7 +438,7 @@ Mengingatkan rekapitulasi progres penilaian sidang & PKL yang saat ini masih per
 ${listText}
 
 Mohon kesediaan Bapak/Ibu untuk segera menginput nilai melalui sistem Absenta:
-${window.location.origin}/dashboard?tab=pembimbing_pkl
+${window.location.origin}/dashboard?tab=pembimbing_pkl&subtab=penilaian
 
 Terima kasih atas dedikasi dan kerjasamanya.
 — _Ketua Program Keahlian ${deptName} (${senderName})_`;
@@ -473,7 +473,7 @@ Mengingatkan penginputan *Nilai & Identitas DUDI PKL* untuk siswa:
 • *Mitra DUDI*: ${score.mitra_nama || '-'}${missingLine}
 
 Data penilaian untuk siswa tersebut saat ini belum lengkap di sistem Absenta. Mohon kesediaannya untuk melengkapi seluruh 8 aspek nilai DUDI beserta Nama Pimpinan & Nama Instruktur pada menu Meja Bimbingan PKL:
-${window.location.origin}/dashboard?tab=pembimbing_pkl
+${window.location.origin}/dashboard?tab=pembimbing_pkl&subtab=penilaian
 
 Terima kasih.
 — _Ketua Program Keahlian ${deptName} (${senderName})_`;
