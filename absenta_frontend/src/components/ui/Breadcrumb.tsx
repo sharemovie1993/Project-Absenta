@@ -36,8 +36,6 @@ const PATH_MAP: Record<string, string> = {
   billing: 'Billing & SaaS',
   monitoring: 'Live Monitoring',
   plans: 'Manajemen Paket',
-  tripay: 'Tripay Gateway',
-  'tripay-health': 'Kesehatan Tripay',
   infra: 'Infrastruktur',
   'control-center': 'Worker Control',
   tenants: 'Manajemen Tenant',

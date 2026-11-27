@@ -130,8 +130,6 @@ const MenuAuditPage = lazy(() => import('./pages/management/MenuAuditPage'));
 const WebSekolahCmsPage = lazy(() => import('./pages/management/WebSekolahCmsPage'));
 const PlatformComplianceFollowUpPage = lazy(() => import('./pages/management/PlatformComplianceFollowUpPage'));
 const DailyBriefingPage = lazy(() => import('./pages/reporting/DailyBriefingPage'));
-const TripayHealthPage = lazy(() => import('./pages/billing/TripayHealthPage'));
-const TripaySimulatorPage = lazy(() => import('./pages/billing/TripaySimulatorPage'));
 // Removed GerbangRecordsPage import
 // Removed SesiPage import
 const GuruMonitoringPage = lazy(() => import('./pages/attendance/GuruMonitoringPage'));
@@ -1354,8 +1352,6 @@ function App() {
                     <Route path="/billing/approvals" element={<Navigate to="/service-center?tab=status" replace />} />
                     <Route path="/billing/settings" element={<Navigate to="/service-center?tab=status" replace />} />
                     <Route path="/billing/reports" element={<Navigate to="/superadmin/revenue" replace />} />
-                    <Route path="/billing/tripay-health" element={<Navigate to="/superadmin/infra/tripay-health" replace />} />
-                    <Route path="/billing/tripay-simulator" element={<Navigate to="/superadmin/infra/tripay-simulator" replace />} />
 
                     <Route path="/users" element={
                       <ProtectedRoute requiredCapability="core.users.view.list">
@@ -1386,16 +1382,6 @@ function App() {
                           </ProtectedRoute>
                         } />
                         <Route path="/superadmin/infra/monitoring" element={<Navigate to="/superadmin/infra" replace />} />
-                        <Route path="/superadmin/infra/tripay-health" element={
-                          <ProtectedRoute requiredCapability="core.system.manage">
-                            <TripayHealthPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/superadmin/infra/tripay-simulator" element={
-                          <ProtectedRoute requiredCapability="core.system.manage">
-                            <TripaySimulatorPage />
-                          </ProtectedRoute>
-                        } />
                         <Route path="/superadmin/intelligence" element={
                           <ProtectedRoute requiredCapability="core.tenants.view.list">
                             <PlatformIntelligencePage />
