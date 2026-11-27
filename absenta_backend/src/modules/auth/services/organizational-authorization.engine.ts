@@ -1,6 +1,11 @@
 import { prisma } from '@/utils/prisma';
 import { organizationalContextCache } from './organizational-context-cache';
 import { STRUKTUR_CAPABILITIES } from '@/config/position-capabilities';
+import {
+  CHAIRMAN_DELEGATION_CONFIG_KEY,
+  parseChairmanDelegationConfig,
+  resolveDelegatedChairmanCapabilities,
+} from '@/modules/cooperative/settings/chairman-delegation';
 
 export interface OrganizationalContext {
   positions: Array<{
@@ -146,6 +151,36 @@ export class OrganizationalAuthorizationEngine {
       dbCaps.forEach((c: any) => {
         if (c.permission_id) capSet.add(String(c.permission_id));
       });
+    }
+
+    // 2a. Tenant-Level Delegasi Wewenang Ketua Koperasi (Prerogatif Ketua per Tenant)
+    if (ctx.positions.length > 0) {
+      try {
+        const tenantIds = Array.from(
+          new Set(ctx.positions.map((p) => p.tenant_id).filter(Boolean))
+        );
+        if (tenantIds.length > 0) {
+          const delegationConfigs = await prisma.config.findMany({
+            where: {
+              tenant_id: { in: tenantIds },
+              key: CHAIRMAN_DELEGATION_CONFIG_KEY,
+            },
+            select: { tenant_id: true, value: true },
+          });
+
+          for (const cfg of delegationConfigs) {
+            const parsed = parseChairmanDelegationConfig(cfg.value);
+            if (!parsed.enabled) continue;
+            const tenantPosCodes = ctx.positions
+              .filter((p) => p.tenant_id === cfg.tenant_id)
+              .map((p) => p.code);
+            const delegatedCaps = resolveDelegatedChairmanCapabilities(parsed, tenantPosCodes);
+            delegatedCaps.forEach((c) => capSet.add(c));
+          }
+        }
+      } catch {
+        // Jangan gagalkan resolusi otorisasi jika config delegasi gagal dibaca
+      }
     }
 
     // 2b. Smart Otorisasi Persona: Auto-grant Hubin capabilities jika role/jabatan/email adalah Hubin/Hubinmas/Humas

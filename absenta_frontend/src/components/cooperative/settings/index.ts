@@ -5,3 +5,4 @@ export * from './CategoriesTable';
 export * from './CategoryModal';
 export * from './ShuDistributionSetting';
 export * from './ShuPeriodsSettingTable';
+export * from './ChairmanDelegationSetting';

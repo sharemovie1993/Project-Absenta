@@ -6,7 +6,7 @@ import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
 import { formatDate } from '../../utils/layoutUtils';
 import { resolveProfilePhotoUrl } from '../../lib/utils';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { Building2, Layers, Percent, Calendar } from 'lucide-react';
+import { Building2, Layers, Percent, Calendar, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
@@ -32,6 +32,9 @@ const ShuDistributionSetting = lazy(() => import('../../components/cooperative/s
 })));
 const ShuPeriodsSettingTable = lazy(() => import('../../components/cooperative/settings/ShuPeriodsSettingTable').then(m => ({
   default: m.ShuPeriodsSettingTable
+})));
+const ChairmanDelegationSetting = lazy(() => import('../../components/cooperative/settings/ChairmanDelegationSetting').then(m => ({
+  default: m.ChairmanDelegationSetting
 })));
 const PRESET_COLORS = ['#3B82F6',
 // Blue
@@ -67,12 +70,13 @@ const Settings: React.FC<SettingsProps> = React.memo(({ hideLayout = false }) =>
   const confirm = useConfirm();
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<'profile' | 'categories' | 'shu_distribution' | 'shu_periods'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'categories' | 'shu_distribution' | 'shu_periods' | 'delegation'>('profile');
 
   // Capability checks
   const canEditProfile = isAdmin || isKoperasiHead || can('cooperative.members.manage') || can('cooperative.settings.manage');
   const canEditCategories = isAdmin || isKoperasiHead || isKoperasiFinance || can('cooperative.savings.types.manage');
   const canManageShu = isAdmin || isKoperasiHead || isKoperasiFinance || can('cooperative.shu.manage') || can('cooperative.shu.view.report');
+  const canViewDelegation = isKoperasiHead || can('cooperative.settings.view') || can('cooperative.members.manage');
 
   // Local Form state for profile
   const [formData, setFormData] = useState<CooperativeSettings>({
@@ -374,8 +378,13 @@ const Settings: React.FC<SettingsProps> = React.memo(({ hideLayout = false }) =>
       id: 'shu_periods',
       label: 'Periode SHU',
       icon: Calendar
+    }] : []),
+    ...(canViewDelegation ? [{
+      id: 'delegation',
+      label: 'Delegasi Ketua',
+      icon: ShieldCheck
     }] : [])
-  ], [canEditProfile, canEditCategories, canManageShu]);
+  ], [canEditProfile, canEditCategories, canManageShu, canViewDelegation]);
 
   if (loading) {
     return <AcademicPageLayout title={hideLayout ? undefined : "Pengaturan Koperasi"} description={hideLayout ? undefined : "Kelola identitas badan hukum dan kategori simpanan koperasi"} breadcrumbs={hideLayout ? undefined : breadcrumbs}>
@@ -421,6 +430,10 @@ const Settings: React.FC<SettingsProps> = React.memo(({ hideLayout = false }) =>
 
             {activeTab === 'shu_periods' && (
               <ShuPeriodsSettingTable canManageShu={canManageShu} />
+            )}
+
+            {activeTab === 'delegation' && (
+              <ChairmanDelegationSetting />
             )}
 
             <CategoryModal isOpen={showCatModal} onClose={() => setShowCatModal(false)} editingCategory={editingCategory} catFormData={catFormData} onInputChange={handleCatInputChange} onPresetColorSelect={handlePresetColorSelect} onWithdrawRuleChange={handleWithdrawRuleChange} onSubmit={handleCatFormSubmit} savingCat={savingCat} presetColors={PRESET_COLORS} />
