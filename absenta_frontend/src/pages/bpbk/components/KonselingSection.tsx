@@ -153,11 +153,14 @@ export const KonselingSection: React.FC = React.memo(() => {
     setModalOpen(true);
   }, []);
 
-  const handleMarkComplete = useCallback(async (item: KonselingSiswa) => {
+  const handleMarkComplete = useCallback(async (item: KonselingSiswa & { KasusBK?: { judul?: string; status?: string } | null }) => {
+    const hasOpenCase = Boolean(item.KasusBK && item.KasusBK.status !== 'SELESAI');
     const ok = await confirm({
       title: 'Selesaikan Sesi Konseling',
-      description: `Tandai sesi pendampingan untuk ${item.Siswa?.nama_siswa || 'siswa ini'} sebagai SELESAI?`,
-      confirmText: 'Ya, Selesaikan',
+      description: hasOpenCase
+        ? `Sesi pertemuan untuk ${item.Siswa?.nama_siswa || 'siswa ini'} akan ditandai SELESAI, namun Kasus BK terkait ("${item.KasusBK?.judul || 'Kasus BK'}") tetap berstatus ${item.KasusBK?.status || 'PROSES'} sampai ditutup di menu Kasus.`
+        : `Tandai sesi pendampingan untuk ${item.Siswa?.nama_siswa || 'siswa ini'} sebagai SELESAI?`,
+      confirmText: 'Ya, Selesaikan Sesi',
       cancelText: 'Batal',
       style: 'primary',
     });
