@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { formatDate } from '../../../utils/layoutUtils';
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { bpbkApi, type KonselingSiswa, type KasusBK, bpbkQueryKeys } from '../../../api/bpbk.api';
 import { Card } from '../../../components/ui/Card';
@@ -16,7 +17,7 @@ import { DebouncedSearchInput } from '../../../components/ui';
 import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
 import { useCapabilities } from '../../../hooks/useCapabilities';
-import { Search, Plus, Edit2, Trash2, Calendar, Clipboard, UserCheck, MessageSquare, RotateCcw } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Calendar, Clipboard, UserCheck, MessageSquare, RotateCcw, CheckCircle2, PlusCircle, MailOpen, ExternalLink } from 'lucide-react';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../../components/academic/shared/MobileAcademicList';
 
@@ -55,6 +56,7 @@ export const KonselingSection: React.FC = React.memo(() => {
   }, []);
 
 
+  const navigate = useNavigate();
   const confirm = useConfirm();
   const { can } = useCapabilities();
   const queryClient = useQueryClient();
@@ -134,6 +136,41 @@ export const KonselingSection: React.FC = React.memo(() => {
       status: item.status,
       kasus_bk_id: item.kasus_bk_id || '',
       visibility: item.visibility || 'SENSITIVE'
+    });
+    setModalOpen(true);
+  }, []);
+
+  const handleMarkComplete = useCallback(async (item: KonselingSiswa) => {
+    const ok = await confirm({
+      title: 'Selesaikan Sesi Konseling',
+      description: `Tandai sesi pendampingan untuk ${item.Siswa?.nama_siswa || 'siswa ini'} sebagai SELESAI?`,
+      confirmText: 'Ya, Selesaikan',
+      cancelText: 'Batal',
+      style: 'primary',
+    });
+    if (!ok) return;
+    try {
+      await bpbkApi.updateKonseling(item.id, { status: 'SELESAI' });
+      toast.success('Sesi konseling ditandai selesai');
+      invalidateBpbkCache();
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Gagal menyelesaikan sesi');
+    }
+  }, [confirm, invalidateBpbkCache, refetch]);
+
+  const handleFollowUp = useCallback((item: KonselingSiswa) => {
+    setSelectedId(null);
+    setSelectedSiswa(item.Siswa || null);
+    setFormData({
+      siswa_id: item.siswa_id,
+      tanggal: new Date().toISOString().split('T')[0],
+      tipe: item.tipe,
+      masalah: `Sesi lanjutan: ${item.masalah}`,
+      solusi: '',
+      status: 'PROSES',
+      kasus_bk_id: item.kasus_bk_id || '',
+      visibility: item.visibility || 'SENSITIVE',
     });
     setModalOpen(true);
   }, []);
@@ -293,6 +330,46 @@ export const KonselingSection: React.FC = React.memo(() => {
             )
           ) : (
             <>
+              {item.status !== 'SELESAI' && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleMarkComplete(item)}
+                    className="w-8 h-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                    title="Tandai Selesai"
+                  >
+                    <CheckCircle2 size={14} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleFollowUp(item)}
+                    className="w-8 h-8 text-sky-600 hover:text-sky-700 hover:bg-sky-50"
+                    title="Catat Sesi Lanjutan"
+                  >
+                    <PlusCircle size={14} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => navigate(`/dashboard?tab=bpbk&subtab=pemanggilan&siswa_id=${item.siswa_id}`)}
+                    className="w-8 h-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                    title="Eskalasi: Panggil Orang Tua"
+                  >
+                    <MailOpen size={14} />
+                  </Button>
+                </>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate(`/bpbk/siswa/${item.siswa_id}`)}
+                className="w-8 h-8 text-slate-600 hover:text-slate-800 hover:bg-slate-100"
+                title="Lihat Riwayat & Kasus Siswa"
+              >
+                <ExternalLink size={13} />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -316,7 +393,7 @@ export const KonselingSection: React.FC = React.memo(() => {
         </div>
       )
     }
-  ], [showDeleted, can, handleRestore, handleEdit, handleDelete]);
+  ], [showDeleted, can, handleRestore, handleMarkComplete, handleFollowUp, navigate, handleEdit, handleDelete]);
 
   const isMobile = useIsMobile();
 
@@ -379,6 +456,46 @@ export const KonselingSection: React.FC = React.memo(() => {
               )
             ) : (
               <>
+                {item.status !== 'SELESAI' && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleMarkComplete(item)}
+                      className="w-8 h-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                      title="Tandai Selesai"
+                    >
+                      <CheckCircle2 size={14} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleFollowUp(item)}
+                      className="w-8 h-8 text-sky-600 hover:text-sky-700 hover:bg-sky-50"
+                      title="Catat Sesi Lanjutan"
+                    >
+                      <PlusCircle size={14} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => navigate(`/dashboard?tab=bpbk&subtab=pemanggilan&siswa_id=${item.siswa_id}`)}
+                      className="w-8 h-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                      title="Eskalasi: Panggil Orang Tua"
+                    >
+                      <MailOpen size={14} />
+                    </Button>
+                  </>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate(`/bpbk/siswa/${item.siswa_id}`)}
+                  className="w-8 h-8 text-slate-600 hover:text-slate-800 hover:bg-slate-100"
+                  title="Lihat Riwayat & Kasus Siswa"
+                >
+                  <ExternalLink size={13} />
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
