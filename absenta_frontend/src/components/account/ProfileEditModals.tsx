@@ -8,7 +8,7 @@ import { changePassword } from '@/api/auth.api';
 import { updateMyEmail } from '@/api/user.api';
 import { guruApi, siswaApi } from '@/api/academic.api';
 import type { Guru, Siswa } from '@/types/academic';
-import { SiswaForm } from '@/components/academic/siswa/SiswaForm';
+import { SiswaOnboardingModal } from '@/components/academic/siswa/SiswaOnboardingModal';
 import { GuruForm } from '@/components/academic/guru/GuruForm';
 import {
   JENIS_KELAMIN_OPTIONS,
@@ -323,22 +323,27 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = React.memo(({
     </div>
   );
 
+  if (isSiswa && siswaProfile) {
+    return (
+      <SiswaOnboardingModal
+        isOpen={isOpen}
+        onClose={onClose}
+        siswa={siswaProfile}
+        activeSection="all"
+        onSuccess={() => onSuccess('siswa', null)}
+      />
+    );
+  }
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isSiswa ? 'Edit Data Siswa' : isGuru ? 'Edit Data Guru' : 'Edit Profil'}
+      title={isGuru ? 'Edit Data Guru' : 'Edit Profil'}
       size="xl"
-      className={isSiswa || isGuru ? '!max-w-[80vw]' : ''}
+      className={isGuru ? '!max-w-[80vw]' : ''}
     >
-      {isSiswa && siswaProfile ? (
-        <SiswaForm
-          siswaId={siswaProfile.id}
-          mode="edit"
-          onSuccess={() => onSuccess('siswa', null)}
-          onCancel={onClose}
-        />
-      ) : isGuru && guruProfile ? (
+      {isGuru && guruProfile ? (
         <GuruForm
           guruId={guruProfile.id}
           mode="edit"

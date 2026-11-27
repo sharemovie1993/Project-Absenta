@@ -1,4 +1,4 @@
-export type SectionEditType = 'pribadi' | 'ekskul' | 'alamat' | 'orangtua' | 'all';
+export type SectionEditType = 'pribadi' | 'identitas' | 'biodata' | 'akademik' | 'ekskul' | 'alamat' | 'kontak' | 'orangtua' | 'all';
 
 export interface CompletenessResult {
   percent: number;

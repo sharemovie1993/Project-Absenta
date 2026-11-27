@@ -46,7 +46,7 @@ import { generateAdvancedTemplate } from '../../../utils/excel-advanced.utils';
 import type { ExcelColumnConfig } from '../../../utils/export.utils';
 
 // Lazy Loaded Modal & Drill-down Components
-const SiswaForm = lazy(() => import('./SiswaForm').then(module => ({ default: module.SiswaForm })));
+const SiswaOnboardingModal = lazy(() => import('./SiswaOnboardingModal').then(module => ({ default: module.SiswaOnboardingModal })));
 const SiswaDetailView = lazy(() => import('./SiswaDetailView').then(module => ({ default: module.SiswaDetailView })));
 const ExcelImportModal = lazy(() => import('../shared/ExcelImportModal').then(module => ({ default: module.ExcelImportModal })));
 const SiswaHistory = lazy(() => import('./SiswaHistory').then(module => ({ default: module.SiswaHistory })));
@@ -861,30 +861,19 @@ export const SiswaView: React.FC<UniversalSiswaViewProps> = React.memo(({
         </ExcelImportModal>
       </Suspense>
 
-      {/* Main Student Form Modal */}
-      <Modal
-        isOpen={modalState.isOpen}
-        onClose={handleCloseModal}
-        title={
-          modalState.mode === 'edit'
-            ? 'Edit Biodata Lengkap Siswa'
-            : modalState.mode === 'view'
-            ? 'Detail Biodata Siswa'
-            : 'Tambah Siswa Baru'
-        }
-        size="4xl"
-      >
-        <Suspense fallback={<div className="p-12 flex justify-center"><Loader /></div>}>
-          {modalState.mode && (
-            <SiswaForm 
-              siswaId={modalState.siswaId} 
-              mode={modalState.mode} 
-              onSuccess={handleFormSuccess} 
-              onCancel={handleCloseModal} 
-            />
-          )}
-        </Suspense>
-      </Modal>
+      {/* Unified Student Form Modal (Sama Persis Antara Siswa, Walas & Admin) */}
+      <Suspense fallback={null}>
+        {modalState.isOpen && modalState.mode && (
+          <SiswaOnboardingModal
+            isOpen={modalState.isOpen}
+            onClose={handleCloseModal}
+            siswaId={modalState.siswaId}
+            mode={modalState.mode === 'create' ? 'create' : 'edit'}
+            activeSection="all"
+            onSuccess={handleFormSuccess}
+          />
+        )}
+      </Suspense>
 
       {/* Academic History Modal */}
       <Modal isOpen={historyOpen} onClose={() => setHistoryOpen(false)} title="Riwayat Akademik Siswa" size="xl">

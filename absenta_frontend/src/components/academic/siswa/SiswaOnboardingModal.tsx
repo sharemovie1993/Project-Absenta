@@ -28,8 +28,9 @@ import { FieldDocumentTrigger } from '@/components/documents/FieldDocumentTrigge
 import { resolveProfilePhotoUrl } from '@/lib/utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { jenisKegiatanMasterApi } from '@/api/academic/jenisKegiatanMaster.api';
-import { updateSiswa, updateSiswaMe, siswaQueryKeys } from '@/api/academic/siswa.api';
+import { createSiswa, updateSiswa, updateSiswaMe, getSiswaById, siswaQueryKeys } from '@/api/academic/siswa.api';
 import { useSiswaMe, useUpdateSiswaMe, SISWA_ME_QUERY_KEY } from '@/hooks/useSiswaMe';
+import { useCapabilities } from '@/hooks/useCapabilities';
 import { 
   AGAMA_OPTIONS, 
   TRANSPORTASI_OPTIONS, 
@@ -38,6 +39,8 @@ import {
   PENGHASILAN_OPTIONS,
   HUBUNGAN_WALI_OPTIONS,
   PROVINSI_INDONESIA_OPTIONS,
+  STATUS_SISWA_OPTIONS,
+  getKelasForDropdown,
   getProvinsiOptions,
   getKabupatenOptions,
   getKecamatanOptions,
@@ -235,6 +238,8 @@ export interface SiswaOnboardingModalProps {
   onClose: () => void;
   siswa?: any;
   siswaData?: any;
+  siswaId?: string;
+  mode?: 'create' | 'edit';
   onSuccess?: () => void;
   initialStep?: number;
   activeSection?: SectionEditType;
@@ -245,18 +250,40 @@ export const SiswaOnboardingModal: React.FC<SiswaOnboardingModalProps> = ({
   onClose,
   siswa: siswaProp,
   siswaData,
+  siswaId: siswaIdProp,
+  mode = 'edit',
   onSuccess,
   initialStep = 1,
   activeSection = 'all',
 }) => {
   const queryClient = useQueryClient();
   const [step, setStep] = useState<number>(initialStep);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { siswaProfile: siswaFromHook, isApiConnected } = useSiswaMe();
+  const { isAdmin, isKurikulum, isKesiswaan, isWaliKelas, isKaprog, isSiswa, can } = useCapabilities();
+  const isStaffEditor = !isSiswa && (isAdmin || isKurikulum || isKesiswaan || isWaliKelas || isKaprog || can('academic.students.update') || can('academic.students.create'));
+  const isCreateMode = mode === 'create';
+
+  const { siswaProfile: siswaFromHook } = useSiswaMe();
+
+  const { data: fetchedSiswaById } = useQuery({
+    queryKey: siswaQueryKeys.detail(siswaIdProp || ''),
+    queryFn: () => getSiswaById(siswaIdProp!),
+    enabled: Boolean(isOpen && !isCreateMode && siswaIdProp && !siswaProp && !siswaData),
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const { data: kelasOptions = [] } = useQuery({
+    queryKey: ['kelas-dropdown-onboarding-modal'],
+    queryFn: () => getKelasForDropdown().catch(() => []),
+    enabled: Boolean(isOpen && isStaffEditor),
+    staleTime: 5 * 60 * 1000,
+  });
 
   const siswa = useMemo(() => {
-    return siswaProp || siswaData || siswaFromHook || null;
-  }, [siswaProp, siswaData, siswaFromHook]);
+    if (isCreateMode) return null;
+    return siswaProp || siswaData || fetchedSiswaById || (!siswaIdProp ? siswaFromHook : null) || null;
+  }, [isCreateMode, siswaProp, siswaData, fetchedSiswaById, siswaIdProp, siswaFromHook]);
 
   const studentName = useMemo(() => {
     return siswa?.nama_siswa || siswa?.nama || siswa?.name || '';
@@ -280,10 +307,19 @@ export const SiswaOnboardingModal: React.FC<SiswaOnboardingModalProps> = ({
     }
   }, [isOpen, initialStep]);
 
-  // Form State
-  const [formData, setFormData] = useState({
+  const initialEmptyForm = {
+    nama_siswa: '',
+    nis: '',
     nik: '',
+    no_kk: '',
     nisn: '',
+    no_rfid: '',
+    email: '',
+    kelas_id: '',
+    status: 'AKTIF',
+    tanggal_masuk: '',
+    tanggal_keluar: '',
+    alasan_keluar: '',
     tempat_lahir: '',
     tanggal_lahir: '',
     jenis_kelamin: 'L',
@@ -302,7 +338,7 @@ export const SiswaOnboardingModal: React.FC<SiswaOnboardingModalProps> = ({
     kelurahan: '',
     kecamatan: '',
     kabupaten: '',
-    provinsi: '',
+    provinsi: 'Jawa Barat',
     rt: '',
     rw: '',
     kode_pos: '',
@@ -333,7 +369,10 @@ export const SiswaOnboardingModal: React.FC<SiswaOnboardingModalProps> = ({
     no_hp_wali: '',
     no_hp_ortu: '',
     alamat_ortu: '',
-  });
+  };
+
+  // Form State
+  const [formData, setFormData] = useState(initialEmptyForm);
 
   const [selectedPhotoFile, setSelectedPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -389,13 +428,29 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
 
 // Populate data when modal opens
   useEffect(() => {
+    if (isCreateMode) {
+      setFormData(initialEmptyForm);
+      setSelectedPhotoFile(null);
+      setPhotoPreview(null);
+      return;
+    }
     if (siswa) {
       const hasValidWali = Boolean(siswa.nama_wali && String(siswa.nama_wali).trim());
       const cleanAlamat = siswa.alamat || '';
       const cleanDusun = siswa.dusun && siswa.dusun !== cleanAlamat ? siswa.dusun : '';
       setFormData({
+        nama_siswa: siswa.nama_siswa || siswa.nama || '',
+        nis: siswa.nis || '',
         nik: siswa.nik || '',
+        no_kk: (siswa as any).no_kk || '',
         nisn: siswa.nisn || '',
+        no_rfid: (siswa as any).no_rfid || '',
+        email: (siswa as any).User?.email || (siswa as any).email || '',
+        kelas_id: siswa.kelas_id || (siswa as any).Kelas?.id || '',
+        status: siswa.status || 'AKTIF',
+        tanggal_masuk: (siswa as any).tanggal_masuk ? String((siswa as any).tanggal_masuk).split('T')[0] : '',
+        tanggal_keluar: (siswa as any).tanggal_keluar ? String((siswa as any).tanggal_keluar).split('T')[0] : '',
+        alasan_keluar: (siswa as any).alasan_keluar || '',
         tempat_lahir: siswa.tempat_lahir || '',
         tanggal_lahir: siswa.tanggal_lahir ? String(siswa.tanggal_lahir).split('T')[0] : '',
         jenis_kelamin: siswa.jenis_kelamin || 'L',
@@ -449,7 +504,7 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
       setSelectedPhotoFile(null);
       setPhotoPreview(null);
     }
-  }, [siswa, isOpen]);
+  }, [siswa, isOpen, isCreateMode]);
 
   // Live completeness calculation
   const liveCompleteness = useMemo(() => {
@@ -460,7 +515,7 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
 
   const getPreparedPayload = () => {
     const hasWali = Boolean(formData.nama_wali && String(formData.nama_wali).trim());
-    return {
+    const basePayload: Record<string, any> = {
       ...formData,
       tinggi_badan: formData.tinggi_badan === '' || formData.tinggi_badan === null ? null : Number(formData.tinggi_badan),
       berat_badan: formData.berat_badan === '' || formData.berat_badan === null ? null : Number(formData.berat_badan),
@@ -473,6 +528,30 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
       penghasilan_wali: hasWali ? (formData.penghasilan_wali || null) : null,
       no_hp_wali: hasWali ? (formData.no_hp_wali || null) : null,
     };
+
+    if (!isStaffEditor) {
+      delete basePayload.nama_siswa;
+      delete basePayload.nis;
+      delete basePayload.kelas_id;
+      delete basePayload.status;
+      delete basePayload.no_rfid;
+      delete basePayload.email;
+      delete basePayload.tanggal_masuk;
+      delete basePayload.tanggal_keluar;
+      delete basePayload.alasan_keluar;
+    } else {
+      basePayload.nama_siswa = formData.nama_siswa?.trim() || undefined;
+      basePayload.nis = formData.nis?.trim() || undefined;
+      basePayload.no_rfid = formData.no_rfid?.trim() || null;
+      basePayload.email = formData.email?.trim() || undefined;
+      basePayload.kelas_id = formData.kelas_id || undefined;
+      basePayload.status = formData.status || 'AKTIF';
+      basePayload.tanggal_masuk = formData.tanggal_masuk || null;
+      basePayload.tanggal_keluar = formData.status !== 'AKTIF' ? (formData.tanggal_keluar || null) : null;
+      basePayload.alasan_keluar = formData.status !== 'AKTIF' ? (formData.alasan_keluar || null) : null;
+    }
+
+    return basePayload;
   };
 
   if (!isOpen) return null;
@@ -487,36 +566,79 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
 
   const handleSubmitFinal = async () => {
     try {
-      if (selectedPhotoFile && siswa?.id) {
+      if (isCreateMode) {
+        if (!formData.nama_siswa.trim()) {
+          toast.error('Nama lengkap siswa wajib diisi');
+          setStep(1);
+          return;
+        }
+        if (!formData.kelas_id) {
+          toast.error('Rombel kelas wajib dipilih');
+          setStep(1);
+          return;
+        }
+      }
+
+      setIsSubmitting(true);
+      const payload = getPreparedPayload();
+      const targetSiswaId = siswa?.id || siswaIdProp;
+
+      if (isCreateMode) {
+        const created = await createSiswa(payload as any);
+        const createdId = (created as any)?.id || (created as any)?.data?.id;
+        if (selectedPhotoFile && createdId) {
+          try {
+            await uploadSiswaDocument({
+              siswaId: createdId,
+              file: selectedPhotoFile,
+              kategori: 'FOTO',
+              judul: `Foto Profil - ${formData.nama_siswa || 'Siswa'}`,
+            });
+          } catch (err) {
+            console.error('Failed uploading photo document', err);
+          }
+        }
+        queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+        queryClient.invalidateQueries({ queryKey: ['walas-siswa'] });
+        queryClient.invalidateQueries({ queryKey: ['walas-dashboard'] });
+        queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+        toast.success('Siswa baru berhasil ditambahkan!');
+        onSuccess?.();
+        onClose();
+        return;
+      }
+
+      if (selectedPhotoFile && targetSiswaId) {
         try {
           await uploadSiswaDocument({
-            siswaId: siswa.id,
+            siswaId: targetSiswaId,
             file: selectedPhotoFile,
             kategori: 'FOTO',
-            judul: `Foto Profil - ${siswa.nama || 'Siswa'}`,
+            judul: `Foto Profil - ${studentName || 'Siswa'}`,
           });
         } catch (err) {
           console.error('Failed uploading photo document', err);
         }
       }
 
-      if (siswa?.id === 'demo-siswa-id') {
+      if (targetSiswaId === 'demo-siswa-id') {
         toast.success('Data profil berhasil disimpan!');
         onClose();
         return;
       }
 
-      const payload = getPreparedPayload();
-      
-      // If siswaId is explicitly provided (e.g. edited by Wali Kelas or Admin)
-      if (siswa?.id) {
-        await updateSiswa(siswa.id, payload as any);
+      if (targetSiswaId && isStaffEditor) {
+        await updateSiswa(targetSiswaId, payload as any);
         queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
         queryClient.invalidateQueries({ queryKey: ['walas-siswa'] });
         queryClient.invalidateQueries({ queryKey: ['walas-dashboard'] });
         queryClient.invalidateQueries({ queryKey: ['siswa-detail'] });
-        queryClient.invalidateQueries({ queryKey: ['siswa-detail', siswa.id] });
+        queryClient.invalidateQueries({ queryKey: ['siswa-detail', targetSiswaId] });
         queryClient.invalidateQueries({ queryKey: ['eskul-members-pembinas-global'] });
+      } else if (targetSiswaId && !isSiswa) {
+        await updateSiswa(targetSiswaId, payload as any);
+        queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+        queryClient.invalidateQueries({ queryKey: ['siswa-detail', targetSiswaId] });
       } else {
         await updateMutationMe.mutateAsync(payload as any);
         queryClient.invalidateQueries({ queryKey: SISWA_ME_QUERY_KEY });
@@ -527,7 +649,9 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
       onSuccess?.();
       onClose();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || 'Gagal memperbarui data siswa');
+      toast.error(err?.response?.data?.message || err?.message || 'Gagal menyimpan data siswa');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -556,6 +680,18 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
       icon: User,
       color: 'emerald',
     },
+    akademik: {
+      title: 'Edit Penempatan Kelas & Data Akademik',
+      badge: 'SEKSI AKADEMIK & ROMBEL',
+      icon: ShieldCheck,
+      color: 'indigo',
+    },
+    alamat: {
+      title: 'Edit Kontak & Alamat Rumah',
+      badge: 'SEKSI KONTAK & ALAMAT',
+      icon: MapPin,
+      color: 'sky',
+    },
     kontak: {
       title: 'Edit Kontak & Alamat Rumah',
       badge: 'SEKSI KONTAK & ALAMAT',
@@ -569,14 +705,20 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
       color: 'amber',
     },
     all: {
-      title: step === 1 ? 'Data Pribadi & Identitas Induk' : step === 2 ? 'Alamat & Domisili Tempat Tinggal' : 'Data Orang Tua / Wali Murid & Ekskul',
-      badge: 'EDIT PROFIL SISWA',
+      title: isCreateMode
+        ? 'Tambah Siswa Baru'
+        : step === 1
+        ? 'Data Pribadi & Identitas Induk'
+        : step === 2
+        ? 'Alamat & Domisili Tempat Tinggal'
+        : 'Data Orang Tua / Wali Murid & Ekskul',
+      badge: isCreateMode ? 'TAMBAH SISWA BARU' : 'EDIT PROFIL SISWA',
       icon: Sparkles,
       color: 'emerald',
     }
   }[activeSection] || {
-    title: 'Edit Profil Siswa',
-    badge: 'EDIT PROFIL SISWA',
+    title: isCreateMode ? 'Tambah Siswa Baru' : 'Edit Profil Siswa',
+    badge: isCreateMode ? 'TAMBAH SISWA BARU' : 'EDIT PROFIL SISWA',
     icon: Sparkles,
     color: 'emerald',
   };
@@ -595,10 +737,16 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
         <div className="px-5 py-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div className="min-w-0 pr-4">
             <h2 className="text-base font-bold text-slate-900 dark:text-white truncate">
-              {studentName ? `Edit Biodata: ${studentName}` : sectionMeta.title}
+              {isCreateMode
+                ? 'Tambah Siswa Baru'
+                : studentName
+                ? `${sectionMeta.title}: ${studentName}`
+                : sectionMeta.title}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              {studentKelas ? `Kelas ${studentKelas}` : ''} {studentNisn ? `• NISN: ${studentNisn}` : ''}
+              {isCreateMode
+                ? 'Formulir terpadu pendaftaran & biodata peserta didik baru'
+                : `${studentKelas ? `Kelas ${studentKelas}` : ''} ${studentNisn ? `• NISN: ${studentNisn}` : ''}`}
             </p>
           </div>
           <button
@@ -656,8 +804,8 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
 
         {/* BODY CONTENT AREA */}
         <div className="p-5 sm:p-6 space-y-5 max-h-[60vh] overflow-y-auto">
-          {/* FOCUSED SECTION 1: DATA PRIBADI & IDENTITAS */}
-          {(activeSection === 'pribadi' || activeSection === 'identitas' || activeSection === 'biodata' || (activeSection === 'all' && step === 1)) && (
+          {/* FOCUSED SECTION 1: DATA PRIBADI, IDENTITAS & AKADEMIK */}
+          {(activeSection === 'pribadi' || activeSection === 'identitas' || activeSection === 'biodata' || activeSection === 'akademik' || (activeSection === 'all' && step === 1)) && (
             <motion.div
               key="sec-pribadi"
               initial={{ opacity: 0, y: 8 }}
@@ -667,60 +815,207 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
               className="space-y-4 text-xs"
             >
               {/* Compact Photo Upload */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 flex items-center gap-3.5">
-                <div className="relative shrink-0">
-                  {photoPreview || (siswa as any)?.foto || (siswa as any)?.foto_url ? (
-                    <img
-                      src={photoPreview || resolveProfilePhotoUrl((siswa as any)?.foto || (siswa as any)?.foto_url)}
-                      alt="Foto Profil Siswa"
-                      className="w-14 h-14 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 shadow-xs"
-                    />
-                  ) : (
-                    <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 flex items-center justify-center font-bold text-lg shadow-xs">
-                      {siswa?.nama ? siswa.nama.charAt(0) : 'S'}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100">Foto Profil / Pas Foto</h4>
-                  <p className="text-[11px] text-slate-400">JPG/PNG maks. 5 MB untuk raport & kartu pelajar</p>
-                  
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => setShowWebcamModal(true)}
-                      className="px-3 py-1 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all active:scale-95"
-                    >
-                      <Camera size={13} />
-                      <span>Kamera</span>
-                    </button>
-
-                    <label className="px-3 py-1 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all active:scale-95">
-                      <Upload size={13} />
-                      <span>Pilih File</span>
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            setSelectedPhotoFile(file);
-                            setPhotoPreview(URL.createObjectURL(file));
-                          }
-                        }}
+              {activeSection !== 'akademik' && (
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 flex items-center gap-3.5">
+                  <div className="relative shrink-0">
+                    {photoPreview || (siswa as any)?.foto || (siswa as any)?.foto_url ? (
+                      <img
+                        src={photoPreview || resolveProfilePhotoUrl((siswa as any)?.foto || (siswa as any)?.foto_url)}
+                        alt="Foto Profil Siswa"
+                        className="w-14 h-14 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 shadow-xs"
                       />
-                    </label>
+                    ) : (
+                      <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 flex items-center justify-center font-bold text-lg shadow-xs">
+                        {(formData.nama_siswa || studentName) ? (formData.nama_siswa || studentName).charAt(0).toUpperCase() : 'S'}
+                      </div>
+                    )}
+                  </div>
 
-                    {selectedPhotoFile && (
-                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                        ✓ Siap Disimpan
-                      </span>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100">Foto Profil / Pas Foto</h4>
+                    <p className="text-[11px] text-slate-400">JPG/PNG maks. 5 MB untuk raport & kartu pelajar</p>
+                    
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => setShowWebcamModal(true)}
+                        className="px-3 py-1 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all active:scale-95"
+                      >
+                        <Camera size={13} />
+                        <span>Kamera</span>
+                      </button>
+
+                      <label className="px-3 py-1 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all active:scale-95">
+                        <Upload size={13} />
+                        <span>Pilih File</span>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setSelectedPhotoFile(file);
+                              setPhotoPreview(URL.createObjectURL(file));
+                            }
+                          }}
+                        />
+                      </label>
+
+                      {selectedPhotoFile && (
+                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                          ✓ Siap Disimpan
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STAFF-ONLY BLOCK: Nama Lengkap, Rombel Kelas, NIS, Status, No. RFID, Email (Disembunyikan jika role Siswa) */}
+              {isStaffEditor && (
+                <div className="p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/70 dark:border-indigo-900/50 space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                      <ShieldCheck size={13} />
+                      <span>Administrasi & Penempatan Akademik</span>
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center justify-between gap-1.5">
+                        <span>Nama Lengkap Siswa (Sesuai Ijazah) <span className="text-rose-500">*</span></span>
+                        {siswa?.id && (
+                          <FieldDocumentTrigger
+                            entityType="SISWA"
+                            entityId={siswa.id}
+                            entityName={formData.nama_siswa || studentName}
+                            kategori="AKTA"
+                            label="Akta Lahir"
+                          />
+                        )}
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.nama_siswa}
+                        onChange={e => setFormData({ ...formData, nama_siswa: e.target.value })}
+                        placeholder="Masukkan nama lengkap sesuai ijazah..."
+                        className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                        Rombel Kelas {isCreateMode && <span className="text-rose-500">*</span>}
+                      </label>
+                      <select
+                        value={formData.kelas_id}
+                        onChange={e => setFormData({ ...formData, kelas_id: e.target.value })}
+                        className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                      >
+                        <option value="">-- Pilih Rombel Kelas --</option>
+                        {kelasOptions.map(k => (
+                          <option key={k.value} value={k.value}>{(k as any).nama_kelas || k.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                        Nomor Induk Siswa (NIS)
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.nis}
+                        onChange={e => setFormData({ ...formData, nis: e.target.value })}
+                        placeholder="NIS Sekolah..."
+                        className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                        Status Keaktifan Siswa
+                      </label>
+                      <select
+                        value={formData.status}
+                        onChange={e => setFormData({ ...formData, status: e.target.value })}
+                        className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                      >
+                        {STATUS_SISWA_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                        No. Kartu RFID (Tap Gerbang)
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.no_rfid}
+                        onChange={e => setFormData({ ...formData, no_rfid: e.target.value })}
+                        placeholder="Scan / ketik nomor RFID..."
+                        className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                        Email Login Akun Siswa (LMS)
+                      </label>
+                      <input
+                        type="email"
+                        value={formData.email}
+                        onChange={e => setFormData({ ...formData, email: e.target.value })}
+                        placeholder="siswa@sekolah.sch.id"
+                        className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                        Tanggal Masuk / Diterima
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.tanggal_masuk}
+                        onChange={e => setFormData({ ...formData, tanggal_masuk: e.target.value })}
+                        className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                      />
+                    </div>
+
+                    {formData.status !== 'AKTIF' && (
+                      <>
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-extrabold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                            Tanggal Keluar / Lulus
+                          </label>
+                          <input
+                            type="date"
+                            value={formData.tanggal_keluar}
+                            onChange={e => setFormData({ ...formData, tanggal_keluar: e.target.value })}
+                            className="w-full h-10 px-3.5 rounded-xl border border-rose-200 dark:border-rose-800 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-extrabold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                            Alasan Keluar / Mutasi
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.alasan_keluar}
+                            onChange={e => setFormData({ ...formData, alasan_keluar: e.target.value })}
+                            placeholder="Keterangan lulus / mutasi..."
+                            className="w-full h-10 px-3.5 rounded-xl border border-rose-200 dark:border-rose-800 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all"
+                          />
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>
-              </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
                 <div className="space-y-1.5">
@@ -1070,7 +1365,7 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
           )}
 
           {/* FOCUSED SECTION 3: KONTAK & ALAMAT (HIERARCHICAL CASCADING FLOW) */}
-          {(activeSection === 'alamat' || (activeSection === 'all' && step === 2)) && (
+          {(activeSection === 'alamat' || activeSection === 'kontak' || (activeSection === 'all' && step === 2)) && (
             <motion.div
               key="sec-alamat"
               initial={{ opacity: 0, y: 8 }}
@@ -1712,11 +2007,17 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
             <Button
               type="button"
               onClick={handleSubmitFinal}
-              disabled={updateMutationMe.isPending}
+              disabled={isSubmitting || updateMutationMe.isPending}
               className="h-10 px-5 rounded-xl text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white border-none flex items-center gap-1.5 shadow-md shadow-emerald-600/20"
             >
               <Save size={14} />
-              <span>{updateMutationMe.isPending ? 'Simpan Data...' : 'Simpan Perubahan'}</span>
+              <span>
+                {isSubmitting || updateMutationMe.isPending
+                  ? 'Menyimpan...'
+                  : isCreateMode
+                  ? 'Simpan Siswa Baru'
+                  : 'Simpan Perubahan'}
+              </span>
             </Button>
           </div>
         </div>
