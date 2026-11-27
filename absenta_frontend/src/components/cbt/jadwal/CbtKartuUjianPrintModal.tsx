@@ -243,13 +243,13 @@ const ExamCardSchedulesTable = memo(({ schedules }: { schedules: ExamDaySchedule
   <div className="flex-1 min-w-0 h-full overflow-hidden">
     <table className="w-full table-fixed text-left border-collapse border border-slate-300">
       <thead>
-        <tr className="bg-slate-100 text-slate-700 border-b border-slate-300 font-black text-[6px]">
-          <th className="py-0.5 px-1 border-r border-slate-300 w-[20%]">Tanggal</th>
-          <th className="py-0.5 px-1 border-r border-slate-300 w-[47%]">Mata Pelajaran</th>
-          <th className="py-0.5 px-1 w-[33%] text-center">Waktu</th>
+        <tr className="bg-slate-100 text-slate-700 border-b border-slate-300 font-black text-[5.8px] leading-none">
+          <th className="py-[1.5px] px-1 border-r border-slate-300 w-[20%]">Tanggal</th>
+          <th className="py-[1.5px] px-1 border-r border-slate-300 w-[47%]">Mata Pelajaran</th>
+          <th className="py-[1.5px] px-1 w-[33%] text-center">Waktu</th>
         </tr>
       </thead>
-      <tbody className="divide-y divide-slate-200 text-[6px]">
+      <tbody className="divide-y divide-slate-200 text-[5.8px]">
         {schedules.map((sch, sIdx) => {
           const sessionRows: ExamDaySessionItem[] =
             sch.sessions && sch.sessions.length > 0
@@ -257,24 +257,24 @@ const ExamCardSchedulesTable = memo(({ schedules }: { schedules: ExamDaySchedule
               : sch.mapelList.map((m) => ({ sesi: sch.sesi, mapel: m, waktu: sch.waktu }));
 
           return sessionRows.map((row, rIdx) => (
-            <tr key={`${sIdx}-${rIdx}`} className="leading-tight">
+            <tr key={`${sIdx}-${rIdx}`} className="leading-[1.12]">
               {rIdx === 0 && (
                 <td
                   rowSpan={sessionRows.length}
-                  className="py-0.5 px-1 border-r border-slate-200 align-top whitespace-nowrap"
+                  className="py-[1px] px-1 border-r border-slate-200 align-top whitespace-nowrap"
                 >
-                  <div className="uppercase font-black text-slate-800 leading-tight">
+                  <div className="uppercase font-black text-slate-800 leading-[1.1]">
                     {sch.hariLabel},
                   </div>
-                  <div className="text-[5.5px] font-semibold text-slate-500 leading-tight">
+                  <div className="text-[5.2px] font-semibold text-slate-500 leading-[1.1]">
                     {formatShortIndoDate(sch.tanggal)}
                   </div>
                 </td>
               )}
-              <td className="py-0.5 px-1 border-r border-slate-200 align-top text-slate-800">
-                <div className="truncate leading-tight">- {row.mapel}</div>
+              <td className="py-[1px] px-1 border-r border-slate-200 align-top text-slate-800">
+                <div className="truncate leading-[1.12]">- {row.mapel}</div>
               </td>
-              <td className="py-0.5 px-0.5 text-center align-top font-bold text-slate-600 whitespace-nowrap text-[5.5px]">
+              <td className="py-[1px] px-0.5 text-center align-top font-bold text-slate-600 whitespace-nowrap text-[5.3px]">
                 <span className="text-slate-700">{formatCompactSesi(row.sesi)}</span>{' '}
                 <span className="font-normal text-slate-500">{row.waktu}</span>
               </td>
@@ -391,11 +391,11 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
     <div
       className={cn(
         'relative h-full flex flex-col justify-between border-2 border-slate-300 print:border-slate-400 rounded-lg bg-white text-slate-900 shadow-2xs print:shadow-none overflow-hidden select-text',
-        is6Grid ? 'p-2' : 'p-3'
+        is6Grid ? 'p-1.5' : 'p-3'
       )}
     >
       {/* ── 1. Header Kartu: Logo di Kiri, Judul di Tengah, QR Code di Pojok Kanan Atas ── */}
-      <div className="flex items-center justify-between gap-1.5 pb-1 border-b border-slate-800 shrink-0">
+      <div className="flex items-center justify-between gap-1.5 pb-0.5 border-b border-slate-800 shrink-0">
         {/* Logo Sekolah / Tut Wuri */}
         <div className={cn('shrink-0 flex items-center justify-center', is6Grid ? 'w-[12mm] h-[12mm]' : 'w-[15mm] h-[15mm]')}>
           {showLogoSekolah && (
@@ -470,7 +470,7 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
       {/* ── 2. Badan Atas: Biodata & Kredensial Key-Value Rata Titik Dua (Persis TKA) ── */}
       <div
         className={cn(
-          'py-1 space-y-0.2 font-sans shrink-0 border-b border-slate-200',
+          'py-0.5 space-y-0.2 font-sans shrink-0 border-b border-slate-200',
           is6Grid ? 'text-[6.8px] leading-tight' : 'text-[8px] leading-snug'
         )}
       >
@@ -519,7 +519,7 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
       </div>
 
       {/* ── 3. Badan Bawah: Pasfoto 3x4 di Kiri & Tabel Jadwal 1 Minggu di Kanan ── */}
-      <div className="flex gap-1.5 pt-1 flex-1 min-h-0 items-start">
+      <div className="flex gap-1.5 pt-0.5 flex-1 min-h-0 items-start">
         {/* Pasfoto Resmi Siswa 3x4 */}
         <div className={cn('shrink-0 flex flex-col items-center justify-start', is6Grid ? 'w-[21mm]' : 'w-[24mm]')}>
           {qrPlacement === 'photo_box' ? (
@@ -1583,16 +1583,16 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
               pageNumber={pageIdx + 1}
               totalPages={studentChunks.length}
               footerText={`${sekolahData?.nama_sekolah || tenantInfo?.name || 'Absenta CBT'} • Kartu Login Peserta ${currentClassMapping?.nama_kelas || ''}`}
-              className="p-5 print:p-4 relative"
+              className="p-3.5 print:p-3 relative"
             >
               {/* ── Kontainer Grid 2 × 3 (6 Kartu per Lembar A4 Portrait) atau Grid 2 × 2 ── */}
-              <div className="relative w-full h-[1035px] flex flex-col justify-between">
+              <div className="relative w-full h-[1055px] flex flex-col justify-between">
                 {/* Grid Layout */}
                 <div
                   className={cn(
                     'grid h-full w-full',
                     gridMode === '6_per_page'
-                      ? 'grid-cols-2 grid-rows-3 gap-2.5'
+                      ? 'grid-cols-2 grid-rows-3 gap-2'
                       : 'grid-cols-2 grid-rows-2 gap-3.5'
                   )}
                 >
