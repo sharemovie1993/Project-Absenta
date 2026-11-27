@@ -6,6 +6,8 @@ import {
   Home,
   Share2,
   ClipboardList,
+  ShieldAlert,
+  Award,
   Printer,
   Network,
   type LucideIcon,
@@ -60,6 +62,8 @@ export const BPBK_SUBTABS_BASE: BpbkTabDefinition[] = [
   { id: 'pemanggilan', label: 'Panggilan', shortLabel: 'Panggilan', category: 'intervensi', icon: MailOpen, targetPath: '/dashboard?tab=bpbk&subtab=pemanggilan', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
   { id: 'homevisit', label: 'Visit', shortLabel: 'Visit', category: 'intervensi', icon: Home, targetPath: '/dashboard?tab=bpbk&subtab=homevisit', color: 'bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400' },
   { id: 'rujukan', label: 'Rujukan', shortLabel: 'Rujukan', category: 'intervensi', icon: Share2, targetPath: '/dashboard?tab=bpbk&subtab=rujukan', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
+  { id: 'pelanggaran', label: 'Pelanggaran', shortLabel: 'Pelanggaran', category: 'intervensi', icon: ShieldAlert, targetPath: '/dashboard?tab=bpbk&subtab=pelanggaran', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
+  { id: 'prestasi', label: 'Prestasi', shortLabel: 'Prestasi', category: 'intervensi', icon: Award, targetPath: '/dashboard?tab=bpbk&subtab=prestasi', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
   { id: 'rekap', label: 'Cetak', shortLabel: 'Cetak', category: 'intervensi', icon: Printer, targetPath: '/dashboard?tab=bpbk&subtab=rekap', color: 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400' },
   { id: 'struktur_organisasi', label: 'Organisasi', shortLabel: 'Organisasi', category: 'intervensi', icon: Network, targetPath: '/dashboard?tab=bpbk&subtab=struktur_organisasi', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
 ];

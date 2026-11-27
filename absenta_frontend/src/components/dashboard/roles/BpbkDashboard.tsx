@@ -49,6 +49,10 @@ const Modal = lazy(() => import('@/components/ui/Modal').then((m) => ({ default:
 const SiswaForm = lazy(() =>
   import('@/components/academic/siswa/SiswaForm').then((m) => ({ default: m.SiswaForm }))
 );
+const PelanggaranPage = lazy(() => import('@/pages/kesiswaan/PelanggaranPage'));
+const PrestasiView = lazy(() =>
+  import('@/components/kesiswaan/prestasi').then((m) => ({ default: m.PrestasiView }))
+);
 
 export interface BpbkDashboardProps {
   user?: {
@@ -220,6 +224,8 @@ export const BpbkDashboard: React.FC<BpbkDashboardProps> = () => {
       case 'home_visit': return 'Kunjungan Rumah';
       case 'rujukan': return 'Alih Tangan (Rujukan)';
       case 'asesmen': return 'Asesmen & Sosiometri';
+      case 'pelanggaran': return 'Catatan Pelanggaran';
+      case 'prestasi': return 'Catatan Prestasi';
       case 'rekap': return 'Cetak Dokumen';
       case 'struktur_organisasi': return 'Struktur Organisasi';
       default: return 'Beranda';
@@ -473,6 +479,32 @@ export const BpbkDashboard: React.FC<BpbkDashboardProps> = () => {
                 className={cn('w-full min-w-0', activeTab === 'asesmen' ? 'block' : 'hidden')}
               >
                 <BpbkAsesmenTab />
+              </div>
+            )}
+
+            {/* TAB 7B: PELANGGARAN (MONITORING & KOORDINASI) */}
+            {visitedTabs.has('pelanggaran') && (
+              <div
+                role="tabpanel"
+                aria-hidden={activeTab !== 'pelanggaran'}
+                className={cn('w-full min-w-0', activeTab === 'pelanggaran' ? 'block' : 'hidden')}
+              >
+                <Suspense fallback={<BpbkDashboardSkeleton />}>
+                  <PelanggaranPage hideLayout={true} />
+                </Suspense>
+              </div>
+            )}
+
+            {/* TAB 7C: PRESTASI (MONITORING & KOORDINASI) */}
+            {visitedTabs.has('prestasi') && (
+              <div
+                role="tabpanel"
+                aria-hidden={activeTab !== 'prestasi'}
+                className={cn('w-full min-w-0', activeTab === 'prestasi' ? 'block' : 'hidden')}
+              >
+                <Suspense fallback={<BpbkDashboardSkeleton />}>
+                  <PrestasiView hideLayout={true} />
+                </Suspense>
               </div>
             )}
 

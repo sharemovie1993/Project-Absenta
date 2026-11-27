@@ -9,6 +9,8 @@ export type BpbkTabId =
   | 'homevisit'
   | 'rujukan'
   | 'asesmen'
+  | 'pelanggaran'
+  | 'prestasi'
   | 'rekap'
   | 'struktur_organisasi';
 
