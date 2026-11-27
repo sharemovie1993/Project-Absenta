@@ -396,6 +396,9 @@ export const SiswaView: React.FC<UniversalSiswaViewProps> = React.memo(({
     const id = typeof s === 'string' ? s : s.id;
     setSelectedSiswaIdForDetail(id);
   }, []);
+  const handleOpenFullEditModal = useCallback((id: string) => {
+    setModalState({ mode: 'edit', siswaId: id, isOpen: true });
+  }, []);
   const handleViewSiswa = useCallback((s: Siswa) => {
     if (onSelectSiswa) {
       onSelectSiswa(s);
@@ -766,7 +769,7 @@ export const SiswaView: React.FC<UniversalSiswaViewProps> = React.memo(({
           <SiswaDetailView
             siswaId={selectedSiswaIdForDetail}
             onBack={() => setSelectedSiswaIdForDetail(null)}
-            onEdit={canEdit ? (id) => handleEditSiswa(id) : undefined}
+            onEdit={canEdit ? (id) => handleOpenFullEditModal(id) : undefined}
             canEdit={canEdit}
           />
         </Suspense>
@@ -859,7 +862,18 @@ export const SiswaView: React.FC<UniversalSiswaViewProps> = React.memo(({
       </Suspense>
 
       {/* Main Student Form Modal */}
-      <Modal isOpen={modalState.isOpen} onClose={handleCloseModal} title="Tambah Siswa Baru" size="4xl">
+      <Modal
+        isOpen={modalState.isOpen}
+        onClose={handleCloseModal}
+        title={
+          modalState.mode === 'edit'
+            ? 'Edit Biodata Lengkap Siswa'
+            : modalState.mode === 'view'
+            ? 'Detail Biodata Siswa'
+            : 'Tambah Siswa Baru'
+        }
+        size="4xl"
+      >
         <Suspense fallback={<div className="p-12 flex justify-center"><Loader /></div>}>
           {modalState.mode && (
             <SiswaForm 

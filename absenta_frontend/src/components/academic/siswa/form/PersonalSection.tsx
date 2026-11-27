@@ -9,6 +9,7 @@ import { Modal } from '../../../ui/Modal';
 import { Controller, UseFormRegister, Control, FieldErrors, UseFormWatch } from 'react-hook-form';
 import { 
   JENIS_KELAMIN_OPTIONS, 
+  AGAMA_OPTIONS,
   TRANSPORTASI_OPTIONS, 
   PROVINSI_INDONESIA_OPTIONS,
   getSmartKodePos,
@@ -488,7 +489,36 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
                 </div>
             </div>
 
-            <SectionCard title="Informasi Utama Siswa" icon={UserIcon}>
+            {/* 1. IDENTITAS POKOK & KEPENDUDUKAN */}
+            <SectionCard title="1. Identitas Pokok & Kependudukan" subtitle="Nama resmi sesuai ijazah, NIS, NISN, dan NIK" icon={UserIcon}>
+                <div className="sm:col-span-2 space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="nama_siswa" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            Nama Lengkap Siswa (Sesuai Ijazah / Akta) <span className="text-rose-500">*</span>
+                        </Label>
+                        {siswaId && (
+                            <FieldDocumentTrigger
+                                entityType="SISWA"
+                                entityId={siswaId}
+                                entityName={watch('nama_siswa')}
+                                kategori="AKTA"
+                                label="Akta Lahir"
+                                disabled={isViewMode}
+                            />
+                        )}
+                    </div>
+                    <Input
+                        id="nama_siswa"
+                        {...register('nama_siswa')}
+                        placeholder="Masukkan nama lengkap sesuai ijazah..."
+                        disabled={isViewMode}
+                        className={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.nama_siswa ? 'border-red-500' : ''}`}
+                    />
+                    {errors.nama_siswa && (
+                        <p className="text-[10px] font-bold text-red-500 mt-1 px-1">{errors.nama_siswa.message}</p>
+                    )}
+                </div>
+
                 <div className="space-y-2 group">
                     <div className="flex items-center justify-between px-1">
                         <Label htmlFor="nis" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
@@ -500,7 +530,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
                         {...register('nis')}
                         placeholder="Masukkan NIS..."
                         disabled={isViewMode}
-                        className={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.nis ? 'border-red-500' : ''}`}
+                        className={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl font-mono ${errors.nis ? 'border-red-500' : ''}`}
                     />
                     {errors.nis && (
                         <p className="text-[10px] font-bold text-red-500 mt-1 px-1">{errors.nis.message}</p>
@@ -510,7 +540,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
                 <div className="space-y-2 group">
                     <div className="flex items-center justify-between px-1">
                         <Label htmlFor="nisn" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                            NISN (Nasional)
+                            NISN (Nasional 10 Digit)
                         </Label>
                         {siswaId && (
                             <FieldDocumentTrigger
@@ -526,9 +556,9 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
                     <Input
                         id="nisn"
                         {...register('nisn')}
-                        placeholder="Masukkan NISN..."
+                        placeholder="10 digit NISN..."
                         disabled={isViewMode}
-                        className={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.nisn ? 'border-red-500' : ''}`}
+                        className={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl font-mono ${errors.nisn ? 'border-red-500' : ''}`}
                     />
                     {errors.nisn && (
                         <p className="text-[10px] font-bold text-red-500 mt-1 px-1">{errors.nisn.message}</p>
@@ -556,7 +586,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
                         {...register('nik')}
                         placeholder="16 digit NIK..."
                         disabled={isViewMode}
-                        className={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.nik ? 'border-red-500' : ''}`}
+                        className={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl font-mono ${errors.nik ? 'border-red-500' : ''}`}
                     />
                     {errors.nik && (
                         <p className="text-[10px] font-bold text-red-500 mt-1 px-1">{errors.nik.message}</p>
@@ -565,15 +595,32 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
 
                 <div className="space-y-2 group">
                     <div className="flex items-center justify-between px-1">
-                        <Label htmlFor="tinggi_badan" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                            Tinggi Badan (cm)
+                        <Label htmlFor="no_rfid" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            Nomor Kartu RFID (Absensi Gerbang)
                         </Label>
                     </div>
                     <Input
-                        id="tinggi_badan"
-                        type="number"
-                        {...register('tinggi_badan')}
-                        placeholder="Contoh: 165"
+                        id="no_rfid"
+                        {...register('no_rfid')}
+                        placeholder="Scan kartu RFID..."
+                        disabled={isViewMode}
+                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl font-mono"
+                    />
+                </div>
+            </SectionCard>
+
+            {/* 2. KELAHIRAN, AGAMA & FISIK SISWA */}
+            <SectionCard title="2. Data Kelahiran, Agama & Fisik" subtitle="Kelahiran, jenis kelamin, agama, dan postur tubuh" icon={Calendar}>
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="tempat_lahir" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            Tempat Lahir
+                        </Label>
+                    </div>
+                    <Input
+                        id="tempat_lahir"
+                        {...register('tempat_lahir')}
+                        placeholder="Kota / Kabupaten kelahiran..."
                         disabled={isViewMode}
                         className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
                     />
@@ -581,15 +628,14 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
 
                 <div className="space-y-2 group">
                     <div className="flex items-center justify-between px-1">
-                        <Label htmlFor="berat_badan" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                            Berat Badan (kg)
+                        <Label htmlFor="tanggal_lahir" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            Tanggal Lahir
                         </Label>
                     </div>
                     <Input
-                        id="berat_badan"
-                        type="number"
-                        {...register('berat_badan')}
-                        placeholder="Contoh: 55"
+                        id="tanggal_lahir"
+                        type="date"
+                        {...register('tanggal_lahir')}
                         disabled={isViewMode}
                         className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
                     />
@@ -597,34 +643,139 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
 
                 <div className="space-y-2 group">
                     <div className="flex items-center justify-between px-1">
-                        <Label htmlFor="anak_ke" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                            Anak Ke-
+                        <Label htmlFor="jenis_kelamin" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            Jenis Kelamin <span className="text-rose-500">*</span>
                         </Label>
                     </div>
-                    <Input
-                        id="anak_ke"
-                        type="number"
-                        min={1}
-                        {...register('anak_ke')}
-                        placeholder="Contoh: 1"
-                        disabled={isViewMode}
-                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                    <Controller
+                        name="jenis_kelamin"
+                        control={control}
+                        render={({ field }) => (
+                            <SearchableSelect
+                                id="jenis_kelamin"
+                                value={field.value}
+                                onValueChange={field.onChange}
+                                options={JENIS_KELAMIN_OPTIONS}
+                                placeholder="Pilih Jenis Kelamin"
+                                disabled={isViewMode}
+                                triggerClassName={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.jenis_kelamin ? 'border-red-500' : ''}`}
+                            />
+                        )}
                     />
                 </div>
 
                 <div className="space-y-2 group">
                     <div className="flex items-center justify-between px-1">
                         <Label htmlFor="agama" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                            Agama
+                            Agama / Kepercayaan
+                        </Label>
+                    </div>
+                    <Controller
+                        name="agama"
+                        control={control}
+                        render={({ field }) => (
+                            <SearchableSelect
+                                id="agama"
+                                value={field.value || ''}
+                                onValueChange={field.onChange}
+                                options={getEffectiveOptions(
+                                  AGAMA_OPTIONS.map(o => ({ value: o.label, label: o.label })),
+                                  field.value
+                                )}
+                                placeholder="Pilih Agama"
+                                disabled={isViewMode}
+                                triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                            />
+                        )}
+                    />
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 sm:col-span-2">
+                    <div className="space-y-2 group">
+                        <div className="flex items-center justify-between px-1">
+                            <Label htmlFor="anak_ke" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                                Anak Ke-
+                            </Label>
+                        </div>
+                        <Input
+                            id="anak_ke"
+                            type="number"
+                            min={1}
+                            {...register('anak_ke')}
+                            placeholder="Contoh: 1"
+                            disabled={isViewMode}
+                            className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                        />
+                    </div>
+
+                    <div className="space-y-2 group">
+                        <div className="flex items-center justify-between px-1">
+                            <Label htmlFor="tinggi_badan" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                                Tinggi Badan (cm)
+                            </Label>
+                        </div>
+                        <Input
+                            id="tinggi_badan"
+                            type="number"
+                            {...register('tinggi_badan')}
+                            placeholder="Contoh: 165"
+                            disabled={isViewMode}
+                            className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                        />
+                    </div>
+
+                    <div className="space-y-2 group">
+                        <div className="flex items-center justify-between px-1">
+                            <Label htmlFor="berat_badan" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                                Berat Badan (kg)
+                            </Label>
+                        </div>
+                        <Input
+                            id="berat_badan"
+                            type="number"
+                            {...register('berat_badan')}
+                            placeholder="Contoh: 55"
+                            disabled={isViewMode}
+                            className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                        />
+                    </div>
+                </div>
+            </SectionCard>
+
+            {/* 3. KONTAK, MINAT & EKSTRAKURIKULER */}
+            <SectionCard title="3. Kontak Siswa, Minat & Ekstrakurikuler" subtitle="Akun login LMS, nomor WhatsApp, hobi, dan ekskul" icon={Phone}>
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="no_hp" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            Nomor HP / WhatsApp Siswa
                         </Label>
                     </div>
                     <Input
-                        id="agama"
-                        {...register('agama')}
-                        placeholder="Contoh: Islam..."
+                        id="no_hp"
+                        {...register('no_hp')}
+                        placeholder="08xxxx / 628xxxx..."
                         disabled={isViewMode}
-                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl font-mono"
                     />
+                </div>
+
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="email" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            Email Pengguna (Akses Login Siswa)
+                        </Label>
+                    </div>
+                    <Input
+                        id="email"
+                        type="email"
+                        {...register('email')}
+                        placeholder="nama@sekolah.sch.id"
+                        disabled={isViewMode}
+                        className={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.email ? 'border-red-500' : ''}`}
+                    />
+                    {errors.email && (
+                        <p className="text-[10px] font-bold text-red-500 mt-1 px-1">{errors.email.message}</p>
+                    )}
                 </div>
 
                 <div className="space-y-2 group">
@@ -722,161 +873,10 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
                         />
                     )}
                 </div>
+            </SectionCard>
 
-                <div className="space-y-2 group">
-                    <div className="flex items-center justify-between px-1">
-                        <Label htmlFor="nama_siswa" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                            Nama Lengkap <span className="text-rose-500">*</span>
-                        </Label>
-                        {siswaId && (
-                            <FieldDocumentTrigger
-                                entityType="SISWA"
-                                entityId={siswaId}
-                                entityName={watch('nama_siswa')}
-                                kategori="AKTA"
-                                label="Akta Lahir"
-                                disabled={isViewMode}
-                            />
-                        )}
-                    </div>
-                    <Input
-                        id="nama_siswa"
-                        {...register('nama_siswa')}
-                        placeholder="Nama sesuai ijazah..."
-                        disabled={isViewMode}
-                        className={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.nama_siswa ? 'border-red-500' : ''}`}
-                    />
-                    {errors.nama_siswa && (
-                        <p className="text-[10px] font-bold text-red-500 mt-1 px-1">{errors.nama_siswa.message}</p>
-                    )}
-                </div>
-
-                <div className="space-y-2 group">
-                    <div className="flex items-center justify-between px-1">
-                        <Label htmlFor="email" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                            Email Pengguna (Akses Log In)
-                        </Label>
-                    </div>
-                    <Input
-                        id="email"
-                        type="email"
-                        {...register('email')}
-                        placeholder="nama@sekolah.sch.id"
-                        disabled={isViewMode}
-                        className={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.email ? 'border-red-500' : ''}`}
-                    />
-                    {errors.email && (
-                        <p className="text-[10px] font-bold text-red-500 mt-1 px-1">{errors.email.message}</p>
-                    )}
-                </div>
-
-                <div className="space-y-2 group">
-                    <div className="flex items-center justify-between px-1">
-                        <Label htmlFor="no_hp" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                            Nomor HP / WhatsApp
-                        </Label>
-                    </div>
-                    <Input
-                        id="no_hp"
-                        {...register('no_hp')}
-                        placeholder="628xxxx..."
-                        disabled={isViewMode}
-                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
-                    />
-                </div>
-
-                <div className="space-y-2 group">
-                    <div className="flex items-center justify-between px-1">
-                        <Label htmlFor="tempat_lahir" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                            Tempat Lahir
-                        </Label>
-                    </div>
-                    <Input
-                        id="tempat_lahir"
-                        {...register('tempat_lahir')}
-                        placeholder="Kota kelahiran..."
-                        disabled={isViewMode}
-                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
-                    />
-                </div>
-
-                <div className="space-y-2 group">
-                    <div className="flex items-center justify-between px-1">
-                        <Label htmlFor="tanggal_lahir" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                            Tanggal Lahir
-                        </Label>
-                    </div>
-                    <Input
-                        id="tanggal_lahir"
-                        type="date"
-                        {...register('tanggal_lahir')}
-                        disabled={isViewMode}
-                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
-                    />
-                </div>
-
-                <div className="space-y-2 group">
-                    <div className="flex items-center justify-between px-1">
-                        <Label htmlFor="jenis_kelamin" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                            Jenis Kelamin <span className="text-rose-500">*</span>
-                        </Label>
-                    </div>
-                    <Controller
-                        name="jenis_kelamin"
-                        control={control}
-                        render={({ field }) => (
-                            <SearchableSelect
-                                id="jenis_kelamin"
-                                value={field.value}
-                                onValueChange={field.onChange}
-                                options={JENIS_KELAMIN_OPTIONS}
-                                placeholder="Pilih Gender"
-                                disabled={isViewMode}
-                                triggerClassName={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.jenis_kelamin ? 'border-red-500' : ''}`}
-                            />
-                        )}
-                    />
-                </div>
-
-                <div className="space-y-2 group">
-                    <div className="flex items-center justify-between px-1">
-                        <Label htmlFor="transportasi" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                            Moda Transportasi
-                        </Label>
-                    </div>
-                    <Controller
-                        name="transportasi"
-                        control={control}
-                        render={({ field }) => (
-                            <SearchableSelect
-                                id="transportasi"
-                                value={field.value}
-                                onValueChange={field.onChange}
-                                options={TRANSPORTASI_OPTIONS}
-                                placeholder="Pilih Transportasi"
-                                disabled={isViewMode}
-                                triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
-                            />
-                        )}
-                    />
-                </div>
-
-                <div className="space-y-2 group">
-                    <div className="flex items-center justify-between px-1">
-                        <Label htmlFor="no_rfid" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                            Nomor Kartu RFID
-                        </Label>
-                    </div>
-                    <Input
-                        id="no_rfid"
-                        {...register('no_rfid')}
-                        placeholder="Scan kartu RFID..."
-                        disabled={isViewMode}
-                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
-                    />
-                </div>
-
-                {/* HIERARCHICAL CASCADING ADDRESS SECTION */}
+            {/* 4. ALAMAT & DOMISILI TEMPAT TINGGAL */}
+            <SectionCard title="4. Alamat & Domisili Tempat Tinggal" subtitle="Wilayah administratif berjenjang, RT/RW, dan moda transportasi" icon={MapPin}>
                 <div className="space-y-2 group">
                     <div className="flex items-center justify-between px-1">
                         <Label htmlFor="provinsi" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
@@ -961,7 +961,6 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
                     />
                 </div>
 
-                {/* 4. KELURAHAN / DESA */}
                 <div className="space-y-2 group">
                     <div className="flex items-center justify-between px-1">
                         <Label htmlFor="kelurahan" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
@@ -985,8 +984,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
                     />
                 </div>
 
-                {/* RT & RW (Tepat Setelah Kelurahan/Desa) */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3 sm:col-span-2">
                     <div className="space-y-2 group">
                         <div className="flex items-center justify-between px-1">
                             <Label htmlFor="rt" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
@@ -1016,29 +1014,27 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
                             className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
                         />
                     </div>
-                </div>
 
-                {/* KODE POS (Pintar Auto-Detect) */}
-                <div className="space-y-2 group">
-                    <div className="flex items-center justify-between px-1">
-                        <Label htmlFor="kode_pos" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter flex items-center gap-1.5">
-                            Kode Pos <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">(Auto-Detect)</span>
-                        </Label>
+                    <div className="space-y-2 group">
+                        <div className="flex items-center justify-between px-1">
+                            <Label htmlFor="kode_pos" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter flex items-center gap-1">
+                                Kode Pos <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold">(Auto)</span>
+                            </Label>
+                        </div>
+                        <Input
+                            id="kode_pos"
+                            {...register('kode_pos')}
+                            placeholder="41162"
+                            disabled={isViewMode}
+                            className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl font-mono"
+                        />
                     </div>
-                    <Input
-                        id="kode_pos"
-                        {...register('kode_pos')}
-                        placeholder="Contoh: 41162"
-                        disabled={isViewMode}
-                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl font-mono"
-                    />
                 </div>
 
-                {/* ALAMAT JALAN / KAMPUNG / PATOKAN RUMAH */}
-                <div className="md:col-span-2 space-y-2 group">
+                <div className="sm:col-span-2 space-y-2 group">
                     <div className="flex items-center justify-between px-1">
                         <Label htmlFor="alamat" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                            Alamat Jalan / Kampung / Patokan Rumah
+                            5. Alamat Jalan / Kampung / Patokan Rumah
                         </Label>
                     </div>
                     <Textarea
@@ -1050,7 +1046,6 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
                     />
                 </div>
 
-                {/* DUSUN / LINGKUNGAN (OPSIONAL) */}
                 <div className="space-y-2 group">
                     <div className="flex items-center justify-between px-1">
                         <Label htmlFor="dusun" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
@@ -1066,35 +1061,57 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
                     />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                    <div className="space-y-2 group">
-                        <div className="flex items-center justify-between px-1">
-                            <Label htmlFor="lintang" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                                Lintang (Latitude)
-                            </Label>
-                        </div>
-                        <Input
-                            id="lintang"
-                            {...register('lintang')}
-                            placeholder="Contoh: -6.9174639"
-                            disabled={isViewMode}
-                            className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
-                        />
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="transportasi" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            Moda Transportasi ke Sekolah
+                        </Label>
                     </div>
-                    <div className="space-y-2 group">
-                        <div className="flex items-center justify-between px-1">
-                            <Label htmlFor="bujur" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                                Bujur (Longitude)
-                            </Label>
-                        </div>
-                        <Input
-                            id="bujur"
-                            {...register('bujur')}
-                            placeholder="Contoh: 107.6191228"
-                            disabled={isViewMode}
-                            className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
-                        />
+                    <Controller
+                        name="transportasi"
+                        control={control}
+                        render={({ field }) => (
+                            <SearchableSelect
+                                id="transportasi"
+                                value={field.value}
+                                onValueChange={field.onChange}
+                                options={TRANSPORTASI_OPTIONS}
+                                placeholder="Pilih Transportasi"
+                                disabled={isViewMode}
+                                triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                            />
+                        )}
+                    />
+                </div>
+
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="lintang" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            Lintang (Latitude - Opsional)
+                        </Label>
                     </div>
+                    <Input
+                        id="lintang"
+                        {...register('lintang')}
+                        placeholder="Contoh: -6.9174639"
+                        disabled={isViewMode}
+                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                    />
+                </div>
+
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="bujur" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            Bujur (Longitude - Opsional)
+                        </Label>
+                    </div>
+                    <Input
+                        id="bujur"
+                        {...register('bujur')}
+                        placeholder="Contoh: 107.6191228"
+                        disabled={isViewMode}
+                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                    />
                 </div>
             </SectionCard>
 

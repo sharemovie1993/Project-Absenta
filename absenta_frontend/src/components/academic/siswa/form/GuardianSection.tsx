@@ -108,310 +108,315 @@ export const GuardianSection: React.FC<GuardianSectionProps> = React.memo(({
     }
 
     return (
-        <div className="space-y-8">
-            <SectionCard title="Kontak Emergency / Notifikasi" icon={Phone}>
-                <div className="md:col-span-2 space-y-4">
-                    {fields.length === 0 && (
-                        <div className="py-12 text-center bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border-2 border-dashed border-slate-100 dark:border-slate-800">
-                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Belum Ada Kontak. Klik tombol di bawah untuk menambah.</p>
-                        </div>
-                    )}
-                    {(fields || []).map((field, index) => (
-                        <div
-                            key={field.id}
-                            className="p-6 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950/50 space-y-6 relative group/card"
-                        >
-                            <div className="absolute top-4 right-4 opacity-0 group-hover/card:opacity-100 transition-opacity">
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => remove(index)}
-                                    className="h-8 w-8 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20"
-                                >
-                                    <Trash2 size={14} />
-                                </Button>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2 group">
-                                    <Label htmlFor={`orang_tua_${index}_nama`} className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Nama Lengkap</Label>
-                                    <Input
-                                        id={`orang_tua_${index}_nama`}
-                                        {...register(`orang_tua.${index}.nama`)}
-                                        placeholder="Entry Nama..."
-                                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
-                                    />
-                                    {errors.orang_tua?.[index]?.nama && (
-                                        <p className="text-[10px] font-bold text-red-500 mt-1">{errors.orang_tua[index].nama.message}</p>
-                                    )}
-                                </div>
-                                <div className="space-y-2 group">
-                                    <Label htmlFor={`orang_tua_${index}_hubungan`} className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Hubungan</Label>
-                                    <Controller
-                                        name={`orang_tua.${index}.hubungan`}
-                                        control={control}
-                                        render={({ field }) => (
-                                            <SearchableSelect
-                                                id={`orang_tua_${index}_hubungan`}
-                                                value={field.value}
-                                                onValueChange={field.onChange}
-                                                options={HUBUNGAN_ORANG_TUA_OPTIONS}
-                                                placeholder="Pilih Hubungan"
-                                                triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
-                                            />
-                                        )}
-                                    />
-                                </div>
-                                <div className="space-y-2 group">
-                                    <Label htmlFor={`orang_tua_${index}_no_hp`} className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">No HP (WhatsApp)</Label>
-                                    <Input
-                                        id={`orang_tua_${index}_no_hp`}
-                                        {...register(`orang_tua.${index}.no_hp`)}
-                                        placeholder="628xxx..."
-                                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
-                                    />
-                                </div>
-                                <div className="space-y-2 group">
-                                    <Label htmlFor={`orang_tua_${index}_email`} className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Email</Label>
-                                    <Input
-                                        id={`orang_tua_${index}_email`}
-                                        type="email"
-                                        {...register(`orang_tua.${index}.email`)}
-                                        placeholder="example@mail.com"
-                                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                    <div className="flex justify-center">
-                        <Button
-                            type="button"
-                            variant="toolbarOutline"
-                            size="toolbar"
-                            onClick={() => append({ nama: '', hubungan: 'AYAH', no_hp: '', email: '' })}
-                            className="px-8 border-dashed border-2 hover:border-blue-500 hover:text-blue-600 dark:border-slate-800"
-                        >
-                            <Plus size={14} className="mr-2" />
-                            Tambah Kontak Notifikasi
-                        </Button>
+        <div className="space-y-6">
+            {/* 1. DATA AYAH & IBU KANDUNG */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <SectionCard title="1. Data Ayah Kandung" subtitle="Biodata ayah sesuai Kartu Keluarga" icon={UserCheck}>
+                    <div className="sm:col-span-2 space-y-2 group">
+                        <Label htmlFor="nama_ayah" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Nama Lengkap Ayah</Label>
+                        <Input id="nama_ayah" {...register('nama_ayah')} placeholder="Nama lengkap ayah..." className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
                     </div>
+                    <div className="space-y-2 group">
+                        <Label htmlFor="nik_ayah" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">NIK Ayah (16 Digit)</Label>
+                        <Input id="nik_ayah" maxLength={16} {...register('nik_ayah')} placeholder="16 digit NIK ayah..." className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl font-mono" />
+                    </div>
+                    <div className="space-y-2 group">
+                        <Label htmlFor="no_hp_ayah" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">No. HP / WhatsApp Ayah</Label>
+                        <Input id="no_hp_ayah" {...register('no_hp_ayah' as any)} placeholder="08xxxxxxxxxx" className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl font-mono" />
+                    </div>
+                    <div className="sm:col-span-2 space-y-2 group">
+                        <Label htmlFor="pekerjaan_ayah" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Pekerjaan Ayah</Label>
+                        <Controller name="pekerjaan_ayah" control={control} render={({ field }) => (
+                            <SearchableSelect id="pekerjaan_ayah" value={field.value} onValueChange={field.onChange} options={PEKERJAAN_OPTIONS} placeholder="Pilih Pekerjaan Ayah" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                        )} />
+                    </div>
+                    <div className="space-y-2 group">
+                        <Label htmlFor="pendidikan_ayah" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Pendidikan Ayah</Label>
+                        <Controller name="pendidikan_ayah" control={control} render={({ field }) => (
+                            <SearchableSelect id="pendidikan_ayah" value={field.value} onValueChange={field.onChange} options={PENDIDIKAN_OPTIONS} placeholder="Pilih Pendidikan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                        )} />
+                    </div>
+                    <div className="space-y-2 group">
+                        <Label htmlFor="penghasilan_ayah" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Penghasilan Ayah</Label>
+                        <Controller name="penghasilan_ayah" control={control} render={({ field }) => (
+                            <SearchableSelect id="penghasilan_ayah" value={field.value} onValueChange={field.onChange} options={PENGHASILAN_OPTIONS} placeholder="Pilih Penghasilan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                        )} />
+                    </div>
+                </SectionCard>
+
+                <SectionCard title="2. Data Ibu Kandung" subtitle="Biodata ibu kandung sesuai Kartu Keluarga" icon={UserCheck}>
+                    <div className="sm:col-span-2 space-y-2 group">
+                        <Label htmlFor="nama_ibu" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Nama Lengkap Ibu Kandung</Label>
+                        <Input id="nama_ibu" {...register('nama_ibu')} placeholder="Nama lengkap ibu..." className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                    </div>
+                    <div className="space-y-2 group">
+                        <Label htmlFor="nik_ibu" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">NIK Ibu (16 Digit)</Label>
+                        <Input id="nik_ibu" maxLength={16} {...register('nik_ibu')} placeholder="16 digit NIK ibu..." className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl font-mono" />
+                    </div>
+                    <div className="space-y-2 group">
+                        <Label htmlFor="no_hp_ibu" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">No. HP / WhatsApp Ibu</Label>
+                        <Input id="no_hp_ibu" {...register('no_hp_ibu' as any)} placeholder="08xxxxxxxxxx" className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl font-mono" />
+                    </div>
+                    <div className="sm:col-span-2 space-y-2 group">
+                        <Label htmlFor="pekerjaan_ibu" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Pekerjaan Ibu</Label>
+                        <Controller name="pekerjaan_ibu" control={control} render={({ field }) => (
+                            <SearchableSelect id="pekerjaan_ibu" value={field.value} onValueChange={field.onChange} options={PEKERJAAN_OPTIONS} placeholder="Pilih Pekerjaan Ibu" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                        )} />
+                    </div>
+                    <div className="space-y-2 group">
+                        <Label htmlFor="pendidikan_ibu" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Pendidikan Ibu</Label>
+                        <Controller name="pendidikan_ibu" control={control} render={({ field }) => (
+                            <SearchableSelect id="pendidikan_ibu" value={field.value} onValueChange={field.onChange} options={PENDIDIKAN_OPTIONS} placeholder="Pilih Pendidikan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                        )} />
+                    </div>
+                    <div className="space-y-2 group">
+                        <Label htmlFor="penghasilan_ibu" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Penghasilan Ibu</Label>
+                        <Controller name="penghasilan_ibu" control={control} render={({ field }) => (
+                            <SearchableSelect id="penghasilan_ibu" value={field.value} onValueChange={field.onChange} options={PENGHASILAN_OPTIONS} placeholder="Pilih Penghasilan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                        )} />
+                    </div>
+                </SectionCard>
+            </div>
+
+            {/* 3. DATA WALI (OPSIONAL - TERPISAH DARI ORANG TUA) */}
+            <SectionCard
+                title="3. Data Wali Siswa (Opsional)"
+                subtitle="Isi hanya jika siswa tinggal bersama Wali; kosongkan jika bersama Orang Tua kandung"
+                icon={ShieldCheck}
+                badge={
+                    hasWaliValue ? (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setValue('nama_wali', '', { shouldDirty: true });
+                                setValue('nik_wali' as any, '', { shouldDirty: true });
+                                setValue('no_hp_wali' as any, '', { shouldDirty: true });
+                                setValue('hubungan_wali', '', { shouldDirty: true });
+                                setValue('pekerjaan_wali', '', { shouldDirty: true });
+                                setValue('penghasilan_wali', '', { shouldDirty: true });
+                            }}
+                            className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 border border-rose-200 dark:border-rose-800 transition-colors cursor-pointer"
+                        >
+                            Kosongkan Data Wali
+                        </button>
+                    ) : undefined
+                }
+            >
+                <div className="space-y-2 group">
+                    <Label htmlFor="nama_wali" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Nama Lengkap Wali</Label>
+                    <Input
+                        id="nama_wali"
+                        {...register('nama_wali', {
+                            onChange: (e) => {
+                                if (!String(e.target.value || '').trim()) {
+                                    setValue('nik_wali' as any, '');
+                                    setValue('no_hp_wali' as any, '');
+                                    setValue('hubungan_wali', '');
+                                    setValue('pekerjaan_wali', '');
+                                    setValue('penghasilan_wali', '');
+                                }
+                            }
+                        })}
+                        placeholder="Nama Wali (kosongkan jika tidak ada)..."
+                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
+                    />
+                </div>
+                <div className="space-y-2 group">
+                    <Label htmlFor="nik_wali" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">NIK Wali (16 Digit)</Label>
+                    <Input id="nik_wali" maxLength={16} {...register('nik_wali' as any)} disabled={!hasWaliValue} placeholder={hasWaliValue ? "16 digit NIK wali..." : "Isi Nama Wali terlebih dahulu"} className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl font-mono disabled:opacity-50" />
+                </div>
+                <div className="space-y-2 group">
+                    <Label htmlFor="no_hp_wali" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">No. HP / WhatsApp Wali</Label>
+                    <Input id="no_hp_wali" {...register('no_hp_wali' as any)} disabled={!hasWaliValue} placeholder={hasWaliValue ? "08xxxxxxxxxx" : "Isi Nama Wali terlebih dahulu"} className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl font-mono disabled:opacity-50" />
+                </div>
+                <div className="space-y-2 group">
+                    <Label htmlFor="hubungan_wali" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Hubungan Wali dengan Siswa</Label>
+                    <Controller name="hubungan_wali" control={control} render={({ field }) => (
+                        <SearchableSelect id="hubungan_wali" value={field.value} onValueChange={field.onChange} options={HUBUNGAN_WALI_OPTIONS} disabled={!hasWaliValue} placeholder="Pilih Hubungan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                    )} />
+                </div>
+                <div className="space-y-2 group">
+                    <Label htmlFor="pekerjaan_wali" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Pekerjaan Wali</Label>
+                    <Controller name="pekerjaan_wali" control={control} render={({ field }) => (
+                        <SearchableSelect id="pekerjaan_wali" value={field.value} onValueChange={field.onChange} options={PEKERJAAN_OPTIONS} disabled={!hasWaliValue} placeholder="Pilih Pekerjaan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                    )} />
+                </div>
+                <div className="space-y-2 group">
+                    <Label htmlFor="penghasilan_wali" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Penghasilan Wali</Label>
+                    <Controller name="penghasilan_wali" control={control} render={({ field }) => (
+                        <SearchableSelect id="penghasilan_wali" value={field.value} onValueChange={field.onChange} options={PENGHASILAN_OPTIONS} disabled={!hasWaliValue} placeholder="Pilih Penghasilan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                    )} />
                 </div>
             </SectionCard>
-            
-            <Accordion defaultValue="ayah" className="w-full space-y-4">
-                <AccordionItem value="ayah" className="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden shadow-sm">
-                    <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400">
-                                <UserCheck size={16} />
-                            </div>
-                            <span className="text-[11px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest text-left">Data Ayah Kandung</span>
-                        </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="px-6 pb-6 pt-2">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-50 dark:border-slate-800/50">
-                            <div className="space-y-2 group">
-                                <Label htmlFor="nama_ayah" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Nama Ayah</Label>
-                                <Input id="nama_ayah" {...register('nama_ayah')} placeholder="Nama Ayah..." className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
-                            </div>
-                            <div className="space-y-2 group">
-                                <Label htmlFor="nik_ayah" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">NIK Ayah (16 Digit)</Label>
-                                <Input id="nik_ayah" {...register('nik_ayah')} placeholder="NIK Ayah..." className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
-                            </div>
-                            <div className="space-y-2 group">
-                                <Label htmlFor="no_hp_ayah" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">No. HP / WA Ayah</Label>
-                                <Input id="no_hp_ayah" {...register('no_hp_ayah' as any)} placeholder="08xxxxxxxxxx" className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
-                            </div>
-                            <div className="space-y-2 group">
-                                <Label htmlFor="pekerjaan_ayah" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Pekerjaan</Label>
-                                <Controller name="pekerjaan_ayah" control={control} render={({ field }) => (
-                                    <SearchableSelect id="pekerjaan_ayah" value={field.value} onValueChange={field.onChange} options={PEKERJAAN_OPTIONS} placeholder="Pilih Pekerjaan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
-                                )} />
-                            </div>
-                            <div className="space-y-2 group">
-                                <Label htmlFor="pendidikan_ayah" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Pendidikan</Label>
-                                <Controller name="pendidikan_ayah" control={control} render={({ field }) => (
-                                    <SearchableSelect id="pendidikan_ayah" value={field.value} onValueChange={field.onChange} options={PENDIDIKAN_OPTIONS} placeholder="Pilih Pendidikan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
-                                )} />
-                            </div>
-                            <div className="space-y-2 group">
-                                <Label htmlFor="penghasilan_ayah" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Penghasilan</Label>
-                                <Controller name="penghasilan_ayah" control={control} render={({ field }) => (
-                                    <SearchableSelect id="penghasilan_ayah" value={field.value} onValueChange={field.onChange} options={PENGHASILAN_OPTIONS} placeholder="Pilih Penghasilan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
-                                )} />
-                            </div>
-                        </div>
-                    </AccordionContent>
-                </AccordionItem>
 
-                <AccordionItem value="ibu" className="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden shadow-sm">
-                    <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-rose-100 dark:bg-rose-900/30 rounded-xl flex items-center justify-center text-rose-600 dark:text-rose-400">
-                                <UserCheck size={16} />
-                            </div>
-                            <span className="text-[11px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest text-left">Data Ibu Kandung</span>
-                        </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="px-6 pb-6 pt-2">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-50 dark:border-slate-800/50">
-                            <div className="space-y-2 group">
-                                <Label htmlFor="nama_ibu" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Nama Ibu</Label>
-                                <Input id="nama_ibu" {...register('nama_ibu')} placeholder="Nama Ibu..." className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
-                            </div>
-                            <div className="space-y-2 group">
-                                <Label htmlFor="nik_ibu" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">NIK Ibu (16 Digit)</Label>
-                                <Input id="nik_ibu" {...register('nik_ibu')} placeholder="NIK Ibu..." className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
-                            </div>
-                            <div className="space-y-2 group">
-                                <Label htmlFor="no_hp_ibu" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">No. HP / WA Ibu</Label>
-                                <Input id="no_hp_ibu" {...register('no_hp_ibu' as any)} placeholder="08xxxxxxxxxx" className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
-                            </div>
-                            <div className="space-y-2 group">
-                                <Label htmlFor="pekerjaan_ibu" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Pekerjaan</Label>
-                                <Controller name="pekerjaan_ibu" control={control} render={({ field }) => (
-                                    <SearchableSelect id="pekerjaan_ibu" value={field.value} onValueChange={field.onChange} options={PEKERJAAN_OPTIONS} placeholder="Pilih Pekerjaan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
-                                )} />
-                            </div>
-                            <div className="space-y-2 group">
-                                <Label htmlFor="pendidikan_ibu" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Pendidikan</Label>
-                                <Controller name="pendidikan_ibu" control={control} render={({ field }) => (
-                                    <SearchableSelect id="pendidikan_ibu" value={field.value} onValueChange={field.onChange} options={PENDIDIKAN_OPTIONS} placeholder="Pilih Pendidikan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
-                                )} />
-                            </div>
-                            <div className="space-y-2 group">
-                                <Label htmlFor="penghasilan_ibu" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Penghasilan</Label>
-                                <Controller name="penghasilan_ibu" control={control} render={({ field }) => (
-                                    <SearchableSelect id="penghasilan_ibu" value={field.value} onValueChange={field.onChange} options={PENGHASILAN_OPTIONS} placeholder="Pilih Penghasilan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
-                                )} />
-                            </div>
-                        </div>
-                    </AccordionContent>
-                </AccordionItem>
+            {/* 4. KONTAK & ALAMAT ORANG TUA (UNTUK BIODATA RAPOR) */}
+            <SectionCard title="4. Kontak & Alamat Orang Tua (Biodata Rapor)" subtitle="Nomor telepon rumah/darurat dan alamat domisili orang tua" icon={Phone}>
+                <div className="sm:col-span-2 space-y-2 group">
+                    <Label htmlFor="no_hp_ortu" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                        No. Telepon Rumah / Kontak Darurat Orang Tua
+                    </Label>
+                    <Input
+                        id="no_hp_ortu"
+                        {...register('no_hp_ortu' as any)}
+                        disabled={isViewMode}
+                        placeholder="Contoh: 0812xxxx (Nomor WhatsApp utama orang tua untuk notifikasi & rapor)..."
+                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl font-mono"
+                    />
+                </div>
+                <div className="sm:col-span-2 space-y-2 group">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <Label htmlFor="alamat_ortu" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            Alamat Orang Tua (Untuk Biodata Rapor)
+                        </Label>
+                        {!isViewMode && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const rawAlamat = String(watch('alamat') || '').trim();
+                                    const rawDusun = String(watch('dusun') || '').trim();
+                                    const cleanDusunPart = rawDusun && rawDusun !== rawAlamat ? rawDusun : '';
+                                    const fullAddress = [
+                                        rawAlamat,
+                                        watch('rt') && watch('rw') ? `RT ${watch('rt')}/RW ${watch('rw')}` : '',
+                                        cleanDusunPart,
+                                        watch('kelurahan'),
+                                        watch('kecamatan'),
+                                        watch('kabupaten'),
+                                        watch('provinsi'),
+                                        watch('kode_pos'),
+                                    ]
+                                        .map((s) => String(s || '').trim())
+                                        .filter(Boolean)
+                                        .join(', ');
+                                    setValue('alamat_ortu', fullAddress, { shouldDirty: true });
+                                }}
+                                className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 transition-colors cursor-pointer"
+                            >
+                                Sama Dengan Siswa
+                            </button>
+                        )}
+                    </div>
+                    <Textarea
+                        id="alamat_ortu"
+                        {...register('alamat_ortu')}
+                        disabled={isViewMode}
+                        placeholder="Alamat lengkap orang tua..."
+                        rows={2}
+                        className="text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
+                    />
+                </div>
+            </SectionCard>
 
-                <AccordionItem value="wali" className="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden shadow-sm">
+            {/* 5. KONTAK TAMBAHAN PORTAL ORANG TUA (OPSIONAL / ADVANCED) */}
+            <Accordion className="w-full">
+                <AccordionItem value="kontak-notifikasi" className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm">
                     <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all">
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center text-amber-600 dark:text-amber-400">
-                                <ShieldCheck size={16} />
+                            <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                                <Phone size={16} />
                             </div>
                             <div className="text-left">
-                                <span className="text-[11px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest block">Data Wali (Opsional — Isi Hanya Jika Tinggal Bersama Wali)</span>
-                                <span className="text-[10px] font-medium text-slate-400 block">Kosongkan bagian ini jika siswa tinggal bersama Orang Tua kandung</span>
+                                <span className="text-[11px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest block">
+                                    Kontak Tambahan Notifikasi WhatsApp ({fields.length})
+                                </span>
+                                <span className="text-[10px] font-medium text-slate-400 block">
+                                    Otomatis tersinkronisasi dari Data Ayah, Ibu, dan Wali di atas. Buka hanya jika ingin menambah nomor khusus lainnya.
+                                </span>
                             </div>
                         </div>
                     </AccordionTrigger>
                     <AccordionContent className="px-6 pb-6 pt-2">
-                        {hasWaliValue && (
-                            <div className="flex justify-end pt-2">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setValue('nama_wali', '', { shouldDirty: true });
-                                        setValue('nik_wali' as any, '', { shouldDirty: true });
-                                        setValue('no_hp_wali' as any, '', { shouldDirty: true });
-                                        setValue('hubungan_wali', '', { shouldDirty: true });
-                                        setValue('pekerjaan_wali', '', { shouldDirty: true });
-                                        setValue('penghasilan_wali', '', { shouldDirty: true });
-                                    }}
-                                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 border border-rose-200 dark:border-rose-800 transition-colors cursor-pointer"
+                        <div className="space-y-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+                            {fields.length === 0 && (
+                                <div className="py-8 text-center bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border-2 border-dashed border-slate-100 dark:border-slate-800">
+                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Belum Ada Kontak Tambahan. Data Ayah & Ibu di atas akan otomatis disinkronkan saat disimpan.</p>
+                                </div>
+                            )}
+                            {(fields || []).map((field, index) => (
+                                <div
+                                    key={field.id}
+                                    className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-950/50 space-y-4 relative group/card"
                                 >
-                                    Kosongkan Data Wali
-                                </button>
-                            </div>
-                        )}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-50 dark:border-slate-800/50">
-                            <div className="space-y-2 group">
-                                <Label htmlFor="nama_wali" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Nama Wali</Label>
-                                <Input
-                                    id="nama_wali"
-                                    {...register('nama_wali', {
-                                        onChange: (e) => {
-                                            if (!String(e.target.value || '').trim()) {
-                                                setValue('nik_wali' as any, '');
-                                                setValue('no_hp_wali' as any, '');
-                                                setValue('hubungan_wali', '');
-                                                setValue('pekerjaan_wali', '');
-                                                setValue('penghasilan_wali', '');
-                                            }
-                                        }
-                                    })}
-                                    placeholder="Nama Wali (kosongkan jika tidak ada)..."
-                                    className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
-                                />
-                            </div>
-                            <div className="space-y-2 group">
-                                <Label htmlFor="nik_wali" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">NIK Wali (16 Digit)</Label>
-                                <Input id="nik_wali" {...register('nik_wali' as any)} disabled={!hasWaliValue} placeholder={hasWaliValue ? "NIK Wali..." : "Isi Nama Wali terlebih dahulu"} className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl disabled:opacity-50" />
-                            </div>
-                            <div className="space-y-2 group">
-                                <Label htmlFor="no_hp_wali" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">No. HP / WA Wali</Label>
-                                <Input id="no_hp_wali" {...register('no_hp_wali' as any)} disabled={!hasWaliValue} placeholder={hasWaliValue ? "08xxxxxxxxxx" : "Isi Nama Wali terlebih dahulu"} className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl disabled:opacity-50" />
-                            </div>
-                            <div className="space-y-2 group">
-                                <Label htmlFor="hubungan_wali" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Hubungan Wali</Label>
-                                <Controller name="hubungan_wali" control={control} render={({ field }) => (
-                                    <SearchableSelect id="hubungan_wali" value={field.value} onValueChange={field.onChange} options={HUBUNGAN_WALI_OPTIONS} disabled={!hasWaliValue} placeholder="Pilih Hubungan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
-                                )} />
-                            </div>
-                            <div className="space-y-2 group">
-                                <Label htmlFor="pekerjaan_wali" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Pekerjaan Wali</Label>
-                                <Controller name="pekerjaan_wali" control={control} render={({ field }) => (
-                                    <SearchableSelect id="pekerjaan_wali" value={field.value} onValueChange={field.onChange} options={PEKERJAAN_OPTIONS} disabled={!hasWaliValue} placeholder="Pilih Pekerjaan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
-                                )} />
-                            </div>
-                            <div className="space-y-2 group">
-                                <Label htmlFor="penghasilan_wali" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Penghasilan Wali</Label>
-                                <Controller name="penghasilan_wali" control={control} render={({ field }) => (
-                                    <SearchableSelect id="penghasilan_wali" value={field.value} onValueChange={field.onChange} options={PENGHASILAN_OPTIONS} disabled={!hasWaliValue} placeholder="Pilih Penghasilan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
-                                )} />
+                                    <div className="absolute top-3 right-3">
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => remove(index)}
+                                            className="h-8 w-8 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                                        >
+                                            <Trash2 size={14} />
+                                        </Button>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-1.5 group">
+                                            <Label htmlFor={`orang_tua_${index}_nama`} className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Nama Lengkap</Label>
+                                            <Input
+                                                id={`orang_tua_${index}_nama`}
+                                                {...register(`orang_tua.${index}.nama`)}
+                                                placeholder="Nama kontak..."
+                                                className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
+                                            />
+                                            {errors.orang_tua?.[index]?.nama && (
+                                                <p className="text-[10px] font-bold text-red-500 mt-1">{errors.orang_tua[index].nama.message}</p>
+                                            )}
+                                        </div>
+                                        <div className="space-y-1.5 group">
+                                            <Label htmlFor={`orang_tua_${index}_hubungan`} className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Hubungan</Label>
+                                            <Controller
+                                                name={`orang_tua.${index}.hubungan`}
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <SearchableSelect
+                                                        id={`orang_tua_${index}_hubungan`}
+                                                        value={field.value}
+                                                        onValueChange={field.onChange}
+                                                        options={HUBUNGAN_ORANG_TUA_OPTIONS}
+                                                        placeholder="Pilih Hubungan"
+                                                        triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
+                                                    />
+                                                )}
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5 group">
+                                            <Label htmlFor={`orang_tua_${index}_no_hp`} className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">No HP (WhatsApp)</Label>
+                                            <Input
+                                                id={`orang_tua_${index}_no_hp`}
+                                                {...register(`orang_tua.${index}.no_hp`)}
+                                                placeholder="628xxx..."
+                                                className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl font-mono"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5 group">
+                                            <Label htmlFor={`orang_tua_${index}_email`} className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Email</Label>
+                                            <Input
+                                                id={`orang_tua_${index}_email`}
+                                                type="email"
+                                                {...register(`orang_tua.${index}.email`)}
+                                                placeholder="example@mail.com"
+                                                className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            <div className="flex justify-center">
+                                <Button
+                                    type="button"
+                                    variant="toolbarOutline"
+                                    size="toolbar"
+                                    onClick={() => append({ nama: '', hubungan: 'AYAH', no_hp: '', email: '' })}
+                                    className="px-6 border-dashed border-2 hover:border-blue-500 hover:text-blue-600 dark:border-slate-800"
+                                >
+                                    <Plus size={14} className="mr-2" />
+                                    Tambah Kontak Notifikasi Khusus
+                                </Button>
                             </div>
                         </div>
                     </AccordionContent>
                 </AccordionItem>
             </Accordion>
-
-            <div className="p-5 bg-white dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-2">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <Label htmlFor="alamat_ortu" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                        Alamat Orang Tua (Untuk Biodata Rapor)
-                    </Label>
-                    {!isViewMode && (
-                        <button
-                            type="button"
-                            onClick={() => {
-                                const fullAddress = [
-                                    watch('alamat'),
-                                    watch('rt') && watch('rw') ? `RT ${watch('rt')}/RW ${watch('rw')}` : '',
-                                    watch('dusun'),
-                                    watch('kelurahan'),
-                                    watch('kecamatan'),
-                                    watch('kabupaten'),
-                                    watch('provinsi'),
-                                    watch('kode_pos'),
-                                ]
-                                    .map((s) => String(s || '').trim())
-                                    .filter(Boolean)
-                                    .join(', ');
-                                setValue('alamat_ortu', fullAddress, { shouldDirty: true });
-                            }}
-                            className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 transition-colors cursor-pointer"
-                        >
-                            Sama Dengan Siswa
-                        </button>
-                    )}
-                </div>
-                <Textarea
-                    id="alamat_ortu"
-                    {...register('alamat_ortu')}
-                    disabled={isViewMode}
-                    placeholder="Alamat lengkap orang tua..."
-                    rows={2}
-                    className="text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
-                />
-            </div>
         </div>
     );
 });

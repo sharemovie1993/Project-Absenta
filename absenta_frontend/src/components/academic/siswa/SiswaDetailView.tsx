@@ -710,6 +710,18 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {canEdit && onEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onEdit(siswa.id)}
+              className="h-9 px-3.5 rounded-xl font-bold text-xs flex items-center gap-1.5 border-emerald-200 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 dark:border-emerald-800 dark:text-emerald-300 dark:bg-emerald-950/30 cursor-pointer"
+              title="Buka Formulir Edit Biodata Lengkap Siswa"
+            >
+              <Edit3 size={14} />
+              <span className="hidden sm:inline">Form Edit Lengkap</span>
+            </Button>
+          )}
           {canImpersonate && (
             <Button
               variant="outline"
