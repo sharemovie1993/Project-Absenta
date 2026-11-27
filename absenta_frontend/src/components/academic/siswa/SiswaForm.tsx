@@ -26,6 +26,11 @@ import {
   getSemesterByTahunPelajaranForDropdown,
   getActiveTahunPelajaran,
   getActiveSemester,
+  TRANSPORTASI_OPTIONS,
+  PEKERJAAN_OPTIONS,
+  PENDIDIKAN_OPTIONS,
+  PENGHASILAN_OPTIONS,
+  HUBUNGAN_WALI_OPTIONS,
   type DropdownOption
 } from '../../../api/dropdown.api';
 import { siswaSchema, type SiswaFormValues } from '../../../schemas/academic/siswa.schema';
@@ -306,13 +311,33 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
   useEffect(() => {
     if (fetchedSiswa) {
       setSiswaData(fetchedSiswa);
+      const matchOptionValue = (val: string | null | undefined, options: Array<{ value: string; label: string }>): string => {
+        if (!val) return '';
+        const cleanVal = String(val).trim().toLowerCase();
+        const byValue = options.find(o => o.value.toLowerCase() === cleanVal);
+        if (byValue) return byValue.value;
+        const byLabel = options.find(o => o.label.toLowerCase() === cleanVal);
+        if (byLabel) return byLabel.value;
+        const normVal = cleanVal.replace(/[\s\-_]+/g, '');
+        const byNorm = options.find(o =>
+          o.value.toLowerCase().replace(/[\s\-_]+/g, '') === normVal ||
+          o.label.toLowerCase().replace(/[\s\-_]+/g, '') === normVal
+        );
+        if (byNorm) return byNorm.value;
+        return val;
+      };
+
+      const hasValidWali = Boolean(fetchedSiswa.nama_wali && String(fetchedSiswa.nama_wali).trim());
+      const cleanAlamat = fetchedSiswa.alamat || '';
+      const cleanDusun = (fetchedSiswa as any).dusun && (fetchedSiswa as any).dusun !== cleanAlamat ? (fetchedSiswa as any).dusun : '';
+
       reset({
         nis: fetchedSiswa.nis || '',
         nama_siswa: fetchedSiswa.nama_siswa || '',
         email: fetchedSiswa.User?.email || '',
         no_hp: fetchedSiswa.no_hp || '',
-        alamat: fetchedSiswa.alamat || '',
-        dusun: (fetchedSiswa as any).dusun || '',
+        alamat: cleanAlamat,
+        dusun: cleanDusun,
         rt: (fetchedSiswa as any).rt || '',
         rw: (fetchedSiswa as any).rw || '',
         kelurahan: (fetchedSiswa as any).kelurahan || '',
@@ -335,7 +360,7 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
         tanggal_keluar: fetchedSiswa.tanggal_keluar ? fetchedSiswa.tanggal_keluar.split('T')[0] : '',
         alasan_keluar: fetchedSiswa.alasan_keluar || '',
         catatan: fetchedSiswa.catatan || '',
-        transportasi: fetchedSiswa.transportasi || '',
+        transportasi: matchOptionValue(fetchedSiswa.transportasi, TRANSPORTASI_OPTIONS),
         no_rfid: fetchedSiswa.no_rfid || '',
         nisn: fetchedSiswa.nisn || '',
         nik: fetchedSiswa.nik || '',
@@ -353,31 +378,33 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
         nama_ayah: fetchedSiswa.nama_ayah || '',
         nik_ayah: (fetchedSiswa as any).nik_ayah || '',
         no_hp_ayah: (fetchedSiswa as any).no_hp_ayah || '',
-        pekerjaan_ayah: fetchedSiswa.pekerjaan_ayah || '',
-        pendidikan_ayah: fetchedSiswa.pendidikan_ayah || '',
-        penghasilan_ayah: fetchedSiswa.penghasilan_ayah || '',
+        pekerjaan_ayah: matchOptionValue(fetchedSiswa.pekerjaan_ayah, PEKERJAAN_OPTIONS),
+        pendidikan_ayah: matchOptionValue(fetchedSiswa.pendidikan_ayah, PENDIDIKAN_OPTIONS),
+        penghasilan_ayah: matchOptionValue(fetchedSiswa.penghasilan_ayah, PENGHASILAN_OPTIONS),
         nama_ibu: fetchedSiswa.nama_ibu || '',
         nik_ibu: (fetchedSiswa as any).nik_ibu || '',
         no_hp_ibu: (fetchedSiswa as any).no_hp_ibu || '',
-        pekerjaan_ibu: fetchedSiswa.pekerjaan_ibu || '',
-        pendidikan_ibu: fetchedSiswa.pendidikan_ibu || '',
-        penghasilan_ibu: fetchedSiswa.penghasilan_ibu || '',
-        nama_wali: fetchedSiswa.nama_wali || '',
-        nik_wali: (fetchedSiswa as any).nik_wali || '',
-        no_hp_wali: (fetchedSiswa as any).no_hp_wali || '',
-        hubungan_wali: fetchedSiswa.hubungan_wali || '',
-        pekerjaan_wali: fetchedSiswa.pekerjaan_wali || '',
-        penghasilan_wali: fetchedSiswa.penghasilan_wali || '',
+        pekerjaan_ibu: matchOptionValue(fetchedSiswa.pekerjaan_ibu, PEKERJAAN_OPTIONS),
+        pendidikan_ibu: matchOptionValue(fetchedSiswa.pendidikan_ibu, PENDIDIKAN_OPTIONS),
+        penghasilan_ibu: matchOptionValue(fetchedSiswa.penghasilan_ibu, PENGHASILAN_OPTIONS),
+        nama_wali: hasValidWali ? (fetchedSiswa.nama_wali || '') : '',
+        nik_wali: hasValidWali ? ((fetchedSiswa as any).nik_wali || '') : '',
+        no_hp_wali: hasValidWali ? ((fetchedSiswa as any).no_hp_wali || '') : '',
+        hubungan_wali: hasValidWali ? matchOptionValue(fetchedSiswa.hubungan_wali, HUBUNGAN_WALI_OPTIONS) : '',
+        pekerjaan_wali: hasValidWali ? matchOptionValue(fetchedSiswa.pekerjaan_wali, PEKERJAAN_OPTIONS) : '',
+        penghasilan_wali: hasValidWali ? matchOptionValue(fetchedSiswa.penghasilan_wali, PENGHASILAN_OPTIONS) : '',
         no_hp_ortu: (fetchedSiswa as any).no_hp_ortu || '',
         alamat_ortu: (fetchedSiswa as any).alamat_ortu || '',
-        orang_tua: ((fetchedSiswa as any).OrangTua || []).map((o: any) => ({
-          id: o.id,
-          nama: o.nama || '',
-          hubungan: o.hubungan || '',
-          no_hp: o.no_hp || '',
-          email: o.email || '',
-          nik: o.nik || ''
-        })) || []
+        orang_tua: ((fetchedSiswa as any).OrangTua || [])
+          .filter((o: any) => !(o.hubungan === 'WALI' && !hasValidWali))
+          .map((o: any) => ({
+            id: o.id,
+            nama: o.nama || '',
+            hubungan: o.hubungan || '',
+            no_hp: o.no_hp || '',
+            email: o.email || '',
+            nik: o.nik || ''
+          })) || []
       });
     }
   }, [fetchedSiswa, reset]);
@@ -389,15 +416,24 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
       setLoading(true);
       setSubmitError('');
 
+      const hasWali = Boolean(data.nama_wali && String(data.nama_wali).trim());
+
       const payload = {
         ...data,
         tinggi_badan: data.tinggi_badan === '' || data.tinggi_badan === null || data.tinggi_badan === undefined ? null : Number(data.tinggi_badan),
         berat_badan: data.berat_badan === '' || data.berat_badan === null || data.berat_badan === undefined ? null : Number(data.berat_badan),
+        anak_ke: data.anak_ke === '' || data.anak_ke === null || data.anak_ke === undefined ? null : Number(data.anak_ke),
         tanggal_lahir: data.tanggal_lahir || null,
         tanggal_keluar: data.tanggal_keluar || null,
         alasan_keluar: data.alasan_keluar || null,
         catatan: data.catatan?.trim() ? data.catatan.trim() : null,
         no_rfid: data.no_rfid?.trim() ? data.no_rfid : null,
+        nama_wali: hasWali ? String(data.nama_wali).trim() : null,
+        nik_wali: hasWali ? ((data as any).nik_wali || null) : null,
+        no_hp_wali: hasWali ? ((data as any).no_hp_wali || null) : null,
+        hubungan_wali: hasWali ? (data.hubungan_wali || null) : null,
+        pekerjaan_wali: hasWali ? (data.pekerjaan_wali || null) : null,
+        penghasilan_wali: hasWali ? (data.penghasilan_wali || null) : null,
         orang_tua: (data.orang_tua || []).filter(o => o.nama?.trim()).map(o => ({
             ...o,
             email: o.email || null

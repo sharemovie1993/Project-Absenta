@@ -44,6 +44,17 @@ export const GuardianSection: React.FC<GuardianSectionProps> = React.memo(({
         name: "orang_tua"
     });
 
+    const hasWaliValue = Boolean(watch('nama_wali') && String(watch('nama_wali')).trim());
+
+    const resolveOptionLabel = (val: string | undefined, options: Array<{ value: string; label: string }>) => {
+        if (!val) return undefined;
+        const clean = String(val).trim().toLowerCase();
+        const found = (options || []).find(
+            o => o.value.toLowerCase() === clean || o.label.toLowerCase() === clean
+        );
+        return found ? found.label : val;
+    };
+
     if (isViewMode) {
         const orangTua = watch('orang_tua') || [];
         return (
@@ -70,27 +81,27 @@ export const GuardianSection: React.FC<GuardianSectionProps> = React.memo(({
                         <DetailRow icon={<UserIcon size={16} />} label="Nama Ayah" value={watch('nama_ayah')} />
                         <DetailRow icon={<Phone size={16} />} label="NIK Ayah" value={watch('nik_ayah')} />
                         <DetailRow icon={<Phone size={16} />} label="No. HP / WA Ayah" value={(watch as any)('no_hp_ayah')} />
-                        <DetailRow icon={<Briefcase size={16} />} label="Pekerjaan" value={(PEKERJAAN_OPTIONS || []).find(o => o.value === watch('pekerjaan_ayah'))?.label} />
-                        <DetailRow icon={<BookOpen size={16} />} label="Pendidikan" value={(PENDIDIKAN_OPTIONS || []).find(o => o.value === watch('pendidikan_ayah'))?.label} />
-                        <DetailRow icon={<Banknote size={16} />} label="Penghasilan" value={(PENGHASILAN_OPTIONS || []).find(o => o.value === watch('penghasilan_ayah'))?.label} />
+                        <DetailRow icon={<Briefcase size={16} />} label="Pekerjaan" value={resolveOptionLabel(watch('pekerjaan_ayah'), PEKERJAAN_OPTIONS)} />
+                        <DetailRow icon={<BookOpen size={16} />} label="Pendidikan" value={resolveOptionLabel(watch('pendidikan_ayah'), PENDIDIKAN_OPTIONS)} />
+                        <DetailRow icon={<Banknote size={16} />} label="Penghasilan" value={resolveOptionLabel(watch('penghasilan_ayah'), PENGHASILAN_OPTIONS)} />
                     </SectionCard>
                     <SectionCard title="Profil Ibu Kandung" icon={UserCheck}>
                         <DetailRow icon={<UserIcon size={16} />} label="Nama Ibu" value={watch('nama_ibu')} />
                         <DetailRow icon={<Phone size={16} />} label="NIK Ibu" value={watch('nik_ibu')} />
                         <DetailRow icon={<Phone size={16} />} label="No. HP / WA Ibu" value={(watch as any)('no_hp_ibu')} />
-                        <DetailRow icon={<Briefcase size={16} />} label="Pekerjaan" value={(PEKERJAAN_OPTIONS || []).find(o => o.value === watch('pekerjaan_ibu'))?.label} />
-                        <DetailRow icon={<BookOpen size={16} />} label="Pendidikan" value={(PENDIDIKAN_OPTIONS || []).find(o => o.value === watch('pendidikan_ibu'))?.label} />
-                        <DetailRow icon={<Banknote size={16} />} label="Penghasilan" value={(PENGHASILAN_OPTIONS || []).find(o => o.value === watch('penghasilan_ibu'))?.label} />
+                        <DetailRow icon={<Briefcase size={16} />} label="Pekerjaan" value={resolveOptionLabel(watch('pekerjaan_ibu'), PEKERJAAN_OPTIONS)} />
+                        <DetailRow icon={<BookOpen size={16} />} label="Pendidikan" value={resolveOptionLabel(watch('pendidikan_ibu'), PENDIDIKAN_OPTIONS)} />
+                        <DetailRow icon={<Banknote size={16} />} label="Penghasilan" value={resolveOptionLabel(watch('penghasilan_ibu'), PENGHASILAN_OPTIONS)} />
                     </SectionCard>
                 </div>
 
-                <SectionCard title="Profil Wali Siswa" icon={ShieldCheck}>
-                    <DetailRow icon={<UserIcon size={16} />} label="Nama Wali" value={watch('nama_wali')} />
-                    <DetailRow icon={<Phone size={16} />} label="NIK Wali" value={(watch as any)('nik_wali')} />
-                    <DetailRow icon={<Phone size={16} />} label="No. HP / WA Wali" value={(watch as any)('no_hp_wali')} />
-                    <DetailRow icon={<Heart size={16} />} label="Hubungan" value={(HUBUNGAN_WALI_OPTIONS || []).find(o => o.value === watch('hubungan_wali'))?.label} />
-                    <DetailRow icon={<Briefcase size={16} />} label="Pekerjaan" value={(PEKERJAAN_OPTIONS || []).find(o => o.value === watch('pekerjaan_wali'))?.label} />
-                    <DetailRow icon={<Banknote size={16} />} label="Penghasilan" value={(PENGHASILAN_OPTIONS || []).find(o => o.value === watch('penghasilan_wali'))?.label} />
+                <SectionCard title="Profil Wali Siswa (Opsional)" icon={ShieldCheck}>
+                    <DetailRow icon={<UserIcon size={16} />} label="Nama Wali" value={hasWaliValue ? watch('nama_wali') : 'Tidak Menggunakan Wali'} />
+                    <DetailRow icon={<Phone size={16} />} label="NIK Wali" value={hasWaliValue ? (watch as any)('nik_wali') : '-'} />
+                    <DetailRow icon={<Phone size={16} />} label="No. HP / WA Wali" value={hasWaliValue ? (watch as any)('no_hp_wali') : '-'} />
+                    <DetailRow icon={<Heart size={16} />} label="Hubungan" value={hasWaliValue ? resolveOptionLabel(watch('hubungan_wali'), HUBUNGAN_WALI_OPTIONS) : '-'} />
+                    <DetailRow icon={<Briefcase size={16} />} label="Pekerjaan" value={hasWaliValue ? resolveOptionLabel(watch('pekerjaan_wali'), PEKERJAAN_OPTIONS) : '-'} />
+                    <DetailRow icon={<Banknote size={16} />} label="Penghasilan" value={hasWaliValue ? resolveOptionLabel(watch('penghasilan_wali'), PENGHASILAN_OPTIONS) : '-'} />
                 </SectionCard>
             </div>
         );
@@ -286,39 +297,75 @@ export const GuardianSection: React.FC<GuardianSectionProps> = React.memo(({
                             <div className="w-8 h-8 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center text-amber-600 dark:text-amber-400">
                                 <ShieldCheck size={16} />
                             </div>
-                            <span className="text-[11px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest text-left">Data Wali (Opsional)</span>
+                            <div className="text-left">
+                                <span className="text-[11px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest block">Data Wali (Opsional — Isi Hanya Jika Tinggal Bersama Wali)</span>
+                                <span className="text-[10px] font-medium text-slate-400 block">Kosongkan bagian ini jika siswa tinggal bersama Orang Tua kandung</span>
+                            </div>
                         </div>
                     </AccordionTrigger>
                     <AccordionContent className="px-6 pb-6 pt-2">
+                        {hasWaliValue && (
+                            <div className="flex justify-end pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setValue('nama_wali', '', { shouldDirty: true });
+                                        setValue('nik_wali' as any, '', { shouldDirty: true });
+                                        setValue('no_hp_wali' as any, '', { shouldDirty: true });
+                                        setValue('hubungan_wali', '', { shouldDirty: true });
+                                        setValue('pekerjaan_wali', '', { shouldDirty: true });
+                                        setValue('penghasilan_wali', '', { shouldDirty: true });
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 border border-rose-200 dark:border-rose-800 transition-colors cursor-pointer"
+                                >
+                                    Kosongkan Data Wali
+                                </button>
+                            </div>
+                        )}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-50 dark:border-slate-800/50">
                             <div className="space-y-2 group">
                                 <Label htmlFor="nama_wali" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Nama Wali</Label>
-                                <Input id="nama_wali" {...register('nama_wali')} placeholder="Nama Wali..." className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                                <Input
+                                    id="nama_wali"
+                                    {...register('nama_wali', {
+                                        onChange: (e) => {
+                                            if (!String(e.target.value || '').trim()) {
+                                                setValue('nik_wali' as any, '');
+                                                setValue('no_hp_wali' as any, '');
+                                                setValue('hubungan_wali', '');
+                                                setValue('pekerjaan_wali', '');
+                                                setValue('penghasilan_wali', '');
+                                            }
+                                        }
+                                    })}
+                                    placeholder="Nama Wali (kosongkan jika tidak ada)..."
+                                    className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
+                                />
                             </div>
                             <div className="space-y-2 group">
                                 <Label htmlFor="nik_wali" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">NIK Wali (16 Digit)</Label>
-                                <Input id="nik_wali" {...register('nik_wali' as any)} placeholder="NIK Wali..." className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                                <Input id="nik_wali" {...register('nik_wali' as any)} disabled={!hasWaliValue} placeholder={hasWaliValue ? "NIK Wali..." : "Isi Nama Wali terlebih dahulu"} className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl disabled:opacity-50" />
                             </div>
                             <div className="space-y-2 group">
                                 <Label htmlFor="no_hp_wali" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">No. HP / WA Wali</Label>
-                                <Input id="no_hp_wali" {...register('no_hp_wali' as any)} placeholder="08xxxxxxxxxx" className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                                <Input id="no_hp_wali" {...register('no_hp_wali' as any)} disabled={!hasWaliValue} placeholder={hasWaliValue ? "08xxxxxxxxxx" : "Isi Nama Wali terlebih dahulu"} className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl disabled:opacity-50" />
                             </div>
                             <div className="space-y-2 group">
                                 <Label htmlFor="hubungan_wali" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Hubungan Wali</Label>
                                 <Controller name="hubungan_wali" control={control} render={({ field }) => (
-                                    <SearchableSelect id="hubungan_wali" value={field.value} onValueChange={field.onChange} options={HUBUNGAN_WALI_OPTIONS} placeholder="Pilih Hubungan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                                    <SearchableSelect id="hubungan_wali" value={field.value} onValueChange={field.onChange} options={HUBUNGAN_WALI_OPTIONS} disabled={!hasWaliValue} placeholder="Pilih Hubungan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
                                 )} />
                             </div>
                             <div className="space-y-2 group">
                                 <Label htmlFor="pekerjaan_wali" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Pekerjaan Wali</Label>
                                 <Controller name="pekerjaan_wali" control={control} render={({ field }) => (
-                                    <SearchableSelect id="pekerjaan_wali" value={field.value} onValueChange={field.onChange} options={PEKERJAAN_OPTIONS} placeholder="Pilih Pekerjaan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                                    <SearchableSelect id="pekerjaan_wali" value={field.value} onValueChange={field.onChange} options={PEKERJAAN_OPTIONS} disabled={!hasWaliValue} placeholder="Pilih Pekerjaan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
                                 )} />
                             </div>
                             <div className="space-y-2 group">
                                 <Label htmlFor="penghasilan_wali" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Penghasilan Wali</Label>
                                 <Controller name="penghasilan_wali" control={control} render={({ field }) => (
-                                    <SearchableSelect id="penghasilan_wali" value={field.value} onValueChange={field.onChange} options={PENGHASILAN_OPTIONS} placeholder="Pilih Penghasilan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                                    <SearchableSelect id="penghasilan_wali" value={field.value} onValueChange={field.onChange} options={PENGHASILAN_OPTIONS} disabled={!hasWaliValue} placeholder="Pilih Penghasilan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
                                 )} />
                             </div>
                         </div>

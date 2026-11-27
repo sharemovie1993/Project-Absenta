@@ -20,12 +20,20 @@ export async function updateSiswaCommand(
   const whereClause: any = { id: siswaId, tenant_id: tenantId };
 
   // Apply Isolate/Scope filter from Organization Engine
-  if (org && org.tenant_wide !== true) {
-    const allowed = Array.isArray(org.kelas_ids) ? org.kelas_ids.map((x: any) => String(x)) : [];
-    if (allowed.length > 0) {
-      whereClause.kelas_id = { in: allowed };
+  if (org && org.is_siswa === true && org.user_id) {
+    whereClause.user_id = org.user_id;
+  } else if (org && org.tenant_wide !== true) {
+    if (org.is_unit_restricted === true && Array.isArray(org.unit_ids) && org.unit_ids.length > 0) {
+      whereClause.Kelas = {
+        jurusan_id: { in: org.unit_ids },
+      };
     } else {
-      throw new Error('Siswa not found');
+      const allowed = Array.isArray(org.kelas_ids) ? org.kelas_ids.map((x: any) => String(x)) : [];
+      if (allowed.length > 0) {
+        whereClause.kelas_id = { in: allowed };
+      } else {
+        throw new Error('Siswa not found');
+      }
     }
   }
 
@@ -41,8 +49,9 @@ export async function updateSiswaCommand(
   
   // Whitelist of valid Siswa schema fields to prevent Prisma crashes from extra Excel columns
   const validFields = [
-    'user_id', 'nis', 'nisn', 'nik', 'nama_siswa', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir',
+    'user_id', 'nis', 'nisn', 'nik', 'no_kk', 'nama_siswa', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir',
     'alamat', 'dusun', 'kelurahan', 'kecamatan', 'kabupaten', 'provinsi', 'rt', 'rw', 'kode_pos',
+    'lintang', 'bujur', 'koordinat',
     'no_hp', 'transportasi', 'nama_ayah', 'nik_ayah', 'no_hp_ayah', 'pekerjaan_ayah', 'pendidikan_ayah', 'penghasilan_ayah',
     'nama_ibu', 'nik_ibu', 'no_hp_ibu', 'pekerjaan_ibu', 'pendidikan_ibu', 'penghasilan_ibu',
     'nama_wali', 'nik_wali', 'no_hp_wali', 'hubungan_wali', 'pekerjaan_wali', 'penghasilan_wali', 'no_hp_ortu', 'alamat_ortu',
@@ -62,6 +71,33 @@ export async function updateSiswaCommand(
 
   if (dataToUpdate.no_hp) {
     dataToUpdate.no_hp = normalizePhone(dataToUpdate.no_hp);
+  }
+  if (dataToUpdate.no_hp_ayah) {
+    dataToUpdate.no_hp_ayah = normalizePhone(dataToUpdate.no_hp_ayah);
+  }
+  if (dataToUpdate.no_hp_ibu) {
+    dataToUpdate.no_hp_ibu = normalizePhone(dataToUpdate.no_hp_ibu);
+  }
+  if (dataToUpdate.no_hp_wali) {
+    dataToUpdate.no_hp_wali = normalizePhone(dataToUpdate.no_hp_wali);
+  }
+  if (dataToUpdate.no_hp_ortu) {
+    dataToUpdate.no_hp_ortu = normalizePhone(dataToUpdate.no_hp_ortu);
+  }
+
+  // Strict Parent vs Guardian Separation:
+  // If nama_wali is explicitly cleared (null or empty string), automatically clear all guardian sub-fields
+  // so no residual hubungan_wali / pekerjaan_wali / no_hp_wali / nik_wali remains when Wali is not filled.
+  if (
+    Object.prototype.hasOwnProperty.call(dataToUpdate, 'nama_wali') &&
+    (!dataToUpdate.nama_wali || String(dataToUpdate.nama_wali).trim() === '')
+  ) {
+    dataToUpdate.nama_wali = null;
+    dataToUpdate.nik_wali = null;
+    dataToUpdate.no_hp_wali = null;
+    dataToUpdate.hubungan_wali = null;
+    dataToUpdate.pekerjaan_wali = null;
+    dataToUpdate.penghasilan_wali = null;
   }
 
   if (validatedInput.user_id && validatedInput.user_id !== existingSiswa.user_id) {
@@ -460,7 +496,13 @@ export async function updateSiswaCommand(
     }
   }
 
-  if (validatedInput.orang_tua && Array.isArray(validatedInput.orang_tua)) {
+  const hasDirectParentFields = [
+    'nama_ayah', 'nik_ayah', 'no_hp_ayah', 'pekerjaan_ayah', 'pendidikan_ayah', 'penghasilan_ayah',
+    'nama_ibu', 'nik_ibu', 'no_hp_ibu', 'pekerjaan_ibu', 'pendidikan_ibu', 'penghasilan_ibu',
+    'nama_wali', 'nik_wali', 'no_hp_wali', 'hubungan_wali', 'pekerjaan_wali', 'penghasilan_wali',
+  ].some(key => Object.prototype.hasOwnProperty.call(dataToUpdate, key));
+
+  if (validatedInput.orang_tua && Array.isArray(validatedInput.orang_tua) && !hasDirectParentFields) {
     const currentLinks = await siswaDb.orangTuaSiswa.findMany({
       where: { siswa_id: siswaId },
       select: { id: true, orang_tua_id: true },
@@ -485,7 +527,11 @@ export async function updateSiswaCommand(
         }
       } else if (otData.no_hp) {
         const existing = await siswaDb.orangTua.findFirst({
-          where: { tenant_id: existingSiswa.tenant_id, no_hp: otData.no_hp },
+          where: {
+            tenant_id: existingSiswa.tenant_id,
+            no_hp: otData.no_hp,
+            ...(otData.hubungan ? { hubungan: otData.hubungan } : {}),
+          },
         });
         if (existing) {
           parentId = (existing as any).id;
@@ -535,80 +581,107 @@ export async function updateSiswaCommand(
         where: { id: link.id },
       });
     }
-  } else if (Object.prototype.hasOwnProperty.call(validatedInput, 'orang_tua')) {
+  } else if (Object.prototype.hasOwnProperty.call(validatedInput, 'orang_tua') && !validatedInput.orang_tua && !hasDirectParentFields) {
     await siswaDb.orangTuaSiswa.deleteMany({
       where: { siswa_id: siswaId },
     });
   } else {
-    // Auto-sync individual parent fields to OrangTua model if orang_tua array is not explicitly provided
-    const parentEntries = [
-      {
-        nama: dataToUpdate.nama_ayah || existingSiswa.nama_ayah,
-        no_hp: dataToUpdate.no_hp_ayah || existingSiswa.no_hp_ayah,
-        pekerjaan: dataToUpdate.pekerjaan_ayah || existingSiswa.pekerjaan_ayah,
-        pendidikan: dataToUpdate.pendidikan_ayah || existingSiswa.pendidikan_ayah,
-        penghasilan: dataToUpdate.penghasilan_ayah || existingSiswa.penghasilan_ayah,
-        nik: dataToUpdate.nik_ayah || existingSiswa.nik_ayah,
-        hubungan: 'AYAH',
-      },
-      {
-        nama: dataToUpdate.nama_ibu || existingSiswa.nama_ibu,
-        no_hp: dataToUpdate.no_hp_ibu || existingSiswa.no_hp_ibu,
-        pekerjaan: dataToUpdate.pekerjaan_ibu || existingSiswa.pekerjaan_ibu,
-        pendidikan: dataToUpdate.pendidikan_ibu || existingSiswa.pendidikan_ibu,
-        penghasilan: dataToUpdate.penghasilan_ibu || existingSiswa.penghasilan_ibu,
-        nik: dataToUpdate.nik_ibu || existingSiswa.nik_ibu,
-        hubungan: 'IBU',
-      },
-      {
-        nama: dataToUpdate.nama_wali || existingSiswa.nama_wali,
-        no_hp: dataToUpdate.no_hp_wali || existingSiswa.no_hp_wali,
-        pekerjaan: dataToUpdate.pekerjaan_wali || existingSiswa.pekerjaan_wali,
-        hubungan: dataToUpdate.hubungan_wali || existingSiswa.hubungan_wali || 'WALI',
-      },
-    ].filter(p => Boolean(p.nama && p.nama.trim().length > 0));
+    // Resolve effective field value respecting explicit null/empty clearing
+    const resolveField = (key: string) =>
+      Object.prototype.hasOwnProperty.call(dataToUpdate, key) ? dataToUpdate[key] : existingSiswa[key];
 
-    for (const p of parentEntries) {
-      if (p.no_hp) {
-        p.no_hp = normalizePhone(p.no_hp);
-      }
+    const parentSlots = [
+      {
+        canonicalRole: 'AYAH',
+        matchRoles: ['AYAH'],
+        nama: resolveField('nama_ayah'),
+        no_hp: resolveField('no_hp_ayah'),
+        pekerjaan: resolveField('pekerjaan_ayah'),
+        pendidikan: resolveField('pendidikan_ayah'),
+        penghasilan: resolveField('penghasilan_ayah'),
+        nik: resolveField('nik_ayah'),
+      },
+      {
+        canonicalRole: 'IBU',
+        matchRoles: ['IBU'],
+        nama: resolveField('nama_ibu'),
+        no_hp: resolveField('no_hp_ibu'),
+        pekerjaan: resolveField('pekerjaan_ibu'),
+        pendidikan: resolveField('pendidikan_ibu'),
+        penghasilan: resolveField('penghasilan_ibu'),
+        nik: resolveField('nik_ibu'),
+      },
+      {
+        canonicalRole: 'WALI',
+        matchRoles: [
+          'WALI',
+          ...(existingSiswa.hubungan_wali ? [String(existingSiswa.hubungan_wali)] : []),
+          ...(dataToUpdate.hubungan_wali ? [String(dataToUpdate.hubungan_wali)] : []),
+        ],
+        nama: resolveField('nama_wali'),
+        no_hp: resolveField('no_hp_wali'),
+        pekerjaan: resolveField('pekerjaan_wali'),
+        pendidikan: null,
+        penghasilan: resolveField('penghasilan_wali'),
+        nik: resolveField('nik_wali'),
+      },
+    ];
 
-      // Check if this student already has this parent relation
-      const existingLink: any = await siswaDb.orangTuaSiswa.findFirst({
+    for (const slot of parentSlots) {
+      const cleanNama = slot.nama ? String(slot.nama).trim() : '';
+      const existingLinks: any[] = await siswaDb.orangTuaSiswa.findMany({
         where: {
           siswa_id: siswaId,
           OrangTua: {
-            hubungan: p.hubungan,
+            hubungan: { in: Array.from(new Set(slot.matchRoles.filter(Boolean))) },
           },
         },
         include: { OrangTua: true },
       });
 
-      if (existingLink && existingLink.OrangTua) {
+      if (!cleanNama) {
+        // If this parent/guardian slot is empty or was cleared, remove any existing link for this slot
+        for (const link of existingLinks) {
+          await siswaDb.orangTuaSiswa.delete({
+            where: { id: link.id },
+          });
+        }
+        continue;
+      }
+
+      const normalizedSlotHp = slot.no_hp ? normalizePhone(String(slot.no_hp)) : null;
+      const primaryLink = existingLinks[0];
+
+      if (primaryLink && primaryLink.OrangTua) {
         await siswaDb.orangTua.update({
-          where: { id: existingLink.OrangTua.id },
+          where: { id: primaryLink.OrangTua.id },
           data: {
-            nama: p.nama,
-            no_hp: p.no_hp || existingLink.OrangTua.no_hp,
-            pekerjaan: p.pekerjaan || existingLink.OrangTua.pekerjaan,
-            pendidikan: p.pendidikan || existingLink.OrangTua.pendidikan,
-            penghasilan: p.penghasilan || existingLink.OrangTua.penghasilan,
-            nik: p.nik || existingLink.OrangTua.nik,
-            hubungan: p.hubungan,
+            nama: cleanNama,
+            no_hp: normalizedSlotHp || null,
+            pekerjaan: slot.pekerjaan || null,
+            pendidikan: slot.pendidikan || null,
+            penghasilan: slot.penghasilan || null,
+            nik: slot.nik || null,
+            hubungan: slot.canonicalRole,
           },
         });
+        // Clean up any duplicate links for the same slot
+        for (let i = 1; i < existingLinks.length; i++) {
+          await siswaDb.orangTuaSiswa.delete({
+            where: { id: existingLinks[i].id },
+          });
+        }
       } else {
-        // Create new OrangTua and link
         const newParent = await siswaDb.orangTua.create({
           data: {
             tenant_id: existingSiswa.tenant_id,
-            nama: String(p.nama),
-            no_hp: p.no_hp || null,
-            pekerjaan: p.pekerjaan || null,
-            pendidikan: p.pendidikan || null,
-            penghasilan: p.penghasilan || null,
-            nik: p.nik || null,
-            hubungan: p.hubungan,
+            nama: cleanNama,
+            no_hp: normalizedSlotHp || null,
+            pekerjaan: slot.pekerjaan || null,
+            pendidikan: slot.pendidikan || null,
+            penghasilan: slot.penghasilan || null,
+            nik: slot.nik || null,
+            hubungan: slot.canonicalRole,
             OrangTuaSiswa: {
               create: {
                 siswa_id: siswaId,

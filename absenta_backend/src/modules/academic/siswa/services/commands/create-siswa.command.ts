@@ -469,7 +469,9 @@ export async function createSiswaCommand(
         nama: input.nama_wali,
         no_hp: input.no_hp_wali,
         pekerjaan: input.pekerjaan_wali,
-        hubungan: input.hubungan_wali || 'WALI',
+        penghasilan: (input as any).penghasilan_wali,
+        nik: (input as any).nik_wali,
+        hubungan: 'WALI',
       },
     ].filter(p => Boolean(p.nama && p.nama.trim().length > 0));
 
@@ -478,44 +480,24 @@ export async function createSiswaCommand(
         p.no_hp = normalizePhone(p.no_hp);
       }
 
-      let parentId: string | null = null;
-      if (p.no_hp) {
-        const existingParent = await siswaDb.orangTua.findFirst({
-          where: {
-            tenant_id: tenantId,
-            no_hp: p.no_hp,
+      const newParent = await siswaDb.orangTua.create({
+        data: {
+          tenant_id: tenantId,
+          nama: String(p.nama).trim(),
+          no_hp: p.no_hp || null,
+          pekerjaan: p.pekerjaan || null,
+          pendidikan: (p as any).pendidikan || null,
+          penghasilan: (p as any).penghasilan || null,
+          nik: (p as any).nik || null,
+          hubungan: p.hubungan,
+          OrangTuaSiswa: {
+            create: {
+              siswa_id: (siswa as any).id,
+            },
           },
-        });
-        if (existingParent) {
-          parentId = (existingParent as any).id;
-        }
-      }
-
-      if (!parentId) {
-        const newParent = await siswaDb.orangTua.create({
-          data: {
-            tenant_id: tenantId,
-            nama: String(p.nama),
-            no_hp: p.no_hp || null,
-            pekerjaan: p.pekerjaan || null,
-            pendidikan: p.pendidikan || null,
-            penghasilan: p.penghasilan || null,
-            nik: p.nik || null,
-            hubungan: p.hubungan,
-          },
-        });
-        parentId = (newParent as any).id;
-      }
-
-      if (parentId) {
-        await siswaDb.orangTuaSiswa.create({
-          data: {
-            orang_tua_id: parentId,
-            siswa_id: (siswa as any).id,
-          },
-        });
-        await parentAuthService.ensureToken(parentId);
-      }
+        },
+      });
+      await parentAuthService.ensureToken((newParent as any).id);
     }
   }
 

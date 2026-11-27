@@ -202,6 +202,7 @@ export const siswaProfileController = {
       const allowedFields = [
         'nisn',
         'nik',
+        'no_kk',
         'tempat_lahir',
         'tanggal_lahir',
         'jenis_kelamin',
@@ -258,33 +259,20 @@ export const siswaProfileController = {
         'foto',
       ];
 
-      const updateData: any = {};
+      const filteredInput: any = {};
       for (const field of allowedFields) {
         if (body[field] !== undefined) {
-          if ((field === 'tanggal_lahir' || field === 'tanggal_masuk' || field === 'tanggal_keluar') && body[field]) {
-            updateData[field] = new Date(body[field]);
-          } else if ((field === 'tinggi_badan' || field === 'berat_badan' || field === 'anak_ke') && body[field] !== undefined) {
-            updateData[field] = body[field] === null || body[field] === '' ? null : Number(body[field]);
-          } else if ((field === 'is_osis' || field === 'is_mpk' || field === 'penerima_kps' || field === 'penerima_kip') && body[field] !== undefined) {
-            updateData[field] = Boolean(body[field]);
-          } else {
-            updateData[field] = body[field];
-          }
+          filteredInput[field] = body[field];
         }
       }
 
-      const updated = await prisma.siswa.update({
-        where: { id: siswa.id },
-        data: updateData,
-        include: {
-          Kelas: {
-            include: {
-              Jurusan: true,
-            },
-          },
-          Jurusan: true,
-        },
-      });
+      const updated = await siswaService.updateSiswa(
+        siswa.id,
+        filteredInput,
+        tenantId,
+        null,
+        userId
+      );
 
       return reply.status(200).send({
         success: true,

@@ -381,25 +381,25 @@ export class PdfRaporService {
             <td style="vertical-align: top; padding: 2px 0;">15.</td>
             <td style="vertical-align: top; padding: 2px 0;">Nama Wali Peserta Didik</td>
             <td style="vertical-align: top; padding: 2px 0;">:</td>
-            <td style="vertical-align: top; padding: 2px 0;">${student.nama_wali || '-'}</td>
+            <td style="vertical-align: top; padding: 2px 0;">${student.nama_wali && String(student.nama_wali).trim() ? student.nama_wali : '-'}</td>
           </tr>
           <tr>
             <td style="vertical-align: top; padding: 2px 0;">16.</td>
             <td style="vertical-align: top; padding: 2px 0;">Alamat Wali Peserta Didik</td>
             <td style="vertical-align: top; padding: 2px 0;">:</td>
-            <td style="vertical-align: top; padding: 2px 0;">${fullAlamat || '-'}</td>
+            <td style="vertical-align: top; padding: 2px 0;">${student.nama_wali && String(student.nama_wali).trim() ? ((student as any).alamat_wali || fullAlamatOrtu || fullAlamat || '-') : '-'}</td>
           </tr>
           <tr>
             <td></td>
             <td style="padding: 1.5px 0 1.5px 15px;">Nomor Telepon Rumah</td>
             <td style="padding: 1.5px 0;">:</td>
-            <td style="padding: 1.5px 0;">${student.no_hp_wali || '-'}</td>
+            <td style="padding: 1.5px 0;">${student.nama_wali && String(student.nama_wali).trim() ? (student.no_hp_wali || '-') : '-'}</td>
           </tr>
           <tr>
             <td style="vertical-align: top; padding: 2px 0;">17.</td>
             <td style="vertical-align: top; padding: 2px 0;">Pekerjaan Wali Peserta Didik</td>
             <td style="vertical-align: top; padding: 2px 0;">:</td>
-            <td style="vertical-align: top; padding: 2px 0;">${student.pekerjaan_wali || '-'}</td>
+            <td style="vertical-align: top; padding: 2px 0;">${student.nama_wali && String(student.nama_wali).trim() ? (student.pekerjaan_wali || '-') : '-'}</td>
           </tr>
         </table>
 

@@ -1043,14 +1043,26 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
                     </div>
                     <Textarea
                         id="alamat"
-                        {...register('alamat', {
-                            onChange: (e) => {
-                                setValue('dusun', e.target.value);
-                            }
-                        })}
+                        {...register('alamat')}
                         placeholder="Contoh: Kp. Cihampelas No. 11 atau Jl. Merdeka No. 45..."
                         disabled={isViewMode}
                         className="text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl min-h-[80px]"
+                    />
+                </div>
+
+                {/* DUSUN / LINGKUNGAN (OPSIONAL) */}
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="dusun" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            Dusun / Lingkungan (Opsional)
+                        </Label>
+                    </div>
+                    <Input
+                        id="dusun"
+                        {...register('dusun')}
+                        placeholder="Contoh: Dusun Krajan..."
+                        disabled={isViewMode}
+                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
                     />
                 </div>
 

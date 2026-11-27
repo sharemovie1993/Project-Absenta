@@ -531,9 +531,17 @@ export const SiswaProfileTab: React.FC<SiswaProfileTabProps> = ({
               <span className="text-slate-400 font-mono block mt-0.5">{renderValueOrUnconnectedBadge(siswaProfile?.no_hp_ibu || siswaProfile?.nik_ibu)}</span>
             </div>
             <div>
-              <span className="text-slate-400 block font-medium">Nama Wali & No. HP</span>
-              <span className="font-bold text-slate-800 dark:text-slate-200 block">{renderValueOrUnconnectedBadge(siswaProfile?.nama_wali)}</span>
-              <span className="text-slate-400 font-mono block mt-0.5">{renderValueOrUnconnectedBadge(siswaProfile?.no_hp_wali || siswaProfile?.hubungan_wali)}</span>
+              <span className="text-slate-400 block font-medium">Nama Wali & No. HP (Opsional)</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200 block">
+                {siswaProfile?.nama_wali && String(siswaProfile.nama_wali).trim()
+                  ? siswaProfile.nama_wali
+                  : <span className="text-slate-400 font-normal italic">Tidak Menggunakan Wali</span>}
+              </span>
+              {siswaProfile?.nama_wali && String(siswaProfile.nama_wali).trim() ? (
+                <span className="text-slate-400 font-mono block mt-0.5">
+                  {renderValueOrUnconnectedBadge(siswaProfile?.no_hp_wali || siswaProfile?.hubungan_wali)}
+                </span>
+              ) : null}
             </div>
           </div>
         </div>

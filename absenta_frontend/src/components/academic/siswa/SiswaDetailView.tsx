@@ -46,7 +46,16 @@ import { cn, resolveProfilePhotoUrl } from '../../../lib/utils';
 import { FieldDocumentTrigger } from '../../documents/FieldDocumentTrigger';
 import { normalizeStudentIdentity } from '@/utils/academic/academicIdentityNormalizer';
 import { SelfMemberDocsSection } from '../../documents/SelfMemberDocsSection';
-import { getKelasForDropdown, type DropdownOption } from '../../../api/dropdown.api';
+import { 
+  getKelasForDropdown, 
+  PEKERJAAN_OPTIONS,
+  PENDIDIKAN_OPTIONS,
+  PENGHASILAN_OPTIONS,
+  HUBUNGAN_WALI_OPTIONS,
+  TRANSPORTASI_OPTIONS,
+  AGAMA_OPTIONS,
+  type DropdownOption 
+} from '../../../api/dropdown.api';
 import { SiswaTimelineAndExitTab } from './SiswaTimelineAndExitTab';
 import { SiswaHistory } from './SiswaHistory';
 import { History, FileText, Activity } from 'lucide-react';
@@ -219,16 +228,28 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
   const [editTanggalMasuk, setEditTanggalMasuk] = useState('');
   const [editTanggalKeluar, setEditTanggalKeluar] = useState('');
   
-  // Orang Tua
+  // Orang Tua & Wali
   const [editNamaAyah, setEditNamaAyah] = useState('');
   const [editNikAyah, setEditNikAyah] = useState('');
   const [editNoHpAyah, setEditNoHpAyah] = useState('');
+  const [editPekerjaanAyah, setEditPekerjaanAyah] = useState('');
+  const [editPendidikanAyah, setEditPendidikanAyah] = useState('');
+  const [editPenghasilanAyah, setEditPenghasilanAyah] = useState('');
   const [editNamaIbu, setEditNamaIbu] = useState('');
   const [editNikIbu, setEditNikIbu] = useState('');
   const [editNoHpIbu, setEditNoHpIbu] = useState('');
+  const [editPekerjaanIbu, setEditPekerjaanIbu] = useState('');
+  const [editPendidikanIbu, setEditPendidikanIbu] = useState('');
+  const [editPenghasilanIbu, setEditPenghasilanIbu] = useState('');
   const [editNamaWali, setEditNamaWali] = useState('');
+  const [editNikWali, setEditNikWali] = useState('');
   const [editNoHpWali, setEditNoHpWali] = useState('');
+  const [editHubunganWali, setEditHubunganWali] = useState('');
+  const [editPekerjaanWali, setEditPekerjaanWali] = useState('');
+  const [editPenghasilanWali, setEditPenghasilanWali] = useState('');
   const [editAlamatOrtu, setEditAlamatOrtu] = useState('');
+  const [editHobi, setEditHobi] = useState('');
+  const [editCitaCita, setEditCitaCita] = useState('');
 
   // Alamat
   const [editAlamat, setEditAlamat] = useState('');
@@ -269,6 +290,26 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
         }
       };
 
+      const matchOptionLabel = (val: string | null | undefined, options: Array<{ value: string; label: string }>): string => {
+        if (!val) return '';
+        const cleanVal = String(val).trim().toLowerCase();
+        const byLabel = options.find(o => o.label.toLowerCase() === cleanVal);
+        if (byLabel) return byLabel.label;
+        const byValue = options.find(o => o.value.toLowerCase() === cleanVal);
+        if (byValue) return byValue.label;
+        const normVal = cleanVal.replace(/[\s\-_]+/g, '');
+        const byNorm = options.find(o =>
+          o.label.toLowerCase().replace(/[\s\-_]+/g, '') === normVal ||
+          o.value.toLowerCase().replace(/[\s\-_]+/g, '') === normVal
+        );
+        if (byNorm) return byNorm.label;
+        return val;
+      };
+
+      const hasValidWali = Boolean(siswa.nama_wali && String(siswa.nama_wali).trim());
+      const cleanAlamat = siswa.alamat || '';
+      const cleanDusun = siswa.dusun && siswa.dusun !== cleanAlamat ? siswa.dusun : '';
+
       setEditNamaSiswa(siswa.nama_siswa || '');
       setEditNis(siswa.nis || '');
       setEditNisn(siswa.nisn || '');
@@ -278,10 +319,12 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
       setEditJenisKelamin(siswa.jenis_kelamin || 'L');
       setEditTempatLahir(siswa.tempat_lahir || '');
       setEditTanggalLahir(formatDateForInput(siswa.tanggal_lahir));
-      setEditAgama((siswa as any).agama || 'ISLAM');
+      setEditAgama(matchOptionLabel((siswa as any).agama, AGAMA_OPTIONS) || 'Islam');
       setEditTinggiBadan(siswa.tinggi_badan ? String(siswa.tinggi_badan) : '');
       setEditBeratBadan(siswa.berat_badan ? String(siswa.berat_badan) : '');
       setEditAnakKe(siswa.anak_ke ? String(siswa.anak_ke) : '');
+      setEditHobi((siswa as any).hobi || '');
+      setEditCitaCita((siswa as any).cita_cita || '');
       setEditStatus(siswa.status || 'AKTIF');
       setEditKelasId(siswa.kelas_id || (siswa as any).Kelas?.id || '');
       setEditSekolahAsal(siswa.sekolah_asal || '');
@@ -292,18 +335,28 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
       setEditNamaAyah(siswa.nama_ayah || '');
       setEditNikAyah(siswa.nik_ayah || '');
       setEditNoHpAyah(siswa.no_hp_ayah || '');
+      setEditPekerjaanAyah(matchOptionLabel(siswa.pekerjaan_ayah, PEKERJAAN_OPTIONS));
+      setEditPendidikanAyah(matchOptionLabel(siswa.pendidikan_ayah, PENDIDIKAN_OPTIONS));
+      setEditPenghasilanAyah(matchOptionLabel(siswa.penghasilan_ayah, PENGHASILAN_OPTIONS));
       setEditNamaIbu(siswa.nama_ibu || '');
       setEditNikIbu(siswa.nik_ibu || '');
       setEditNoHpIbu(siswa.no_hp_ibu || '');
-      setEditNamaWali(siswa.nama_wali || '');
-      setEditNoHpWali(siswa.no_hp_wali || '');
+      setEditPekerjaanIbu(matchOptionLabel(siswa.pekerjaan_ibu, PEKERJAAN_OPTIONS));
+      setEditPendidikanIbu(matchOptionLabel(siswa.pendidikan_ibu, PENDIDIKAN_OPTIONS));
+      setEditPenghasilanIbu(matchOptionLabel(siswa.penghasilan_ibu, PENGHASILAN_OPTIONS));
+      setEditNamaWali(hasValidWali ? (siswa.nama_wali || '') : '');
+      setEditNikWali(hasValidWali ? (siswa.nik_wali || '') : '');
+      setEditNoHpWali(hasValidWali ? (siswa.no_hp_wali || '') : '');
+      setEditHubunganWali(hasValidWali ? matchOptionLabel(siswa.hubungan_wali, HUBUNGAN_WALI_OPTIONS) : '');
+      setEditPekerjaanWali(hasValidWali ? matchOptionLabel(siswa.pekerjaan_wali, PEKERJAAN_OPTIONS) : '');
+      setEditPenghasilanWali(hasValidWali ? matchOptionLabel(siswa.penghasilan_wali, PENGHASILAN_OPTIONS) : '');
       setEditAlamatOrtu((siswa as any).alamat_ortu || '');
 
-      setNoHpOrtu(siswa.no_hp_ortu || siswa.no_hp || '');
+      setNoHpOrtu(siswa.no_hp_ortu || '');
       setEmailSiswa((siswa as any).email || '');
 
-      setEditAlamat(siswa.alamat || '');
-      setEditDusun(siswa.dusun || '');
+      setEditAlamat(cleanAlamat);
+      setEditDusun(cleanDusun);
       setEditKelurahan(siswa.kelurahan || '');
       setEditKecamatan(siswa.kecamatan || '');
       setEditKabupaten(siswa.kabupaten || '');
@@ -311,7 +364,7 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
       setEditRt(siswa.rt || '');
       setEditRw(siswa.rw || '');
       setEditKodePos(siswa.kode_pos || '');
-      setEditTransportasi(siswa.transportasi || '');
+      setEditTransportasi(matchOptionLabel(siswa.transportasi, TRANSPORTASI_OPTIONS));
     }
   }, [siswa]);
 
@@ -346,9 +399,12 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
           tempat_lahir: editTempatLahir ? editTempatLahir.trim() : null,
           tanggal_lahir: editTanggalLahir || null,
           nik: editNik ? editNik.trim() : null,
+          no_kk: editNoKk ? editNoKk.trim() : null,
           tinggi_badan: editTinggiBadan && !isNaN(Number(editTinggiBadan)) ? Number(editTinggiBadan) : null,
           berat_badan: editBeratBadan && !isNaN(Number(editBeratBadan)) ? Number(editBeratBadan) : null,
           anak_ke: editAnakKe && !isNaN(Number(editAnakKe)) ? Number(editAnakKe) : null,
+          hobi: editHobi ? editHobi.trim() : null,
+          cita_cita: editCitaCita ? editCitaCita.trim() : null,
         };
       } else if (activeEditSection === 'akademik') {
         payload = {
@@ -362,15 +418,26 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
           tanggal_keluar: editTanggalKeluar || null,
         };
       } else if (activeEditSection === 'orangtua') {
+        const hasWali = Boolean(editNamaWali && editNamaWali.trim());
         payload = {
           nama_ayah: editNamaAyah ? editNamaAyah.trim() : null,
           nik_ayah: editNikAyah ? editNikAyah.trim() : null,
           no_hp_ayah: editNoHpAyah ? editNoHpAyah.trim() : null,
+          pekerjaan_ayah: editPekerjaanAyah ? editPekerjaanAyah.trim() : null,
+          pendidikan_ayah: editPendidikanAyah ? editPendidikanAyah.trim() : null,
+          penghasilan_ayah: editPenghasilanAyah ? editPenghasilanAyah.trim() : null,
           nama_ibu: editNamaIbu ? editNamaIbu.trim() : null,
           nik_ibu: editNikIbu ? editNikIbu.trim() : null,
           no_hp_ibu: editNoHpIbu ? editNoHpIbu.trim() : null,
-          nama_wali: editNamaWali ? editNamaWali.trim() : null,
-          no_hp_wali: editNoHpWali ? editNoHpWali.trim() : null,
+          pekerjaan_ibu: editPekerjaanIbu ? editPekerjaanIbu.trim() : null,
+          pendidikan_ibu: editPendidikanIbu ? editPendidikanIbu.trim() : null,
+          penghasilan_ibu: editPenghasilanIbu ? editPenghasilanIbu.trim() : null,
+          nama_wali: hasWali ? editNamaWali.trim() : null,
+          nik_wali: hasWali && editNikWali ? editNikWali.trim() : null,
+          no_hp_wali: hasWali && editNoHpWali ? editNoHpWali.trim() : null,
+          hubungan_wali: hasWali && editHubunganWali ? editHubunganWali.trim() : null,
+          pekerjaan_wali: hasWali && editPekerjaanWali ? editPekerjaanWali.trim() : null,
+          penghasilan_wali: hasWali && editPenghasilanWali ? editPenghasilanWali.trim() : null,
           no_hp_ortu: noHpOrtu ? noHpOrtu.trim() : null,
           alamat_ortu: editAlamatOrtu ? editAlamatOrtu.trim() : null,
         };
@@ -1220,19 +1287,35 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
 
           <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Nama Ayah</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Nama Ayah Kandung</p>
               <p className="font-extrabold text-slate-800 dark:text-slate-200 mt-0.5">{editNamaAyah || '-'}</p>
+              {editPekerjaanAyah && <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">💼 {editPekerjaanAyah}</p>}
               {editNoHpAyah && <p className="text-[11px] font-mono text-slate-500 mt-0.5">📞 {editNoHpAyah}</p>}
             </div>
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase">Nama Ibu Kandung</p>
               <p className="font-extrabold text-slate-800 dark:text-slate-200 mt-0.5">{editNamaIbu || '-'}</p>
+              {editPekerjaanIbu && <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">💼 {editPekerjaanIbu}</p>}
               {editNoHpIbu && <p className="text-[11px] font-mono text-slate-500 mt-0.5">📞 {editNoHpIbu}</p>}
             </div>
             <div className="col-span-2 pt-1 border-t border-slate-100 dark:border-slate-800/80">
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Nama Wali (Jika Ada)</p>
-              <p className="font-bold text-slate-800 dark:text-slate-200 mt-0.5">{editNamaWali || '-'}</p>
-              {editNoHpWali && <p className="text-[11px] font-mono text-slate-500 mt-0.5">📞 {editNoHpWali}</p>}
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Nama Wali (Opsional — Jika Ada)</p>
+              <p className="font-bold text-slate-800 dark:text-slate-200 mt-0.5">
+                {editNamaWali && editNamaWali.trim() ? (
+                  <>
+                    {editNamaWali}
+                    {editHubunganWali ? <span className="text-[11px] font-normal text-slate-500"> ({editHubunganWali})</span> : null}
+                  </>
+                ) : (
+                  <span className="text-slate-400 font-normal italic">Tidak Menggunakan Wali</span>
+                )}
+              </p>
+              {editNamaWali && editNamaWali.trim() && editPekerjaanWali && (
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">💼 {editPekerjaanWali}</p>
+              )}
+              {editNamaWali && editNamaWali.trim() && editNoHpWali && (
+                <p className="text-[11px] font-mono text-slate-500 mt-0.5">📞 {editNoHpWali}</p>
+              )}
             </div>
             <div className="col-span-2 pt-1 border-t border-slate-100 dark:border-slate-800/80">
               <p className="text-[10px] font-bold text-slate-400 uppercase">Alamat Orang Tua</p>
@@ -1588,6 +1671,27 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
                   />
                 </div>
               </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="editHobi">Hobi / Kegemaran</Label>
+                  <Input
+                    id="editHobi"
+                    value={editHobi}
+                    onChange={(e) => setEditHobi(e.target.value)}
+                    placeholder="Contoh: Membaca, Olahraga..."
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="editCitaCita">Cita-cita</Label>
+                  <Input
+                    id="editCitaCita"
+                    value={editCitaCita}
+                    onChange={(e) => setEditCitaCita(e.target.value)}
+                    placeholder="Contoh: TNI, Dokter, Programmer..."
+                  />
+                </div>
+              </div>
             </div>
           )}
 
@@ -1702,119 +1806,364 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
             </div>
           )}
 
-          {/* Section: Orang Tua */}
+          {/* Section: Orang Tua & Wali */}
           {activeEditSection === 'orangtua' && (
-            <div className="space-y-3.5">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <Label htmlFor="editNamaAyah">Nama Ayah</Label>
-                  <Input
-                    id="editNamaAyah"
-                    value={editNamaAyah}
-                    onChange={(e) => setEditNamaAyah(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="editNikAyah">NIK Ayah</Label>
-                  <Input
-                    id="editNikAyah"
-                    value={editNikAyah}
-                    onChange={(e) => setEditNikAyah(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="editNoHpAyah">No. HP Ayah</Label>
-                  <Input
-                    id="editNoHpAyah"
-                    value={editNoHpAyah}
-                    onChange={(e) => setEditNoHpAyah(e.target.value)}
-                  />
+            <div className="space-y-4">
+              {/* Data Ayah Kandung */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 space-y-3">
+                <p className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                  Data Ayah Kandung
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="editNamaAyah">Nama Ayah</Label>
+                    <Input
+                      id="editNamaAyah"
+                      value={editNamaAyah}
+                      onChange={(e) => setEditNamaAyah(e.target.value)}
+                      placeholder="Nama lengkap ayah..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="editNikAyah">NIK Ayah (16 Digit)</Label>
+                    <Input
+                      id="editNikAyah"
+                      maxLength={16}
+                      value={editNikAyah}
+                      onChange={(e) => setEditNikAyah(e.target.value)}
+                      placeholder="16 digit NIK ayah..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="editNoHpAyah">No. HP / WA Ayah</Label>
+                    <Input
+                      id="editNoHpAyah"
+                      value={editNoHpAyah}
+                      onChange={(e) => setEditNoHpAyah(e.target.value)}
+                      placeholder="08xxxx..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="editPekerjaanAyah">Pekerjaan Ayah</Label>
+                    <select
+                      id="editPekerjaanAyah"
+                      value={editPekerjaanAyah}
+                      onChange={(e) => setEditPekerjaanAyah(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 font-semibold text-xs text-slate-800 dark:text-slate-100"
+                    >
+                      <option value="">-- Pilih Pekerjaan Ayah --</option>
+                      {PEKERJAAN_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.label}>{opt.label}</option>
+                      ))}
+                      {editPekerjaanAyah && !PEKERJAAN_OPTIONS.some((o) => o.label.toLowerCase() === editPekerjaanAyah.toLowerCase()) && (
+                        <option value={editPekerjaanAyah}>{editPekerjaanAyah}</option>
+                      )}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="editPendidikanAyah">Pendidikan Ayah</Label>
+                    <select
+                      id="editPendidikanAyah"
+                      value={editPendidikanAyah}
+                      onChange={(e) => setEditPendidikanAyah(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 font-semibold text-xs text-slate-800 dark:text-slate-100"
+                    >
+                      <option value="">-- Pilih Pendidikan Ayah --</option>
+                      {PENDIDIKAN_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.label}>{opt.label}</option>
+                      ))}
+                      {editPendidikanAyah && !PENDIDIKAN_OPTIONS.some((o) => o.label.toLowerCase() === editPendidikanAyah.toLowerCase()) && (
+                        <option value={editPendidikanAyah}>{editPendidikanAyah}</option>
+                      )}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="editPenghasilanAyah">Penghasilan Ayah</Label>
+                    <select
+                      id="editPenghasilanAyah"
+                      value={editPenghasilanAyah}
+                      onChange={(e) => setEditPenghasilanAyah(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 font-semibold text-xs text-slate-800 dark:text-slate-100"
+                    >
+                      <option value="">-- Pilih Penghasilan Ayah --</option>
+                      {PENGHASILAN_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.label}>{opt.label}</option>
+                      ))}
+                      {editPenghasilanAyah && !PENGHASILAN_OPTIONS.some((o) => o.label.toLowerCase() === editPenghasilanAyah.toLowerCase()) && (
+                        <option value={editPenghasilanAyah}>{editPenghasilanAyah}</option>
+                      )}
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <Label htmlFor="editNamaIbu">Nama Ibu Kandung</Label>
-                  <Input
-                    id="editNamaIbu"
-                    value={editNamaIbu}
-                    onChange={(e) => setEditNamaIbu(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="editNikIbu">NIK Ibu</Label>
-                  <Input
-                    id="editNikIbu"
-                    value={editNikIbu}
-                    onChange={(e) => setEditNikIbu(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="editNoHpIbu">No. HP Ibu</Label>
-                  <Input
-                    id="editNoHpIbu"
-                    value={editNoHpIbu}
-                    onChange={(e) => setEditNoHpIbu(e.target.value)}
-                  />
+              {/* Data Ibu Kandung */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 space-y-3">
+                <p className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                  Data Ibu Kandung
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="editNamaIbu">Nama Ibu Kandung</Label>
+                    <Input
+                      id="editNamaIbu"
+                      value={editNamaIbu}
+                      onChange={(e) => setEditNamaIbu(e.target.value)}
+                      placeholder="Nama lengkap ibu..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="editNikIbu">NIK Ibu (16 Digit)</Label>
+                    <Input
+                      id="editNikIbu"
+                      maxLength={16}
+                      value={editNikIbu}
+                      onChange={(e) => setEditNikIbu(e.target.value)}
+                      placeholder="16 digit NIK ibu..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="editNoHpIbu">No. HP / WA Ibu</Label>
+                    <Input
+                      id="editNoHpIbu"
+                      value={editNoHpIbu}
+                      onChange={(e) => setEditNoHpIbu(e.target.value)}
+                      placeholder="08xxxx..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="editPekerjaanIbu">Pekerjaan Ibu</Label>
+                    <select
+                      id="editPekerjaanIbu"
+                      value={editPekerjaanIbu}
+                      onChange={(e) => setEditPekerjaanIbu(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 font-semibold text-xs text-slate-800 dark:text-slate-100"
+                    >
+                      <option value="">-- Pilih Pekerjaan Ibu --</option>
+                      {PEKERJAAN_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.label}>{opt.label}</option>
+                      ))}
+                      {editPekerjaanIbu && !PEKERJAAN_OPTIONS.some((o) => o.label.toLowerCase() === editPekerjaanIbu.toLowerCase()) && (
+                        <option value={editPekerjaanIbu}>{editPekerjaanIbu}</option>
+                      )}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="editPendidikanIbu">Pendidikan Ibu</Label>
+                    <select
+                      id="editPendidikanIbu"
+                      value={editPendidikanIbu}
+                      onChange={(e) => setEditPendidikanIbu(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 font-semibold text-xs text-slate-800 dark:text-slate-100"
+                    >
+                      <option value="">-- Pilih Pendidikan Ibu --</option>
+                      {PENDIDIKAN_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.label}>{opt.label}</option>
+                      ))}
+                      {editPendidikanIbu && !PENDIDIKAN_OPTIONS.some((o) => o.label.toLowerCase() === editPendidikanIbu.toLowerCase()) && (
+                        <option value={editPendidikanIbu}>{editPendidikanIbu}</option>
+                      )}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="editPenghasilanIbu">Penghasilan Ibu</Label>
+                    <select
+                      id="editPenghasilanIbu"
+                      value={editPenghasilanIbu}
+                      onChange={(e) => setEditPenghasilanIbu(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 font-semibold text-xs text-slate-800 dark:text-slate-100"
+                    >
+                      <option value="">-- Pilih Penghasilan Ibu --</option>
+                      {PENGHASILAN_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.label}>{opt.label}</option>
+                      ))}
+                      {editPenghasilanIbu && !PENGHASILAN_OPTIONS.some((o) => o.label.toLowerCase() === editPenghasilanIbu.toLowerCase()) && (
+                        <option value={editPenghasilanIbu}>{editPenghasilanIbu}</option>
+                      )}
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div className="space-y-1">
-                  <Label htmlFor="editNamaWali">Nama Wali</Label>
-                  <Input
-                    id="editNamaWali"
-                    value={editNamaWali}
-                    onChange={(e) => setEditNamaWali(e.target.value)}
-                  />
+              {/* Data Wali (Opsional - Terpisah dari Orang Tua) */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 space-y-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div>
+                    <p className="text-[11px] font-extrabold uppercase tracking-wider text-purple-600 dark:text-purple-400">
+                      Data Wali Murid (Opsional — Isi Hanya Jika Tinggal Bersama Wali)
+                    </p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                      Kosongkan jika siswa tinggal bersama Orang Tua kandung.
+                    </p>
+                  </div>
+                  {(editNamaWali || editNikWali || editNoHpWali || editHubunganWali || editPekerjaanWali || editPenghasilanWali) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditNamaWali('');
+                        setEditNikWali('');
+                        setEditNoHpWali('');
+                        setEditHubunganWali('');
+                        setEditPekerjaanWali('');
+                        setEditPenghasilanWali('');
+                      }}
+                      className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 border border-rose-200 dark:border-rose-800 transition-colors cursor-pointer"
+                    >
+                      Kosongkan Data Wali
+                    </button>
+                  )}
                 </div>
-                <div className="space-y-1">
-                  <Label htmlFor="editNoHpWali">No. HP Wali</Label>
-                  <Input
-                    id="editNoHpWali"
-                    value={editNoHpWali}
-                    onChange={(e) => setEditNoHpWali(e.target.value)}
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="editNamaWali">Nama Wali</Label>
+                    <Input
+                      id="editNamaWali"
+                      value={editNamaWali}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditNamaWali(val);
+                        if (!val.trim()) {
+                          setEditNikWali('');
+                          setEditNoHpWali('');
+                          setEditHubunganWali('');
+                          setEditPekerjaanWali('');
+                          setEditPenghasilanWali('');
+                        }
+                      }}
+                      placeholder="Nama lengkap wali (jika ada)..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="editNikWali">NIK Wali (16 Digit)</Label>
+                    <Input
+                      id="editNikWali"
+                      maxLength={16}
+                      value={editNikWali}
+                      disabled={!editNamaWali.trim()}
+                      onChange={(e) => setEditNikWali(e.target.value)}
+                      placeholder={editNamaWali.trim() ? '16 digit NIK wali...' : 'Isi Nama Wali dulu'}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="editHubunganWali">Hubungan Dengan Siswa</Label>
+                    <select
+                      id="editHubunganWali"
+                      value={editHubunganWali}
+                      disabled={!editNamaWali.trim()}
+                      onChange={(e) => setEditHubunganWali(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 font-semibold text-xs text-slate-800 dark:text-slate-100 disabled:opacity-50"
+                    >
+                      <option value="">-- Pilih Hubungan --</option>
+                      {HUBUNGAN_WALI_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.label}>{opt.label}</option>
+                      ))}
+                      {editHubunganWali && !HUBUNGAN_WALI_OPTIONS.some((o) => o.label.toLowerCase() === editHubunganWali.toLowerCase()) && (
+                        <option value={editHubunganWali}>{editHubunganWali}</option>
+                      )}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="editNoHpWali">No. HP / WA Wali</Label>
+                    <Input
+                      id="editNoHpWali"
+                      value={editNoHpWali}
+                      disabled={!editNamaWali.trim()}
+                      onChange={(e) => setEditNoHpWali(e.target.value)}
+                      placeholder={editNamaWali.trim() ? '08xxxx...' : 'Isi Nama Wali dulu'}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="editPekerjaanWali">Pekerjaan Wali</Label>
+                    <select
+                      id="editPekerjaanWali"
+                      value={editPekerjaanWali}
+                      disabled={!editNamaWali.trim()}
+                      onChange={(e) => setEditPekerjaanWali(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 font-semibold text-xs text-slate-800 dark:text-slate-100 disabled:opacity-50"
+                    >
+                      <option value="">-- Pilih Pekerjaan Wali --</option>
+                      {PEKERJAAN_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.label}>{opt.label}</option>
+                      ))}
+                      {editPekerjaanWali && !PEKERJAAN_OPTIONS.some((o) => o.label.toLowerCase() === editPekerjaanWali.toLowerCase()) && (
+                        <option value={editPekerjaanWali}>{editPekerjaanWali}</option>
+                      )}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="editPenghasilanWali">Penghasilan Wali</Label>
+                    <select
+                      id="editPenghasilanWali"
+                      value={editPenghasilanWali}
+                      disabled={!editNamaWali.trim()}
+                      onChange={(e) => setEditPenghasilanWali(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 font-semibold text-xs text-slate-800 dark:text-slate-100 disabled:opacity-50"
+                    >
+                      <option value="">-- Pilih Penghasilan Wali --</option>
+                      {PENGHASILAN_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.label}>{opt.label}</option>
+                      ))}
+                      {editPenghasilanWali && !PENGHASILAN_OPTIONS.some((o) => o.label.toLowerCase() === editPenghasilanWali.toLowerCase()) && (
+                        <option value={editPenghasilanWali}>{editPenghasilanWali}</option>
+                      )}
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div className="flex items-center justify-between gap-2">
-                  <Label htmlFor="editAlamatOrtu">Alamat Orang Tua</Label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const fullAddress = [
-                        editAlamat,
-                        editRt && editRw ? `RT ${editRt}/RW ${editRw}` : '',
-                        editDusun,
-                        editKelurahan,
-                        editKecamatan,
-                        editKabupaten,
-                        editProvinsi,
-                        editKodePos,
-                      ]
-                        .map((s) => (s || '').trim())
-                        .filter(Boolean)
-                        .join(', ');
-                      if (!fullAddress) {
-                        toast.error('Alamat siswa belum diisi');
-                        return;
-                      }
-                      setEditAlamatOrtu(fullAddress);
-                    }}
-                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 transition-colors cursor-pointer"
-                  >
-                    Sama Dengan Siswa
-                  </button>
+              {/* Kontak & Alamat Orang Tua */}
+              <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="space-y-1">
+                  <Label htmlFor="editNoHpOrtuModal">No. Telepon Rumah / Kontak Darurat Orang Tua</Label>
+                  <Input
+                    id="editNoHpOrtuModal"
+                    value={noHpOrtu}
+                    onChange={(e) => setNoHpOrtu(e.target.value)}
+                    placeholder="Contoh: 0812xxxx (Kontak utama orang tua)..."
+                  />
                 </div>
-                <Textarea
-                  id="editAlamatOrtu"
-                  value={editAlamatOrtu}
-                  onChange={(e) => setEditAlamatOrtu(e.target.value)}
-                  placeholder="Alamat lengkap orang tua (untuk biodata rapor)..."
-                  rows={2}
-                />
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="editAlamatOrtu">Alamat Orang Tua (Biodata Rapor)</Label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const cleanDusunPart =
+                          editDusun && editDusun.trim() !== editAlamat.trim()
+                            ? editDusun
+                            : '';
+                        const fullAddress = [
+                          editAlamat,
+                          editRt && editRw ? `RT ${editRt}/RW ${editRw}` : '',
+                          cleanDusunPart,
+                          editKelurahan,
+                          editKecamatan,
+                          editKabupaten,
+                          editProvinsi,
+                          editKodePos,
+                        ]
+                          .map((s) => (s || '').trim())
+                          .filter(Boolean)
+                          .join(', ');
+                        if (!fullAddress) {
+                          toast.error('Alamat siswa belum diisi');
+                          return;
+                        }
+                        setEditAlamatOrtu(fullAddress);
+                      }}
+                      className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 transition-colors cursor-pointer"
+                    >
+                      Sama Dengan Siswa
+                    </button>
+                  </div>
+                  <Textarea
+                    id="editAlamatOrtu"
+                    value={editAlamatOrtu}
+                    onChange={(e) => setEditAlamatOrtu(e.target.value)}
+                    placeholder="Alamat lengkap orang tua (untuk biodata rapor)..."
+                    rows={2}
+                  />
+                </div>
               </div>
             </div>
           )}

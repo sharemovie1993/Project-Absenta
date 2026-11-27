@@ -34,6 +34,8 @@ import {
   AGAMA_OPTIONS, 
   TRANSPORTASI_OPTIONS, 
   PEKERJAAN_OPTIONS, 
+  PENDIDIKAN_OPTIONS,
+  PENGHASILAN_OPTIONS,
   HUBUNGAN_WALI_OPTIONS,
   PROVINSI_INDONESIA_OPTIONS,
   getProvinsiOptions,
@@ -287,10 +289,14 @@ export const SiswaOnboardingModal: React.FC<SiswaOnboardingModalProps> = ({
     jenis_kelamin: 'L',
     no_hp: '',
     tinggi_badan: '' as number | string,
+    tinggi_badan: '' as number | string,
     berat_badan: '' as number | string,
+    anak_ke: '' as number | string,
     agama: 'Islam',
     hobi: '',
     cita_cita: '',
+    sekolah_asal: '',
+    no_ijazah_smp: '',
 
     alamat: '',
     dusun: '',
@@ -311,13 +317,22 @@ export const SiswaOnboardingModal: React.FC<SiswaOnboardingModalProps> = ({
     nama_ayah: '',
     nik_ayah: '',
     pekerjaan_ayah: '',
+    pendidikan_ayah: '',
+    penghasilan_ayah: '',
     no_hp_ayah: '',
     nama_ibu: '',
     nik_ibu: '',
     pekerjaan_ibu: '',
+    pendidikan_ibu: '',
+    penghasilan_ibu: '',
     no_hp_ibu: '',
     nama_wali: '',
+    nik_wali: '',
     hubungan_wali: '',
+    pekerjaan_wali: '',
+    penghasilan_wali: '',
+    no_hp_wali: '',
+    no_hp_ortu: '',
     alamat_ortu: '',
   });
 
@@ -376,6 +391,9 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
 // Populate data when modal opens
   useEffect(() => {
     if (siswa) {
+      const hasValidWali = Boolean(siswa.nama_wali && String(siswa.nama_wali).trim());
+      const cleanAlamat = siswa.alamat || '';
+      const cleanDusun = siswa.dusun && siswa.dusun !== cleanAlamat ? siswa.dusun : '';
       setFormData({
         nik: siswa.nik || '',
         nisn: siswa.nisn || '',
@@ -385,12 +403,15 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
         no_hp: siswa.no_hp || '',
         tinggi_badan: siswa.tinggi_badan ?? '',
         berat_badan: siswa.berat_badan ?? '',
+        anak_ke: (siswa as any).anak_ke ?? '',
         agama: matchOptionValue(siswa.agama, AGAMA_OPTIONS) || 'Islam',
         hobi: siswa.hobi || '',
         cita_cita: siswa.cita_cita || '',
+        sekolah_asal: (siswa as any).sekolah_asal || '',
+        no_ijazah_smp: (siswa as any).no_ijazah_smp || '',
 
-        alamat: siswa.alamat || '',
-        dusun: siswa.dusun || '',
+        alamat: cleanAlamat,
+        dusun: cleanDusun,
         kelurahan: siswa.kelurahan || '',
         kecamatan: siswa.kecamatan || '',
         kabupaten: siswa.kabupaten || '',
@@ -408,16 +429,22 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
         nama_ayah: siswa.nama_ayah || '',
         nik_ayah: siswa.nik_ayah || '',
         pekerjaan_ayah: matchOptionValue(siswa.pekerjaan_ayah, PEKERJAAN_OPTIONS),
+        pendidikan_ayah: matchOptionValue((siswa as any).pendidikan_ayah, PENDIDIKAN_OPTIONS),
+        penghasilan_ayah: matchOptionValue((siswa as any).penghasilan_ayah, PENGHASILAN_OPTIONS),
         no_hp_ayah: siswa.no_hp_ayah || '',
         nama_ibu: siswa.nama_ibu || '',
         nik_ibu: siswa.nik_ibu || '',
         pekerjaan_ibu: matchOptionValue(siswa.pekerjaan_ibu, PEKERJAAN_OPTIONS),
+        pendidikan_ibu: matchOptionValue((siswa as any).pendidikan_ibu, PENDIDIKAN_OPTIONS),
+        penghasilan_ibu: matchOptionValue((siswa as any).penghasilan_ibu, PENGHASILAN_OPTIONS),
         no_hp_ibu: siswa.no_hp_ibu || '',
-        nama_wali: siswa.nama_wali || '',
-        nik_wali: siswa.nik_wali || '',
-        hubungan_wali: matchOptionValue(siswa.hubungan_wali, HUBUNGAN_WALI_OPTIONS),
-        pekerjaan_wali: matchOptionValue(siswa.pekerjaan_wali, PEKERJAAN_OPTIONS),
-        no_hp_wali: siswa.no_hp_wali || '',
+        nama_wali: hasValidWali ? (siswa.nama_wali || '') : '',
+        nik_wali: hasValidWali ? (siswa.nik_wali || '') : '',
+        hubungan_wali: hasValidWali ? matchOptionValue(siswa.hubungan_wali, HUBUNGAN_WALI_OPTIONS) : '',
+        pekerjaan_wali: hasValidWali ? matchOptionValue(siswa.pekerjaan_wali, PEKERJAAN_OPTIONS) : '',
+        penghasilan_wali: hasValidWali ? matchOptionValue((siswa as any).penghasilan_wali, PENGHASILAN_OPTIONS) : '',
+        no_hp_wali: hasValidWali ? (siswa.no_hp_wali || '') : '',
+        no_hp_ortu: (siswa as any).no_hp_ortu || '',
         alamat_ortu: (siswa as any).alamat_ortu || '',
       });
       setSelectedPhotoFile(null);
@@ -433,12 +460,19 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
   const updateMutationMe = useUpdateSiswaMe();
 
   const getPreparedPayload = () => {
+    const hasWali = Boolean(formData.nama_wali && String(formData.nama_wali).trim());
     return {
       ...formData,
       tinggi_badan: formData.tinggi_badan === '' || formData.tinggi_badan === null ? null : Number(formData.tinggi_badan),
       berat_badan: formData.berat_badan === '' || formData.berat_badan === null ? null : Number(formData.berat_badan),
       anak_ke: formData.anak_ke === '' || formData.anak_ke === null ? null : Number(formData.anak_ke),
       tanggal_lahir: formData.tanggal_lahir || null,
+      nama_wali: hasWali ? String(formData.nama_wali).trim() : null,
+      nik_wali: hasWali ? (formData.nik_wali || null) : null,
+      hubungan_wali: hasWali ? (formData.hubungan_wali || null) : null,
+      pekerjaan_wali: hasWali ? (formData.pekerjaan_wali || null) : null,
+      penghasilan_wali: hasWali ? (formData.penghasilan_wali || null) : null,
+      no_hp_wali: hasWali ? (formData.no_hp_wali || null) : null,
     };
   };
 
@@ -840,6 +874,21 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
 
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
+                    <span>Anak Ke-</span>
+                    {renderFieldStatusBadge(formData.anak_ke)}
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={formData.anak_ke}
+                    onChange={e => setFormData({ ...formData, anak_ke: e.target.value })}
+                    placeholder="Contoh: 1"
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
                     <span>Agama</span>
                     {renderFieldStatusBadge(formData.agama)}
                   </label>
@@ -860,6 +909,34 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
 
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
+                    <span>Sekolah Asal (SMP / MTs)</span>
+                    {renderFieldStatusBadge(formData.sekolah_asal)}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.sekolah_asal}
+                    onChange={e => setFormData({ ...formData, sekolah_asal: e.target.value })}
+                    placeholder="Contoh: SMP Negeri 1 Plered..."
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
+                    <span>No. Ijazah SMP / MTs</span>
+                    {renderFieldStatusBadge(formData.no_ijazah_smp)}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.no_ijazah_smp}
+                    onChange={e => setFormData({ ...formData, no_ijazah_smp: e.target.value })}
+                    placeholder="Nomor seri ijazah SMP/MTs..."
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
                     <span>Hobi / Kegemaran</span>
                     {renderFieldStatusBadge(formData.hobi)}
                   </label>
@@ -872,7 +949,7 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
                   />
                 </div>
 
-                <div className="space-y-1.5 sm:col-span-2">
+                <div className="space-y-1.5">
                   <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
                     <span>Cita-cita</span>
                     {renderFieldStatusBadge(formData.cita_cita)}
@@ -1166,35 +1243,49 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
                 </div>
               </div>
 
-              {/* 5. ALAMAT JALAN / KAMPUNG / PATOKAN RUMAH */}
+              {/* 5. ALAMAT JALAN / KAMPUNG / PATOKAN RUMAH & DUSUN */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                   5. Alamat Jalan / Kampung / Patokan Rumah
                 </label>
                 <textarea
                   rows={2}
-                  value={formData.alamat || formData.dusun}
-                  onChange={e => setFormData({ ...formData, alamat: e.target.value, dusun: e.target.value })}
+                  value={formData.alamat}
+                  onChange={e => setFormData({ ...formData, alamat: e.target.value })}
                   placeholder="Contoh: Kp. Cihampelas No. 11 atau Jl. Merdeka No. 45..."
                   className="w-full p-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all resize-none"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">Moda Transportasi Ke Sekolah</label>
-                <select
-                  value={formData.transportasi}
-                  onChange={e => setFormData({ ...formData, transportasi: e.target.value })}
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-                >
-                  <option value="">-- Pilih Transportasi --</option>
-                  {TRANSPORTASI_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.label}>{opt.label}</option>
-                  ))}
-                  {formData.transportasi && !TRANSPORTASI_OPTIONS.some(o => o.label.toLowerCase() === formData.transportasi.toLowerCase() || o.value.toLowerCase() === formData.transportasi.toLowerCase()) && (
-                    <option value={formData.transportasi}>{formData.transportasi}</option>
-                  )}
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                    Dusun / Lingkungan (Opsional)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.dusun}
+                    onChange={e => setFormData({ ...formData, dusun: e.target.value })}
+                    placeholder="Contoh: Dusun Krajan..."
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">Moda Transportasi Ke Sekolah</label>
+                  <select
+                    value={formData.transportasi}
+                    onChange={e => setFormData({ ...formData, transportasi: e.target.value })}
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                  >
+                    <option value="">-- Pilih Transportasi --</option>
+                    {TRANSPORTASI_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.label}>{opt.label}</option>
+                    ))}
+                    {formData.transportasi && !TRANSPORTASI_OPTIONS.some(o => o.label.toLowerCase() === formData.transportasi.toLowerCase() || o.value.toLowerCase() === formData.transportasi.toLowerCase()) && (
+                      <option value={formData.transportasi}>{formData.transportasi}</option>
+                    )}
+                  </select>
+                </div>
               </div>
             </motion.div>
           )}
@@ -1226,6 +1317,17 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
                     />
                   </div>
                   <div className="space-y-1.5">
+                    <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">NIK Ayah (16 Digit)</label>
+                    <input
+                      type="text"
+                      maxLength={16}
+                      value={formData.nik_ayah}
+                      onChange={e => setFormData({ ...formData, nik_ayah: e.target.value })}
+                      placeholder="16 digit NIK ayah..."
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
                     <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">No. HP / WA Ayah</label>
                     <input
                       type="text"
@@ -1251,6 +1353,40 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
                       )}
                     </select>
                   </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">Pendidikan Ayah</label>
+                      <select
+                        value={formData.pendidikan_ayah}
+                        onChange={e => setFormData({ ...formData, pendidikan_ayah: e.target.value })}
+                        className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                      >
+                        <option value="">-- Pendidikan --</option>
+                        {PENDIDIKAN_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.label}>{opt.label}</option>
+                        ))}
+                        {formData.pendidikan_ayah && !PENDIDIKAN_OPTIONS.some(o => o.label.toLowerCase() === formData.pendidikan_ayah.toLowerCase() || o.value.toLowerCase() === formData.pendidikan_ayah.toLowerCase()) && (
+                          <option value={formData.pendidikan_ayah}>{formData.pendidikan_ayah}</option>
+                        )}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">Penghasilan Ayah</label>
+                      <select
+                        value={formData.penghasilan_ayah}
+                        onChange={e => setFormData({ ...formData, penghasilan_ayah: e.target.value })}
+                        className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                      >
+                        <option value="">-- Penghasilan --</option>
+                        {PENGHASILAN_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.label}>{opt.label}</option>
+                        ))}
+                        {formData.penghasilan_ayah && !PENGHASILAN_OPTIONS.some(o => o.label.toLowerCase() === formData.penghasilan_ayah.toLowerCase() || o.value.toLowerCase() === formData.penghasilan_ayah.toLowerCase()) && (
+                          <option value={formData.penghasilan_ayah}>{formData.penghasilan_ayah}</option>
+                        )}
+                      </select>
+                    </div>
+                  </div>
                 </div>
 
                 {/* IBU */}
@@ -1266,6 +1402,17 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
                       onChange={e => setFormData({ ...formData, nama_ibu: e.target.value })}
                       placeholder="Nama lengkap ibu..."
                       className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">NIK Ibu (16 Digit)</label>
+                    <input
+                      type="text"
+                      maxLength={16}
+                      value={formData.nik_ibu}
+                      onChange={e => setFormData({ ...formData, nik_ibu: e.target.value })}
+                      placeholder="16 digit NIK ibu..."
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -1294,30 +1441,118 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
                       )}
                     </select>
                   </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">Pendidikan Ibu</label>
+                      <select
+                        value={formData.pendidikan_ibu}
+                        onChange={e => setFormData({ ...formData, pendidikan_ibu: e.target.value })}
+                        className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                      >
+                        <option value="">-- Pendidikan --</option>
+                        {PENDIDIKAN_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.label}>{opt.label}</option>
+                        ))}
+                        {formData.pendidikan_ibu && !PENDIDIKAN_OPTIONS.some(o => o.label.toLowerCase() === formData.pendidikan_ibu.toLowerCase() || o.value.toLowerCase() === formData.pendidikan_ibu.toLowerCase()) && (
+                          <option value={formData.pendidikan_ibu}>{formData.pendidikan_ibu}</option>
+                        )}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">Penghasilan Ibu</label>
+                      <select
+                        value={formData.penghasilan_ibu}
+                        onChange={e => setFormData({ ...formData, penghasilan_ibu: e.target.value })}
+                        className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                      >
+                        <option value="">-- Penghasilan --</option>
+                        {PENGHASILAN_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.label}>{opt.label}</option>
+                        ))}
+                        {formData.penghasilan_ibu && !PENGHASILAN_OPTIONS.some(o => o.label.toLowerCase() === formData.penghasilan_ibu.toLowerCase() || o.value.toLowerCase() === formData.penghasilan_ibu.toLowerCase()) && (
+                          <option value={formData.penghasilan_ibu}>{formData.penghasilan_ibu}</option>
+                        )}
+                      </select>
+                    </div>
+                  </div>
                 </div>
 
-                {/* WALI MURID */}
+                {/* WALI MURID (OPSIONAL - TERPISAH DARI ORANG TUA) */}
                 <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-800 sm:col-span-2">
-                  <h4 className="font-extrabold text-xs uppercase tracking-wider text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
-                    <User size={14} /> Data Wali Murid (Opsional)
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div>
+                      <h4 className="font-extrabold text-xs uppercase tracking-wider text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
+                        <User size={14} /> Data Wali Murid (Opsional — Isi Hanya Jika Tinggal Bersama Wali)
+                      </h4>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Kosongkan bagian ini jika siswa tinggal bersama Orang Tua kandung.
+                      </p>
+                    </div>
+                    {(formData.nama_wali || formData.nik_wali || formData.no_hp_wali || formData.hubungan_wali || formData.pekerjaan_wali || formData.penghasilan_wali) && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormData({
+                            ...formData,
+                            nama_wali: '',
+                            nik_wali: '',
+                            hubungan_wali: '',
+                            no_hp_wali: '',
+                            pekerjaan_wali: '',
+                            penghasilan_wali: '',
+                          })
+                        }
+                        className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 border border-rose-200 dark:border-rose-800 transition-colors cursor-pointer"
+                      >
+                        Kosongkan Data Wali
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">Nama Wali</label>
                       <input
                         type="text"
                         value={formData.nama_wali}
-                        onChange={e => setFormData({ ...formData, nama_wali: e.target.value })}
+                        onChange={e => {
+                          const nextNama = e.target.value;
+                          if (!nextNama.trim()) {
+                            setFormData({
+                              ...formData,
+                              nama_wali: '',
+                              nik_wali: '',
+                              hubungan_wali: '',
+                              no_hp_wali: '',
+                              pekerjaan_wali: '',
+                              penghasilan_wali: '',
+                            });
+                          } else {
+                            setFormData({ ...formData, nama_wali: nextNama });
+                          }
+                        }}
                         placeholder="Nama lengkap wali (jika ada)..."
                         className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">NIK Wali (16 Digit)</label>
+                      <input
+                        type="text"
+                        maxLength={16}
+                        value={formData.nik_wali}
+                        disabled={!formData.nama_wali.trim()}
+                        onChange={e => setFormData({ ...formData, nik_wali: e.target.value })}
+                        placeholder={formData.nama_wali.trim() ? '16 digit NIK wali...' : 'Isi Nama Wali dulu'}
+                        className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono disabled:opacity-50"
                       />
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">Hubungan Dengan Siswa</label>
                       <select
                         value={formData.hubungan_wali}
+                        disabled={!formData.nama_wali.trim()}
                         onChange={e => setFormData({ ...formData, hubungan_wali: e.target.value })}
-                        className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                        className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all disabled:opacity-50"
                       >
                         <option value="">-- Pilih Hubungan --</option>
                         {HUBUNGAN_WALI_OPTIONS.map(opt => (
@@ -1333,17 +1568,19 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
                       <input
                         type="text"
                         value={formData.no_hp_wali}
+                        disabled={!formData.nama_wali.trim()}
                         onChange={e => setFormData({ ...formData, no_hp_wali: e.target.value })}
-                        placeholder="No HP / WhatsApp wali..."
-                        className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono"
+                        placeholder={formData.nama_wali.trim() ? 'No HP / WhatsApp wali...' : 'Isi Nama Wali dulu'}
+                        className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono disabled:opacity-50"
                       />
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">Pekerjaan Wali</label>
                       <select
                         value={formData.pekerjaan_wali}
+                        disabled={!formData.nama_wali.trim()}
                         onChange={e => setFormData({ ...formData, pekerjaan_wali: e.target.value })}
-                        className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                        className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all disabled:opacity-50"
                       >
                         <option value="">-- Pilih Pekerjaan Wali --</option>
                         {PEKERJAAN_OPTIONS.map(opt => (
@@ -1354,11 +1591,40 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
                         )}
                       </select>
                     </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">Penghasilan Wali</label>
+                      <select
+                        value={formData.penghasilan_wali}
+                        disabled={!formData.nama_wali.trim()}
+                        onChange={e => setFormData({ ...formData, penghasilan_wali: e.target.value })}
+                        className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all disabled:opacity-50"
+                      >
+                        <option value="">-- Pilih Penghasilan Wali --</option>
+                        {PENGHASILAN_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.label}>{opt.label}</option>
+                        ))}
+                        {formData.penghasilan_wali && !PENGHASILAN_OPTIONS.some(o => o.label.toLowerCase() === formData.penghasilan_wali.toLowerCase() || o.value.toLowerCase() === formData.penghasilan_wali.toLowerCase()) && (
+                          <option value={formData.penghasilan_wali}>{formData.penghasilan_wali}</option>
+                        )}
+                      </select>
+                    </div>
                   </div>
                 </div>
 
-                {/* ALAMAT ORANG TUA (UNTUK BIODATA RAPOR) */}
-                <div className="space-y-2.5 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-800 sm:col-span-2">
+                {/* ALAMAT & KONTAK ORANG TUA (UNTUK BIODATA RAPOR) */}
+                <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-800 sm:col-span-2">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                      No. Telepon Rumah / Kontak Darurat Orang Tua
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.no_hp_ortu}
+                      onChange={e => setFormData({ ...formData, no_hp_ortu: e.target.value })}
+                      placeholder="Contoh: 0812xxxx (Kontak utama orang tua)..."
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono"
+                    />
+                  </div>
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                       Alamat Orang Tua (Biodata Rapor)
@@ -1366,10 +1632,14 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
                     <button
                       type="button"
                       onClick={() => {
+                        const cleanDusunPart =
+                          formData.dusun && formData.dusun.trim() !== formData.alamat.trim()
+                            ? formData.dusun
+                            : '';
                         const fullAddress = [
                           formData.alamat,
                           formData.rt && formData.rw ? `RT ${formData.rt}/RW ${formData.rw}` : '',
-                          formData.dusun,
+                          cleanDusunPart,
                           formData.kelurahan,
                           formData.kecamatan,
                           formData.kabupaten,

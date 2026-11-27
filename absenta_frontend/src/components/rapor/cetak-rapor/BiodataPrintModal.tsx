@@ -198,15 +198,19 @@ export const BiodataPrintModal: React.FC<BiodataPrintModalProps> = React.memo(({
     siswa.kabupaten_ortu || siswa.kabupaten
   );
 
-  const alamatWaliDuaBaris = formatAlamatDuaBaris(
-    siswa.alamat_wali || siswa.alamat,
-    siswa.dusun_wali,
-    siswa.rt_wali,
-    siswa.rw_wali,
-    siswa.kelurahan_wali,
-    siswa.kecamatan_wali,
-    siswa.kabupaten_wali
-  );
+  const hasWali = studentIdentity.namaWali !== '-';
+
+  const alamatWaliDuaBaris = hasWali
+    ? formatAlamatDuaBaris(
+        siswa.alamat_wali || siswa.alamat_ortu || siswa.alamat,
+        siswa.dusun_wali,
+        siswa.rt_wali,
+        siswa.rw_wali,
+        siswa.kelurahan_wali,
+        siswa.kecamatan_wali,
+        siswa.kabupaten_wali
+      )
+    : '-';
 
   // Tabel 17 Butir (Identik dengan renderBiodata.ts)
   const butirItems: Array<{ no: string; label: string; titik: string; val: string; isIndent?: boolean; isHeader?: boolean; isBold?: boolean }> = [
@@ -233,8 +237,8 @@ export const BiodataPrintModal: React.FC<BiodataPrintModalProps> = React.memo(({
     { no: '', label: 'b. Ibu', titik: ':', val: studentIdentity.pekerjaanIbu, isIndent: true },
     { no: '15.', label: 'Nama Wali Peserta Didik', titik: ':', val: studentIdentity.namaWali },
     { no: '16.', label: 'Alamat Wali Peserta Didik', titik: ':', val: alamatWaliDuaBaris },
-    { no: '', label: 'Nomor Telepon Rumah', titik: ':', val: (siswa as any).no_telepon_wali || '-', isIndent: true },
-    { no: '17.', label: 'Pekerjaan Wali Peserta Didik', titik: ':', val: studentIdentity.pekerjaanWali },
+    { no: '', label: 'Nomor Telepon Rumah', titik: ':', val: hasWali ? ((siswa as any).no_telepon_wali || studentIdentity.noHpWali || '-') : '-', isIndent: true },
+    { no: '17.', label: 'Pekerjaan Wali Peserta Didik', titik: ':', val: hasWali ? studentIdentity.pekerjaanWali : '-' },
   ];
 
   return (

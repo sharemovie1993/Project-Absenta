@@ -61,17 +61,21 @@ export const renderOfficialBiodataPage = (
     siswa.kabupaten_ortu || siswa.kabupaten
   );
 
-  const alamatWaliDuaBaris = formatAlamatDuaBaris(
-    siswa.alamat_wali,
-    siswa.dusun_wali,
-    siswa.rt_wali,
-    siswa.rw_wali,
-    siswa.kelurahan_wali,
-    siswa.kecamatan_wali,
-    siswa.kabupaten_wali
-  );
-
   const identity = normalizeStudentIdentity(siswa);
+  const hasWali = identity.namaWali !== '-';
+
+  const alamatWaliDuaBaris = hasWali
+    ? formatAlamatDuaBaris(
+        siswa.alamat_wali || siswa.alamat_ortu || siswa.alamat,
+        siswa.dusun_wali,
+        siswa.rt_wali,
+        siswa.rw_wali,
+        siswa.kelurahan_wali,
+        siswa.kecamatan_wali,
+        siswa.kabupaten_wali
+      )
+    : '-';
+
   const jk = identity.jenisKelaminLabel;
   const ttl = identity.ttlFormatted;
   const tglMasuk = identity.tanggalMasuk || formatIndoDate(siswa.tanggal_masuk);
@@ -100,8 +104,8 @@ export const renderOfficialBiodataPage = (
     ['', 'b. Ibu', ':', identity.pekerjaanIbu],
     ['15.', 'Nama Wali Peserta Didik', ':', identity.namaWali],
     ['16.', 'Alamat Wali Peserta Didik', ':', alamatWaliDuaBaris],
-    ['', 'Nomor Telepon Rumah', ':', siswa.no_telepon_wali || '-'],
-    ['17.', 'Pekerjaan Wali Peserta Didik', ':', identity.pekerjaanWali],
+    ['', 'Nomor Telepon Rumah', ':', hasWali ? (siswa.no_telepon_wali || identity.noHpWali || '-') : '-'],
+    ['17.', 'Pekerjaan Wali Peserta Didik', ':', hasWali ? identity.pekerjaanWali : '-'],
   ];
 
   autoTable(doc, {

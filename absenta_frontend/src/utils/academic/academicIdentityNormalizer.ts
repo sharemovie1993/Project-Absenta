@@ -396,12 +396,72 @@ export function normalizeStudentIdentity(raw: any): StudentIdentity {
   const hasFoto = Boolean(foto && String(foto).trim().length > 0);
 
   // Orang Tua & Wali
-  const namaAyah = raw.nama_ayah || raw.Siswa?.nama_ayah || '-';
-  const namaIbu = raw.nama_ibu || raw.Siswa?.nama_ibu || '-';
-  const namaWali = raw.nama_wali || raw.Siswa?.nama_wali || '-';
+  const PEKERJAAN_LABEL_MAP: Record<string, string> = {
+    PNS: 'PNS',
+    TNI_POLRI: 'TNI/Polri',
+    GURU: 'Guru',
+    DOSEN: 'Dosen',
+    DOKTER: 'Dokter',
+    BIDAN: 'Bidan',
+    PERAWAT: 'Perawat',
+    PENGUSAHA: 'Pengusaha',
+    PEDAGANG: 'Pedagang',
+    PETANI: 'Petani',
+    PETERNAK: 'Peternak',
+    NELAYAN: 'Nelayan',
+    BURUH: 'Buruh',
+    KARYAWAN_SWASTA: 'Karyawan Swasta',
+    WIRASWASTA: 'Wiraswasta',
+    PENSIUNAN: 'Pensiunan',
+    IRT: 'Ibu Rumah Tangga',
+    TIDAK_BEKERJA: 'Tidak Bekerja',
+    LAINNYA: 'Lainnya',
+  };
+
+  const HUBUNGAN_WALI_LABEL_MAP: Record<string, string> = {
+    AYAH_KANDUNG: 'Ayah Kandung',
+    IBU_KANDUNG: 'Ibu Kandung',
+    KAKEK: 'Kakek',
+    NENEK: 'Nenek',
+    PAMAN: 'Paman',
+    BIBI: 'Bibi',
+    KAKAK: 'Kakak',
+    ADIK: 'Adik',
+    LAINNYA: 'Lainnya',
+  };
+
+  const formatPekerjaanLabel = (val?: string | null): string => {
+    if (!val || !String(val).trim() || String(val).trim() === '-') return '-';
+    const s = String(val).trim();
+    const upper = s.toUpperCase();
+    return PEKERJAAN_LABEL_MAP[upper] || s;
+  };
+
+  const formatHubunganWaliLabel = (val?: string | null): string => {
+    if (!val || !String(val).trim() || String(val).trim() === '-') return '-';
+    const s = String(val).trim();
+    const upper = s.toUpperCase();
+    return HUBUNGAN_WALI_LABEL_MAP[upper] || s;
+  };
+
+  const rawNamaAyah = raw.nama_ayah || raw.Siswa?.nama_ayah || '';
+  const rawNamaIbu = raw.nama_ibu || raw.Siswa?.nama_ibu || '';
+  const rawNamaWali = raw.nama_wali || raw.Siswa?.nama_wali || '';
+
+  const namaAyah = String(rawNamaAyah).trim() && String(rawNamaAyah).trim() !== '-' ? String(rawNamaAyah).trim() : '-';
+  const namaIbu = String(rawNamaIbu).trim() && String(rawNamaIbu).trim() !== '-' ? String(rawNamaIbu).trim() : '-';
+  const namaWali = String(rawNamaWali).trim() && String(rawNamaWali).trim() !== '-' ? String(rawNamaWali).trim() : '-';
+  const hasValidWali = namaWali !== '-';
+
   const namaOrtuFormal = (namaAyah !== '-' ? namaAyah : (namaIbu !== '-' ? namaIbu : (namaWali !== '-' ? namaWali : '-')));
 
-  const kontakOrtu = raw.no_hp_ortu || raw.no_hp_ayah || raw.no_hp_ibu || raw.no_hp_wali || raw.no_hp || '-';
+  const kontakOrtu =
+    raw.no_hp_ortu ||
+    raw.no_hp_ayah ||
+    raw.no_hp_ibu ||
+    (hasValidWali ? raw.no_hp_wali : null) ||
+    raw.no_hp ||
+    '-';
 
   return {
     id: raw.id || raw.siswa_id || raw.Siswa?.id || '',
@@ -429,18 +489,18 @@ export function normalizeStudentIdentity(raw: any): StudentIdentity {
     programKeahlian,
     bidangKeahlian,
     namaAyah,
-    pekerjaanAyah: raw.pekerjaan_ayah || raw.Siswa?.pekerjaan_ayah || '-',
+    pekerjaanAyah: formatPekerjaanLabel(raw.pekerjaan_ayah || raw.Siswa?.pekerjaan_ayah),
     nikAyah: raw.nik_ayah || raw.Siswa?.nik_ayah || '-',
     noHpAyah: raw.no_hp_ayah || raw.Siswa?.no_hp_ayah || '-',
     namaIbu,
-    pekerjaanIbu: raw.pekerjaan_ibu || raw.Siswa?.pekerjaan_ibu || '-',
+    pekerjaanIbu: formatPekerjaanLabel(raw.pekerjaan_ibu || raw.Siswa?.pekerjaan_ibu),
     nikIbu: raw.nik_ibu || raw.Siswa?.nik_ibu || '-',
     noHpIbu: raw.no_hp_ibu || raw.Siswa?.no_hp_ibu || '-',
     namaWali,
-    pekerjaanWali: raw.pekerjaan_wali || raw.Siswa?.pekerjaan_wali || '-',
-    nikWali: raw.nik_wali || raw.Siswa?.nik_wali || '-',
-    noHpWali: raw.no_hp_wali || raw.Siswa?.no_hp_wali || '-',
-    hubunganWali: raw.hubungan_wali || raw.Siswa?.hubungan_wali || '-',
+    pekerjaanWali: hasValidWali ? formatPekerjaanLabel(raw.pekerjaan_wali || raw.Siswa?.pekerjaan_wali) : '-',
+    nikWali: hasValidWali ? (raw.nik_wali || raw.Siswa?.nik_wali || '-') : '-',
+    noHpWali: hasValidWali ? (raw.no_hp_wali || raw.Siswa?.no_hp_wali || '-') : '-',
+    hubunganWali: hasValidWali ? formatHubunganWaliLabel(raw.hubungan_wali || raw.Siswa?.hubungan_wali) : '-',
     namaOrtuFormal,
     kontakOrtu,
     alamatLengkap: formatAlamatLengkap(raw.Siswa || raw),
