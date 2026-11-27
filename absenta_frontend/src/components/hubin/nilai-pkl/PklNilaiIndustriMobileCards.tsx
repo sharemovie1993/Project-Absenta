@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
+import { PklSanggahModal, PklSanggahRowButton } from './PklSanggahModal';
 
 export interface PklNilaiIndustriMobileCardsProps {
   paginatedScores: ScoreRow[];
@@ -58,6 +59,7 @@ export const PklNilaiIndustriMobileCards: React.FC<PklNilaiIndustriMobileCardsPr
   onClearScores,
   effectiveSettings,
 }) => {
+  const [sanggahTarget, setSanggahTarget] = useState<ScoreRow | null>(null);
   const hasLaporan = effectiveSettings?.assessmentMode === 'COMPOSITE';
 
   // Set default: kartu pertama dibuka agar guru langsung paham layoutnya
@@ -227,6 +229,7 @@ export const PklNilaiIndustriMobileCards: React.FC<PklNilaiIndustriMobileCardsPr
                       <Building2 size={12} className="shrink-0 opacity-75" />
                       <span className="truncate">{score.mitra_nama || 'Belum ada DUDI'}</span>
                     </div>
+                    <PklSanggahRowButton score={score} onOpen={setSanggahTarget} />
 
                     {/* Baris 3: Status Kelengkapan Nilai */}
                     <div className="flex items-center gap-2 pt-0.5 flex-wrap">
@@ -605,6 +608,13 @@ export const PklNilaiIndustriMobileCards: React.FC<PklNilaiIndustriMobileCardsPr
           </div>
         </div>
       )}
+
+      <PklSanggahModal
+        isOpen={Boolean(sanggahTarget)}
+        onClose={() => setSanggahTarget(null)}
+        student={sanggahTarget}
+        canReview={false}
+      />
     </div>
   );
 };

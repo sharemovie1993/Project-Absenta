@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
+import { PklSanggahModal, PklSanggahRowButton } from './PklSanggahModal';
 
 export interface PklNilaiSidangMobileCardsProps {
   paginatedScores: ScoreRow[];
@@ -74,6 +75,7 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
   onOpenCetakModal,
   onOpenSpinWheelModal,
 }) => {
+  const [sanggahTarget, setSanggahTarget] = useState<ScoreRow | null>(null);
   const isComposite3Unsur = effectiveSettings?.assessmentMode === 'COMPOSITE';
   const isDudiSidang = effectiveSettings?.assessmentMode === 'DUDI_SIDANG';
 
@@ -289,6 +291,7 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
                       <Building2 className="w-3 h-3 text-indigo-500 shrink-0" />
                       <span className="truncate">{score.mitra_nama || 'Belum ditentukan'}</span>
                     </div>
+                    <PklSanggahRowButton score={score} onOpen={setSanggahTarget} />
 
                     {/* Baris 3: Quick Badges (DUDI, Laporan, Sidang, Nilai Akhir) */}
                     <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
@@ -752,6 +755,13 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
           </div>
         </div>
       )}
+
+      <PklSanggahModal
+        isOpen={Boolean(sanggahTarget)}
+        onClose={() => setSanggahTarget(null)}
+        student={sanggahTarget}
+        canReview={false}
+      />
     </div>
   );
 };

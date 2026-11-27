@@ -9,6 +9,7 @@ import { PklNilaiSidangMobileCards } from './PklNilaiSidangMobileCards';
 import { PengujiCombobox } from './PengujiCombobox';
 import { PklSidangCetakModal } from './PklSidangCetakModal';
 import { PklSidangSpinWheelModal } from './PklSidangSpinWheelModal';
+import { PklSanggahModal, PklSanggahRowButton } from './PklSanggahModal';
 import { DigitalSignaturePadModal } from '@/components/ui/DigitalSignaturePadModal';
 import { hubinApi } from '@/api/hubin.api';
 import { toast } from 'sonner';
@@ -127,6 +128,7 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
   const [showCetakModal, setShowCetakModal] = useState(false);
   const [cetakDocType, setCetakDocType] = useState<'BERITA_ACARA' | 'PENGUJI' | 'JURUSAN' | 'DAFTAR_HADIR' | 'REKAP_PENGUJI' | 'REKAP_JURUSAN'>('BERITA_ACARA');
   const [showSpinWheelModal, setShowSpinWheelModal] = useState(false);
+  const [sanggahTarget, setSanggahTarget] = useState<ScoreRow | null>(null);
   const [signingStudent, setSigningStudent] = useState<ScoreRow | null>(null);
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
   const [isSavingSignature, setIsSavingSignature] = useState(false);
@@ -305,6 +307,7 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
               <span className="text-[10px] opacity-75">🏢</span>
               <span className="truncate">{score.mitra_nama || '-'}</span>
             </div>
+            <PklSanggahRowButton score={score} onOpen={setSanggahTarget} />
           </div>
         );
       },
@@ -1121,6 +1124,13 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
           }}
         />
       )}
+
+      <PklSanggahModal
+        isOpen={Boolean(sanggahTarget)}
+        onClose={() => setSanggahTarget(null)}
+        student={sanggahTarget}
+        canReview={Boolean(canManageAll || isKaprog)}
+      />
     </div>
   );
 };

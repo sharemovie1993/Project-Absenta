@@ -206,3 +206,42 @@ export const PklSanggahModal: React.FC<PklSanggahModalProps> = ({
     </div>
   );
 };
+
+export const PklSanggahRowButton: React.FC<{
+  score: ScoreRow;
+  onOpen: (student: ScoreRow) => void;
+}> = ({ score, onOpen }) => {
+  const exemption = isPklRowExempted(score);
+
+  if (exemption.exempted) {
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpen(score);
+        }}
+        className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800 text-[9.5px] font-bold cursor-pointer hover:bg-amber-200/70 transition-colors"
+        title={score.pkl_sanggah?.catatan || exemption.reasonLabel}
+      >
+        <AlertTriangle size={10} className="shrink-0" />
+        <span className="truncate max-w-[145px]">{exemption.reasonLabel}</span>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpen(score);
+      }}
+      className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-[9.5px] font-bold cursor-pointer transition-colors"
+      title="Sanggah / Tandai siswa sudah keluar agar tidak terjaring Colek WA"
+    >
+      <AlertTriangle size={10} className="shrink-0" />
+      <span>Sanggah / Keluar</span>
+    </button>
+  );
+};

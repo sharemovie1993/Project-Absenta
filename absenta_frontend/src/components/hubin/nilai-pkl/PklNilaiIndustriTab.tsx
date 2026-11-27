@@ -1,10 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, Button, SearchableSelect } from '@/components/ui';
 import { AcademicFilterToolbar } from '@/components/common/academic-filter';
 import { Save, RotateCcw, Copy, Printer, Lock, Edit3, Eraser } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScoreRow } from './types';
 import { PklNilaiIndustriMobileCards } from './PklNilaiIndustriMobileCards';
+import { PklSanggahModal, PklSanggahRowButton } from './PklSanggahModal';
 import {
   SpreadsheetGridTable,
   SpreadsheetCellInput,
@@ -116,6 +117,7 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
   onToggleAdminOverride,
   effectiveSettings,
 }) => {
+  const [sanggahTarget, setSanggahTarget] = useState<ScoreRow | null>(null);
   const hasLaporan = effectiveSettings?.assessmentMode === 'COMPOSITE';
   const hasSidang =
     effectiveSettings?.assessmentMode === 'DUDI_SIDANG' ||
@@ -238,6 +240,7 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
               <span className="text-[10px] opacity-75">🏢</span>
               <span className="truncate">{score.mitra_nama || '-'}</span>
             </div>
+            <PklSanggahRowButton score={score} onOpen={setSanggahTarget} />
           </div>
         );
       },
@@ -988,6 +991,13 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
           }
         />
       )}
+
+      <PklSanggahModal
+        isOpen={Boolean(sanggahTarget)}
+        onClose={() => setSanggahTarget(null)}
+        student={sanggahTarget}
+        canReview={Boolean(canManageAll || isKaprog)}
+      />
     </div>
   );
 };
