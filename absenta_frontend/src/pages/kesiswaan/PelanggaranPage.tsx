@@ -13,6 +13,7 @@ import useConfirm from '../../hooks/useConfirm';
 import { useDebounce } from '../../hooks/useDebounce';
 import { kesiswaanApi, kesiswaanQueryKeys } from '../../api/kesiswaan.api';
 import type { Pelanggaran, JenisPelanggaran } from '../../api/kesiswaan.api';
+import { bpbkApi, bpbkQueryKeys } from '../../api/bpbk.api';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useIsMobile } from '../../hooks/useIsMobile';
@@ -30,7 +31,8 @@ import {
   Search,
   X,
   Plus,
-  User
+  User,
+  HeartHandshake
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Loader } from '../../components/ui/Loader';
@@ -199,6 +201,17 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
 
   const confirm = useConfirm();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { can, isAdmin, isBpbk } = useCapabilities();
+  const canDeleteViolation = isAdmin || can('affairs.violations.delete');
+  const canCounsel = isBpbk || isAdmin || can('bk.konseling.create') || can('bk.counselings.create');
+
+  const [counselingTarget, setCounselingTarget] = useState<Pelanggaran | null>(null);
+  const [counselingTipe, setCounselingTipe] = useState<'INDIVIDU' | 'KELOMPOK' | 'KARIR'>('INDIVIDU');
+  const [counselingMasalah, setCounselingMasalah] = useState('');
+  const [counselingSolusi, setCounselingSolusi] = useState('');
+  const [counselingStatus, setCounselingStatus] = useState<'PROSES' | 'SELESAI'>('PROSES');
+  const [autoAdvanceStatus, setAutoAdvanceStatus] = useState(true);
+  const [savingCounseling, setSavingCounseling] = useState(false);
 
   // ── useQuery: Fetch pelanggaran list ─────────────────────────────────────
   const queryParams = useMemo(() => {
@@ -321,6 +334,57 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
     }
   }, [confirm, invalidateAllPelanggaranCaches, queryClient, refetch]);
 
+  const handleOpenBimbing = useCallback((item: Pelanggaran) => {
+    setCounselingTarget(item);
+    setCounselingTipe('INDIVIDU');
+    setCounselingMasalah(
+      `Pembinaan pelanggaran: ${item.jenis_pelanggaran} (+${item.poin} poin)${item.keterangan ? ` — ${item.keterangan}` : ''}`
+    );
+    setCounselingSolusi('');
+    setCounselingStatus('PROSES');
+    setAutoAdvanceStatus(item.status === 'BARU' || item.status === 'PERLU_PEMBINAAN');
+  }, []);
+
+  const handleSubmitBimbing = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!counselingTarget) return;
+    if (!counselingMasalah.trim()) {
+      toast.error('Harap isi uraian pembinaan / masalah');
+      return;
+    }
+    setSavingCounseling(true);
+    try {
+      await bpbkApi.createKonseling({
+        siswa_id: counselingTarget.siswa_id,
+        tanggal: new Date().toISOString().split('T')[0],
+        tipe: counselingTipe,
+        masalah: counselingMasalah.trim(),
+        solusi: counselingSolusi.trim() || undefined,
+        status: counselingStatus,
+        visibility: 'LIMITED',
+      });
+      if (autoAdvanceStatus && counselingTarget.status !== 'SELESAI') {
+        await kesiswaanApi.updatePelanggaran(counselingTarget.id, {
+          status: counselingStatus === 'SELESAI' ? 'SELESAI' : 'PROSES',
+        });
+      }
+      await Promise.all([
+        invalidateAllPelanggaranCaches(),
+        queryClient.invalidateQueries({ queryKey: bpbkQueryKeys.all }),
+        queryClient.invalidateQueries({ queryKey: ['bpbk-stats'] }),
+        queryClient.invalidateQueries({ queryKey: ['ews-risk-students'] }),
+        queryClient.invalidateQueries({ queryKey: ['konseling-history'] }),
+      ]);
+      toast.success(`Bimbingan untuk ${counselingTarget.Siswa?.nama_siswa || 'siswa'} berhasil dicatat`);
+      setCounselingTarget(null);
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Gagal mencatat sesi bimbingan');
+    } finally {
+      setSavingCounseling(false);
+    }
+  }, [counselingTarget, counselingTipe, counselingMasalah, counselingSolusi, counselingStatus, autoAdvanceStatus, invalidateAllPelanggaranCaches, queryClient, refetch]);
+
   const statusConfig: Record<string, StatusConfig> = useMemo(() => ({
     'BARU': {
       variant: 'error',
@@ -418,6 +482,17 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
             <span>{item.tanggal ? formatDate(item.tanggal, { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</span>
           </div>
           <div className="flex items-center gap-1">
+            {canCounsel && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleOpenBimbing(item)}
+                className="h-8 px-2.5 rounded-lg text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 flex items-center gap-1"
+              >
+                <HeartHandshake size={13} />
+                <span>Bimbing</span>
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -427,20 +502,22 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
               <Edit2 size={13} />
               <span>Edit</span>
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleDelete(item)}
-              className="h-8 px-2.5 rounded-lg text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-1"
-            >
-              <Trash2 size={13} />
-              <span>Hapus</span>
-            </Button>
+            {canDeleteViolation && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleDelete(item)}
+                className="h-8 px-2.5 rounded-lg text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-1"
+              >
+                <Trash2 size={13} />
+                <span>Hapus</span>
+              </Button>
+            )}
           </div>
         </div>
       </div>
     );
-  }, [statusConfig, handleEdit, handleDelete]);
+  }, [statusConfig, canCounsel, canDeleteViolation, handleOpenBimbing, handleEdit, handleDelete]);
 
   const columns: Column[] = useMemo(() => [
     {
@@ -497,28 +574,44 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
       label: 'Tindakan',
       render: (_: unknown, item: Pelanggaran) => (
         <div className="flex gap-1">
+          {canCounsel && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleOpenBimbing(item)}
+              className="w-8 h-8 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+              title="Bimbing / Catat Konseling"
+              aria-label="Bimbing siswa"
+            >
+              <HeartHandshake size={14} />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
             onClick={() => handleEdit(item)}
             className="w-8 h-8 rounded-lg text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+            title="Edit catatan"
             aria-label="Edit catatan"
           >
             <Edit2 size={14} />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleDelete(item)}
-            className="w-8 h-8 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-50"
-            aria-label="Hapus catatan"
-          >
-            <Trash2 size={14} />
-          </Button>
+          {canDeleteViolation && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleDelete(item)}
+              className="w-8 h-8 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+              title="Hapus catatan"
+              aria-label="Hapus catatan"
+            >
+              <Trash2 size={14} />
+            </Button>
+          )}
         </div>
       )
     }
-  ], [getStatusDisplay, handleEdit, handleDelete]);
+  ], [getStatusDisplay, canCounsel, canDeleteViolation, handleOpenBimbing, handleEdit, handleDelete]);
 
   const pageStats = useMemo(() => {
     const total = data?.length || 0;
@@ -828,6 +921,106 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
               <Button type="submit" className="rounded-xl h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white hover:text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-indigo-600/20 border-none">Simpan Catatan</Button>
             </div>
           </form>
+        </Modal>
+      </Suspense>
+
+      {/* Modal Bimbing / Konseling Pelanggaran */}
+      <Suspense fallback={null}>
+        <Modal
+          isOpen={Boolean(counselingTarget)}
+          onClose={() => setCounselingTarget(null)}
+          title="Catat Bimbingan / Konseling Pelanggaran"
+          size="lg"
+        >
+          {counselingTarget && (
+            <form onSubmit={handleSubmitBimbing} className="space-y-4">
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-black text-slate-900 dark:text-white">
+                    {counselingTarget.Siswa?.nama_siswa || 'Siswa'}
+                  </span>
+                  <Badge variant="error" className="text-[10px] font-bold">
+                    +{counselingTarget.poin} Poin
+                  </Badge>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {counselingTarget.Siswa?.Kelas?.nama_kelas || '-'} • {counselingTarget.jenis_pelanggaran}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Tipe Sesi</Label>
+                  <SearchableSelect
+                    value={counselingTipe}
+                    onValueChange={(val) => setCounselingTipe((val as 'INDIVIDU' | 'KELOMPOK' | 'KARIR') || 'INDIVIDU')}
+                    options={[
+                      { value: 'INDIVIDU', label: 'Konseling Individu' },
+                      { value: 'KELOMPOK', label: 'Konseling Kelompok' },
+                      { value: 'KARIR', label: 'Konseling Karir' },
+                    ]}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Status Pendampingan</Label>
+                  <SearchableSelect
+                    value={counselingStatus}
+                    onValueChange={(val) => setCounselingStatus((val as 'PROSES' | 'SELESAI') || 'PROSES')}
+                    options={[
+                      { value: 'PROSES', label: 'Pendampingan Berjalan (PROSES)' },
+                      { value: 'SELESAI', label: 'Selesai Pembinaan (SELESAI)' },
+                    ]}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Fokus Bimbingan / Masalah</Label>
+                <textarea
+                  rows={3}
+                  value={counselingMasalah}
+                  onChange={(e) => setCounselingMasalah(e.target.value)}
+                  className="w-full p-3 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Solusi / Komitmen Pembinaan</Label>
+                <textarea
+                  rows={2}
+                  value={counselingSolusi}
+                  onChange={(e) => setCounselingSolusi(e.target.value)}
+                  placeholder="Catat hasil pembinaan dan komitmen siswa..."
+                  className="w-full p-3 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                />
+              </div>
+
+              {counselingTarget.status !== 'SELESAI' && (
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={autoAdvanceStatus}
+                    onChange={(e) => setAutoAdvanceStatus(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span>
+                    Otomatis perbarui tahapan pelanggaran menjadi{' '}
+                    <strong>{counselingStatus === 'SELESAI' ? 'Selesai Pembinaan' : 'Pendampingan (PROSES)'}</strong>
+                  </span>
+                </label>
+              )}
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <Button type="button" variant="outline" onClick={() => setCounselingTarget(null)}>
+                  Batal
+                </Button>
+                <Button type="submit" disabled={savingCounseling} className="bg-emerald-600 hover:bg-emerald-700 text-white border-none">
+                  <HeartHandshake className="w-3.5 h-3.5 mr-1.5" />
+                  <span>{savingCounseling ? 'Menyimpan...' : 'Simpan Bimbingan'}</span>
+                </Button>
+              </div>
+            </form>
+          )}
         </Modal>
       </Suspense>
     </>
