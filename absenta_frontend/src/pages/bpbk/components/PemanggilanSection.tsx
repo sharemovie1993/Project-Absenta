@@ -11,7 +11,18 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Loader } from '@/components/ui/Loader';
 import { Badge } from '@/components/ui/Badge';
 import toast from 'react-hot-toast';
-import { Search, Plus, RotateCcw, Eye, Printer, Edit2, Trash2 } from 'lucide-react';
+import {
+  Search,
+  Plus,
+  RotateCcw,
+  Edit2,
+  Trash2,
+  Send,
+  CheckCircle2,
+  FileText,
+  History,
+  MessageSquare,
+} from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { formatDate } from '@/utils/layoutUtils';
 import { PemanggilanCard } from '@/components/bpbk/pemanggilan/PemanggilanCard';
@@ -21,6 +32,7 @@ import { MobileAcademicList } from '@/components/academic/shared/MobileAcademicL
 const Modal = lazy(() => import('@/components/ui/Modal').then(m => ({ default: m.Modal })));
 const SmartStudentPicker = lazy(() => import('@/components/common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
 const ConfirmModal = lazy(() => import('@/components/ui/Modal').then(m => ({ default: m.ConfirmModal })));
+const BpbkSiswaHistoryView = lazy(() => import('./BpbkSiswaHistoryView').then(m => ({ default: m.BpbkSiswaHistoryView })));
 
 // Zod Schema Validation Guard (Pilar 25)
 const pemanggilanFormSchema = z.object({
@@ -43,16 +55,41 @@ export const PemanggilanSection: React.FC = React.memo(() => {
   const [limit, setLimit] = useState(10);
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [historySiswaId, setHistorySiswaId] = useState<string | null>(null);
+  const [sendingId, setSendingId] = useState<string | null>(null);
+
+  // Modal Catat Hasil Pertemuan (HADIR / TIDAK_HADIR + Berita Acara)
+  const [outcomeTarget, setOutcomeTarget] = useState<PemanggilanOrangTua | null>(null);
+  const [outcomeForm, setOutcomeForm] = useState({
+    status: 'HADIR' as 'HADIR' | 'TIDAK_HADIR',
+    tanggal_pertemuan: new Date().toISOString().split('T')[0],
+    keterangan_pertemuan: '',
+  });
+  const [savingOutcome, setSavingOutcome] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
     siswa_id: '',
     alasan: '',
     tanggal_pemanggilan: new Date().toISOString().split('T')[0],
-    jam_pemanggilan: '09:00',
+    jam_pemanggilan: '09:00 WIB',
     ruangan: 'Ruang BK',
+    ortu_notified: true,
   });
+
+  const resetForm = useCallback(() => {
+    setEditingId(null);
+    setFormData({
+      siswa_id: '',
+      alasan: '',
+      tanggal_pemanggilan: new Date().toISOString().split('T')[0],
+      jam_pemanggilan: '09:00 WIB',
+      ruangan: 'Ruang BK',
+      ortu_notified: true,
+    });
+  }, []);
 
   // Query Fetching (Pilar 31)
   const { data: queryData, isLoading, refetch } = useQuery({
@@ -69,7 +106,7 @@ export const PemanggilanSection: React.FC = React.memo(() => {
   const totalItems = queryData?.data?.pagination?.total || list.length;
   const totalPages = queryData?.data?.pagination?.totalPages || Math.ceil(totalItems / limit) || 1;
 
-  const handleCreate = useCallback(async (e: React.FormEvent) => {
+  const handleCreateOrUpdate = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     const parsed = pemanggilanFormSchema.safeParse(formData);
     if (!parsed.success) {
@@ -78,19 +115,121 @@ export const PemanggilanSection: React.FC = React.memo(() => {
     }
 
     try {
-      await bpbkApi.createPemanggilan({
-        siswa_id: formData.siswa_id,
-        alasan: formData.alasan,
-        tanggal_pemanggilan: new Date(formData.tanggal_pemanggilan),
-        keterangan_pertemuan: `Ruangan: ${formData.ruangan}, Jam: ${formData.jam_pemanggilan}`,
-      });
-      toast.success('Surat pemanggilan berhasil dibuat.');
+      if (editingId) {
+        await bpbkApi.updatePemanggilan(editingId, {
+          alasan: formData.alasan,
+          tanggal_pemanggilan: new Date(formData.tanggal_pemanggilan),
+          waktu_pertemuan: formData.jam_pemanggilan,
+          tempat_pertemuan: formData.ruangan,
+          ortu_notified: formData.ortu_notified,
+        });
+        toast.success('Surat pemanggilan berhasil diperbarui.');
+      } else {
+        await bpbkApi.createPemanggilan({
+          siswa_id: formData.siswa_id,
+          alasan: formData.alasan,
+          tanggal_pemanggilan: new Date(formData.tanggal_pemanggilan),
+          waktu_pertemuan: formData.jam_pemanggilan,
+          tempat_pertemuan: formData.ruangan,
+          ortu_notified: formData.ortu_notified,
+        });
+        toast.success('Surat pemanggilan berhasil dibuat.');
+      }
       setModalOpen(false);
+      resetForm();
       queryClient.invalidateQueries({ queryKey: bpbkQueryKeys.all });
     } catch {
-      toast.error('Gagal membuat pemanggilan.');
+      toast.error(editingId ? 'Gagal memperbarui pemanggilan.' : 'Gagal membuat pemanggilan.');
     }
-  }, [formData, queryClient]);
+  }, [editingId, formData, queryClient, resetForm]);
+
+  const handleOpenEdit = useCallback((item: PemanggilanOrangTua) => {
+    setEditingId(item.id);
+    setFormData({
+      siswa_id: item.siswa_id,
+      alasan: item.alasan,
+      tanggal_pemanggilan: new Date(item.tanggal_pemanggilan).toISOString().split('T')[0],
+      jam_pemanggilan: (item as any).waktu_pertemuan || '09:00 WIB',
+      ruangan: (item as any).tempat_pertemuan || 'Ruang BK',
+      ortu_notified: Boolean((item as any).ortu_notified ?? true),
+    });
+    setModalOpen(true);
+  }, []);
+
+  const handleSendToParent = useCallback(async (item: PemanggilanOrangTua, isResend = false) => {
+    setSendingId(item.id);
+    try {
+      if (!isResend && item.status === 'BARU') {
+        await bpbkApi.updatePemanggilan(item.id, {
+          status: 'DIKIRIM',
+          ortu_notified: true,
+        });
+      }
+      try {
+        await bpbkApi.sendWhatsappParent(item.id);
+        toast.success(
+          isResend
+            ? 'Pengingat WhatsApp berhasil dikirim ulang ke Orang Tua.'
+            : 'Panggilan diterbitkan & dikirim ke Orang Tua (App & WhatsApp).'
+        );
+      } catch {
+        toast.success(
+          isResend
+            ? 'WA Gateway tidak aktif; notifikasi aplikasi tetap aktif.'
+            : 'Status diubah ke DIKIRIM (notifikasi aplikasi aktif; WA Gateway belum terhubung).'
+        );
+      }
+      queryClient.invalidateQueries({ queryKey: bpbkQueryKeys.all });
+    } catch {
+      toast.error('Gagal memproses pengiriman panggilan.');
+    } finally {
+      setSendingId(null);
+    }
+  }, [queryClient]);
+
+  const handleOpenOutcomeModal = useCallback((item: PemanggilanOrangTua) => {
+    setOutcomeTarget(item);
+    setOutcomeForm({
+      status: item.status === 'TIDAK_HADIR' ? 'TIDAK_HADIR' : 'HADIR',
+      tanggal_pertemuan: (item as any).tanggal_pertemuan
+        ? new Date((item as any).tanggal_pertemuan).toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0],
+      keterangan_pertemuan: item.keterangan_pertemuan || '',
+    });
+  }, []);
+
+  const handleSaveOutcome = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!outcomeTarget) return;
+    setSavingOutcome(true);
+    try {
+      await bpbkApi.updatePemanggilan(outcomeTarget.id, {
+        status: outcomeForm.status,
+        tanggal_pertemuan: new Date(outcomeForm.tanggal_pertemuan),
+        keterangan_pertemuan: outcomeForm.keterangan_pertemuan.trim() || null,
+      });
+      toast.success(`Hasil pertemuan disimpan (${outcomeForm.status}).`);
+      setOutcomeTarget(null);
+      queryClient.invalidateQueries({ queryKey: bpbkQueryKeys.all });
+    } catch {
+      toast.error('Gagal menyimpan hasil pertemuan.');
+    } finally {
+      setSavingOutcome(false);
+    }
+  }, [outcomeTarget, outcomeForm, queryClient]);
+
+  const handleReSummon = useCallback((item: PemanggilanOrangTua) => {
+    setEditingId(null);
+    setFormData({
+      siswa_id: item.siswa_id,
+      alasan: `Panggilan ulang: ${item.alasan}`,
+      tanggal_pemanggilan: new Date().toISOString().split('T')[0],
+      jam_pemanggilan: '09:00 WIB',
+      ruangan: 'Ruang BK',
+      ortu_notified: true,
+    });
+    setModalOpen(true);
+  }, []);
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteId) return;
@@ -120,7 +259,8 @@ export const PemanggilanSection: React.FC = React.memo(() => {
       render: (_, item: PemanggilanOrangTua) => (
         <div
           className="cursor-pointer group"
-          onClick={() => item.Siswa?.id && navigate(`/academic/siswa?id=${item.Siswa.id}`)}
+          onClick={() => item.siswa_id && setHistorySiswaId(item.siswa_id)}
+          title="Lihat Riwayat & Rekam Jejak BP/BK Siswa"
         >
           <div className="font-bold text-slate-800 dark:text-white text-xs group-hover:text-indigo-600 transition-colors">
             {item.Siswa?.nama_siswa}
@@ -151,21 +291,107 @@ export const PemanggilanSection: React.FC = React.memo(() => {
     {
       key: 'actions',
       label: 'Aksi',
-      render: (_, item: PemanggilanOrangTua) => (
-        <div className="flex gap-1 justify-end">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setDeleteId(item.id)}
-            className="w-8 h-8 text-rose-500 hover:bg-rose-50"
-            title="Hapus"
-          >
-            <Trash2 size={13} />
-          </Button>
-        </div>
-      )
+      render: (_, item: PemanggilanOrangTua) => {
+        const isBusy = sendingId === item.id;
+        return (
+          <div className="flex items-center gap-1 justify-end flex-wrap">
+            {item.status === 'BARU' && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={isBusy}
+                  onClick={() => handleSendToParent(item, false)}
+                  className="h-7 px-2 text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg"
+                  title="Kirim Panggilan ke Orang Tua (App & WhatsApp)"
+                >
+                  <Send size={12} className="mr-1" /> {isBusy ? 'Mengirim...' : 'Kirim'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleOpenEdit(item)}
+                  className="w-7 h-7 text-indigo-600 hover:bg-indigo-50"
+                  title="Edit Jadwal & Alasan"
+                >
+                  <Edit2 size={13} />
+                </Button>
+              </>
+            )}
+
+            {item.status === 'DIKIRIM' && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleOpenOutcomeModal(item)}
+                  className="h-7 px-2 text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg"
+                  title="Catat Kehadiran & Berita Acara Pertemuan"
+                >
+                  <CheckCircle2 size={12} className="mr-1" /> Catat Hasil
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  disabled={isBusy}
+                  onClick={() => handleSendToParent(item, true)}
+                  className="w-7 h-7 text-amber-600 hover:bg-amber-50"
+                  title="Kirim Ulang Pengingat WhatsApp"
+                >
+                  <MessageSquare size={13} />
+                </Button>
+              </>
+            )}
+
+            {(item.status === 'HADIR' || item.status === 'TIDAK_HADIR') && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleOpenOutcomeModal(item)}
+                  className="h-7 px-2 text-[10px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg"
+                  title="Lihat / Edit Berita Acara Pertemuan"
+                >
+                  <FileText size={12} className="mr-1" /> Berita Acara
+                </Button>
+                {item.status === 'TIDAK_HADIR' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleReSummon(item)}
+                    className="h-7 px-2 text-[10px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg"
+                    title="Buat Jadwal Panggilan Ulang"
+                  >
+                    <RotateCcw size={12} className="mr-1" /> Panggil Ulang
+                  </Button>
+                )}
+              </>
+            )}
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setHistorySiswaId(item.siswa_id)}
+              className="h-7 px-2 text-[10px] font-bold text-slate-700 bg-slate-100/80 hover:bg-slate-200 rounded-lg"
+              title="Lihat Riwayat & Rekam Jejak BP/BK Siswa"
+            >
+              <History size={12} className="mr-1" /> Riwayat
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setDeleteId(item.id)}
+              className="w-7 h-7 text-rose-500 hover:bg-rose-50"
+              title="Hapus"
+            >
+              <Trash2 size={13} />
+            </Button>
+          </div>
+        );
+      }
     }
-  ], [navigate]);
+  ], [sendingId, handleSendToParent, handleOpenEdit, handleOpenOutcomeModal, handleReSummon]);
 
   const isMobile = useIsMobile();
 
@@ -174,22 +400,13 @@ export const PemanggilanSection: React.FC = React.memo(() => {
       <PemanggilanCard
         key={item.id}
         item={item}
-        onViewDetail={(i) => navigate(`/bpbk/cases/${i.siswa_id}`)}
-        onEdit={(i) => {
-          setFormData({
-            siswa_id: i.siswa_id,
-            alasan: i.alasan,
-            tanggal_pemanggilan: new Date(i.tanggal_pemanggilan).toISOString().split('T')[0],
-            jam_pemanggilan: '09:00',
-            ruangan: 'Ruang BK',
-          });
-          setModalOpen(true);
-        }}
+        onViewDetail={(i) => setHistorySiswaId(i.siswa_id)}
+        onEdit={(i) => handleOpenEdit(i)}
         onDelete={(id) => setDeleteId(id)}
-        onPrint={(i) => navigate(`/bpbk/pemanggilan/${i.id}/print`)}
+        onPrint={(i) => handleOpenOutcomeModal(i)}
       />
     );
-  }, [navigate]);
+  }, [handleOpenEdit, handleOpenOutcomeModal]);
 
   return (
     <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white dark:bg-slate-900 p-6 rounded-2xl space-y-6">
@@ -216,7 +433,8 @@ export const PemanggilanSection: React.FC = React.memo(() => {
               onValueChange={setStatusFilter}
               options={[
                 { value: 'ALL', label: 'Semua Status' },
-                { value: 'DIKIRIM', label: 'Menunggu' },
+                { value: 'BARU', label: 'Baru' },
+                { value: 'DIKIRIM', label: 'Dikirim / Menunggu' },
                 { value: 'HADIR', label: 'Hadir' },
                 { value: 'TIDAK_HADIR', label: 'Tidak Hadir' },
               ]}
@@ -226,7 +444,10 @@ export const PemanggilanSection: React.FC = React.memo(() => {
           <Button
             variant="toolbarPrimary"
             size="toolbar"
-            onClick={() => setModalOpen(true)}
+            onClick={() => {
+              resetForm();
+              setModalOpen(true);
+            }}
             className="flex items-center gap-1.5 font-bold rounded-xl shadow-md shrink-0"
           >
             <Plus size={14} />
@@ -274,21 +495,25 @@ export const PemanggilanSection: React.FC = React.memo(() => {
         )}
       </div>
 
-      {/* Create Modal */}
+      {/* Create / Edit Modal */}
       <Suspense fallback={null}>
         {modalOpen && (
           <Modal
             isOpen={modalOpen}
-            onClose={() => setModalOpen(false)}
-            title="Buat Surat Pemanggilan Orang Tua"
+            onClose={() => {
+              setModalOpen(false);
+              resetForm();
+            }}
+            title={editingId ? 'Edit Surat Pemanggilan Orang Tua' : 'Buat Surat Pemanggilan Orang Tua'}
           >
-            <form onSubmit={handleCreate} className="space-y-4 p-2 text-xs">
+            <form onSubmit={handleCreateOrUpdate} className="space-y-4 p-2 text-xs">
               <div>
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Pilih Siswa</label>
                 <Suspense fallback={<div className="h-10 bg-slate-100 rounded-xl" />}>
                   <SmartStudentPicker
                     value={formData.siswa_id}
                     onChange={(val) => setFormData(prev => ({ ...prev, siswa_id: val }))}
+                    disabled={Boolean(editingId)}
                   />
                 </Suspense>
               </div>
@@ -306,7 +531,7 @@ export const PemanggilanSection: React.FC = React.memo(() => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label htmlFor="panggilan-tgl" className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Tanggal Panggilan</label>
                   <Input
@@ -320,22 +545,135 @@ export const PemanggilanSection: React.FC = React.memo(() => {
                   />
                 </div>
                 <div>
-                  <label htmlFor="panggilan-jam" className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Jam & Ruangan</label>
+                  <label htmlFor="panggilan-jam" className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Waktu Pertemuan</label>
                   <Input
                     id="panggilan-jam"
-                    aria-label="Jam dan ruangan"
+                    aria-label="Waktu pertemuan"
+                    placeholder="09:00 WIB"
                     value={formData.jam_pemanggilan}
                     onChange={(e) => setFormData(prev => ({ ...prev, jam_pemanggilan: e.target.value }))}
                     className="rounded-xl"
                   />
                 </div>
+                <div>
+                  <label htmlFor="panggilan-ruangan" className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Tempat / Ruangan</label>
+                  <Input
+                    id="panggilan-ruangan"
+                    aria-label="Tempat pertemuan"
+                    placeholder="Ruang BK"
+                    value={formData.ruangan}
+                    onChange={(e) => setFormData(prev => ({ ...prev, ruangan: e.target.value }))}
+                    className="rounded-xl"
+                  />
+                </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>Batal</Button>
-                <Button type="submit" variant="primary">Simpan & Terbitkan</Button>
+              <label className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/70 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.ortu_notified}
+                  onChange={(e) => setFormData(prev => ({ ...prev, ortu_notified: e.target.checked }))}
+                  className="rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+                />
+                <span className="text-[11px] font-semibold text-amber-900">
+                  Kirim notifikasi ke aplikasi orang tua
+                </span>
+              </label>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setModalOpen(false);
+                    resetForm();
+                  }}
+                >
+                  Batal
+                </Button>
+                <Button type="submit" variant="primary">
+                  {editingId ? 'Simpan Perubahan' : 'Simpan Panggilan'}
+                </Button>
               </div>
             </form>
+          </Modal>
+        )}
+
+        {/* Modal Catat Hasil Pertemuan / Berita Acara */}
+        {outcomeTarget && (
+          <Modal
+            isOpen={Boolean(outcomeTarget)}
+            onClose={() => setOutcomeTarget(null)}
+            title={`Berita Acara Pertemuan: ${outcomeTarget.Siswa?.nama_siswa || 'Siswa'}`}
+          >
+            <form onSubmit={handleSaveOutcome} className="space-y-4 p-2 text-xs">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  Alasan Pemanggilan
+                </span>
+                <p className="text-xs font-medium text-slate-700">{outcomeTarget.alasan}</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Status Kehadiran Orang Tua</label>
+                  <select
+                    value={outcomeForm.status}
+                    onChange={(e) =>
+                      setOutcomeForm((prev) => ({ ...prev, status: e.target.value as 'HADIR' | 'TIDAK_HADIR' }))
+                    }
+                    className="w-full h-9 px-3 rounded-xl border border-slate-200 bg-white text-xs font-semibold"
+                  >
+                    <option value="HADIR">HADIR (Pertemuan Terlaksana)</option>
+                    <option value="TIDAK_HADIR">TIDAK HADIR</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Tanggal Pertemuan</label>
+                  <Input
+                    type="date"
+                    value={outcomeForm.tanggal_pertemuan}
+                    onChange={(e) => setOutcomeForm((prev) => ({ ...prev, tanggal_pertemuan: e.target.value }))}
+                    className="rounded-xl"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Catatan / Berita Acara Pertemuan</label>
+                <textarea
+                  rows={4}
+                  value={outcomeForm.keterangan_pertemuan}
+                  onChange={(e) => setOutcomeForm((prev) => ({ ...prev, keterangan_pertemuan: e.target.value }))}
+                  placeholder="Tuliskan ringkasan hasil pertemuan, kesepakatan orang tua/wali, atau alasan ketidakhadiran..."
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setOutcomeTarget(null)}>
+                  Batal
+                </Button>
+                <Button type="submit" variant="primary" disabled={savingOutcome}>
+                  {savingOutcome ? 'Menyimpan...' : 'Simpan Hasil Pertemuan'}
+                </Button>
+              </div>
+            </form>
+          </Modal>
+        )}
+
+        {/* Modal Riwayat & Rekam Jejak BP/BK Siswa */}
+        {historySiswaId && (
+          <Modal
+            isOpen={Boolean(historySiswaId)}
+            onClose={() => setHistorySiswaId(null)}
+            title="Riwayat & Rekam Jejak BP/BK Siswa"
+            size="3xl"
+          >
+            <Suspense fallback={<div className="p-10 flex justify-center"><Loader /></div>}>
+              <BpbkSiswaHistoryView siswaId={historySiswaId} />
+            </Suspense>
           </Modal>
         )}
 
