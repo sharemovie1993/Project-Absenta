@@ -991,9 +991,19 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
 
       <Suspense fallback={<div className="flex justify-center p-8"><Loader /></div>}>
         <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={selectedId ? "Edit Catatan" : "Catatan Perkembangan Baru"} size="md">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-r from-rose-50 via-amber-50/70 to-orange-50 dark:from-rose-950/30 dark:to-amber-950/30 border border-rose-200/80 dark:border-rose-800/50">
+              <div className="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-xs font-black text-xs">
+                !
+              </div>
+              <div>
+                <h4 className="text-xs font-extrabold text-slate-800 dark:text-white">Catatan Perkembangan & Kedisiplinan</h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Catat pelanggaran atau perilaku siswa beserta bobot poin pembinaannya.</p>
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Identitas Siswa</Label>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-indigo-700 dark:text-indigo-300">Identitas Siswa</Label>
               {!selectedSiswa ? (
                 <Suspense fallback={<div className="h-10 animate-pulse bg-slate-100 rounded-xl" />}>
                   <SmartStudentPicker
@@ -1043,8 +1053,8 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
                 </div>
               )}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="jenis-pelanggaran-select" className="text-[10px] font-black uppercase tracking-widest text-gray-400">Kategori Perilaku</Label>
+            <div className="space-y-1.5 p-3.5 rounded-2xl bg-rose-50/45 dark:bg-rose-950/20 border border-rose-200/70">
+              <Label htmlFor="jenis-pelanggaran-select" className="text-[10px] font-black uppercase tracking-widest text-rose-800 dark:text-rose-300">Kategori Perilaku</Label>
               <SearchableSelect
                 id="jenis-pelanggaran-select"
                 value={formData.jenis_pelanggaran}
@@ -1061,9 +1071,9 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
                 searchPlaceholder="Cari kategori..."
               />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="poin-input" className="text-[10px] font-black uppercase tracking-widest text-gray-400">Bobot Poin</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-amber-50/45 dark:bg-amber-950/20 border border-amber-200/70">
+              <div className="space-y-1.5">
+                <Label htmlFor="poin-input" className="text-[10px] font-black uppercase tracking-widest text-amber-800 dark:text-amber-300">Bobot Poin</Label>
                 <Input
                   id="poin-input"
                   type="number"
@@ -1071,29 +1081,29 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
                   value={formData.poin}
                   onChange={(e) => setFormData(prev => ({...prev, poin: Number(e.target.value)}))}
                   required
-                  className="h-11 rounded-xl"
+                  className="h-11 bg-white dark:bg-slate-900 border-amber-200/80 rounded-xl"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="tanggal-input" className="text-[10px] font-black uppercase tracking-widest text-gray-400">Waktu Kejadian</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="tanggal-input" className="text-[10px] font-black uppercase tracking-widest text-amber-800 dark:text-amber-300">Waktu Kejadian</Label>
                 <Input
                   id="tanggal-input"
                   type="date"
                   value={formData.tanggal}
                   onChange={(e) => setFormData(prev => ({...prev, tanggal: e.target.value}))}
                   required
-                  className="h-11 rounded-xl"
+                  className="h-11 bg-white dark:bg-slate-900 border-amber-200/80 rounded-xl"
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="keterangan-input" className="text-[10px] font-black uppercase tracking-widest text-gray-400">Catatan/Keterangan</Label>
+            <div className="space-y-1.5 p-3.5 rounded-2xl bg-sky-50/45 dark:bg-sky-950/20 border border-sky-200/70">
+              <Label htmlFor="keterangan-input" className="text-[10px] font-black uppercase tracking-widest text-sky-800 dark:text-sky-300">Catatan/Keterangan</Label>
               <Input
                 id="keterangan-input"
                 value={formData.keterangan}
                 onChange={(e) => setFormData(prev => ({...prev, keterangan: e.target.value}))}
                 placeholder="Tambahkan konteks kejadian..."
-                className="h-11 rounded-xl"
+                className="h-11 bg-white dark:bg-slate-900 border-sky-200/80 rounded-xl"
               />
             </div>
             {selectedId && (

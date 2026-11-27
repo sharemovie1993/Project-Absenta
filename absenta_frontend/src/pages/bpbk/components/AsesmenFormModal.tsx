@@ -192,56 +192,56 @@ export const AsesmenFormModal: React.FC<AsesmenFormModalProps> = React.memo(({
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Tanggal Tes</Label>
+              <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl bg-sky-50/45 dark:bg-sky-950/20 border border-sky-200/70">
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-bold uppercase tracking-wider text-sky-800 dark:text-sky-300">Tanggal Tes</Label>
                   <Input
                     type="date"
                     value={formData.tanggal}
                     onChange={(e) => setFormData(prev => ({ ...prev, tanggal: e.target.value }))}
-                    className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
+                    className="h-10 text-xs bg-white dark:bg-slate-900 border-sky-200/80 rounded-xl"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Hasil / Kategori Skor</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-bold uppercase tracking-wider text-sky-800 dark:text-sky-300">Hasil / Kategori Skor</Label>
                   <Input
                     placeholder="Contoh: Sangat Kritis, Gaya Visual, dll"
                     value={formData.hasil_skor}
                     onChange={(e) => setFormData(prev => ({ ...prev, hasil_skor: e.target.value }))}
-                    className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
+                    className="h-10 text-xs bg-white dark:bg-slate-900 border-sky-200/80 rounded-xl"
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nama / Tipe Asesmen</Label>
+              <div className="space-y-1.5 p-3 rounded-2xl bg-amber-50/45 dark:bg-amber-950/20 border border-amber-200/70">
+                <Label className="text-[11px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">Nama / Tipe Asesmen</Label>
                 <Input
                   placeholder="Contoh: Angket Sosiometri Hubungan Sosial Kelas X-1"
                   value={formData.nama_asesmen}
                   onChange={(e) => setFormData(prev => ({ ...prev, nama_asesmen: e.target.value }))}
-                  className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
+                  className="h-10 text-xs bg-white dark:bg-slate-900 border-amber-200/80 rounded-xl"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="deskripsi-asesmen" className="text-xs font-bold uppercase tracking-wider text-slate-500">Deskripsi / Analisis Konselor</Label>
+              <div className="space-y-1.5 p-3 rounded-2xl bg-emerald-50/45 dark:bg-emerald-950/20 border border-emerald-200/70">
+                <Label htmlFor="deskripsi-asesmen" className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">Deskripsi / Analisis Konselor</Label>
                 <textarea
                   id="deskripsi-asesmen"
                   aria-label="Deskripsi / Analisis Konselor"
                   value={formData.keterangan}
                   onChange={(e) => setFormData(prev => ({ ...prev, keterangan: e.target.value }))}
                   placeholder="Tulis analisis singkat hasil kuesioner..."
-                  className="w-full min-h-[120px] p-3 text-xs bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="w-full min-h-[120px] p-3 text-xs bg-white dark:bg-slate-900 border border-emerald-200/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Unggah Berkas Laporan Hasil Tes (Opsional)</Label>
+              <div className="space-y-1.5 p-3 rounded-2xl bg-blue-50/50 dark:bg-blue-950/20 border border-dashed border-blue-300 dark:border-blue-800">
+                <Label className="text-[11px] font-bold uppercase tracking-wider text-blue-800 dark:text-blue-300">Unggah Berkas Laporan Hasil Tes (Opsional)</Label>
                 <Input
                   type="file"
                   accept="image/*,application/pdf"
                   onChange={(e) => setFormData(prev => ({ ...prev, file: e.target.files?.[0] || null }))}
-                  className="text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
+                  className="text-xs bg-white dark:bg-slate-900 border-blue-200/80 rounded-xl"
                 />
               </div>
             </div>

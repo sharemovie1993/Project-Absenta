@@ -1150,9 +1150,19 @@ export const PrestasiView: React.FC<UniversalPrestasiViewProps> = React.memo(({
             title={selectedId ? 'Edit Catatan Prestasi Siswa' : 'Catat Prestasi & Penghargaan Baru'} 
             size="lg"
           >
-            <form onSubmit={handleSubmit} className="p-4 space-y-4 text-xs">
+            <form onSubmit={handleSubmit} className="p-2 sm:p-4 space-y-4 text-xs">
+              <div className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50/70 to-amber-50 dark:from-emerald-950/30 dark:to-amber-950/30 border border-emerald-200/80 dark:border-emerald-800/50">
+                <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Trophy size={17} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-extrabold text-slate-800 dark:text-white">Apresiasi Prestasi & Penghargaan</h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">Catat capaian kejuaraan siswa beserta poin apresiasi pengurang skor risiko.</p>
+                </div>
+              </div>
+
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Pilih Siswa</Label>
+                <Label className="text-xs font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">Pilih Siswa</Label>
                 {selectedSiswa ? (
                   <div className="flex items-center justify-between p-3.5 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 rounded-xl">
                     <div className="flex items-center gap-3">
@@ -1197,97 +1207,103 @@ export const PrestasiView: React.FC<UniversalPrestasiViewProps> = React.memo(({
                 )}
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Kategori Penghargaan (Master)</Label>
-                <SearchableSelect
-                  options={[
-                    { value: '', label: '-- Pilih Kategori Master Penghargaan --' },
-                    ...categories.map(c => ({ value: c.id, label: `[+${c.poin} Poin] ${c.nama_prestasi} (${c.kategori})` }))
-                  ]}
-                  value={formData.jenis_prestasi_id}
-                  onValueChange={handleCategoryChange}
-                  className="w-full text-xs"
-                />
+              <div className="space-y-3 p-3.5 rounded-2xl bg-amber-50/45 dark:bg-amber-950/20 border border-amber-200/70">
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">Kategori Penghargaan (Master)</Label>
+                  <SearchableSelect
+                    options={[
+                      { value: '', label: '-- Pilih Kategori Master Penghargaan --' },
+                      ...categories.map(c => ({ value: c.id, label: `[+${c.poin} Poin] ${c.nama_prestasi} (${c.kategori})` }))
+                    ]}
+                    value={formData.jenis_prestasi_id}
+                    onValueChange={handleCategoryChange}
+                    className="w-full text-xs bg-white dark:bg-slate-900 rounded-xl"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">Tingkat Kejuaraan</Label>
+                    <select
+                      value={formData.tingkat}
+                      onChange={(e) => setFormData(prev => ({ ...prev, tingkat: e.target.value }))}
+                      className="w-full p-2.5 text-xs bg-white dark:bg-slate-900 border border-amber-200/80 rounded-xl focus:ring-1 focus:ring-amber-500"
+                    >
+                      <option value="SEKOLAH">Sekolah / Internal</option>
+                      <option value="KECAMATAN">Kecamatan</option>
+                      <option value="KOTA">Kota / Kabupaten</option>
+                      <option value="PROVINSI">Provinsi</option>
+                      <option value="NASIONAL">Nasional</option>
+                      <option value="INTERNASIONAL">Internasional</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">Peringkat / Capaian</Label>
+                    <select
+                      value={formData.peringkat}
+                      onChange={(e) => setFormData(prev => ({ ...prev, peringkat: e.target.value }))}
+                      className="w-full p-2.5 text-xs bg-white dark:bg-slate-900 border border-amber-200/80 rounded-xl focus:ring-1 focus:ring-amber-500"
+                    >
+                      <option value="Juara 1">Juara 1 / Emas / Medali Utama</option>
+                      <option value="Juara 2">Juara 2 / Perak</option>
+                      <option value="Juara 3">Juara 3 / Perunggu</option>
+                      <option value="Harapan 1">Juara Harapan 1</option>
+                      <option value="Harapan 2">Juara Harapan 2</option>
+                      <option value="Finalis">Finalis / Peserta Terbaik</option>
+                      <option value="Partisipan">Partisipan / Kontingen</option>
+                    </select>
+                  </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-emerald-50/45 dark:bg-emerald-950/20 border border-emerald-200/70">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Tingkat Kejuaraan</Label>
-                  <select
-                    value={formData.tingkat}
-                    onChange={(e) => setFormData(prev => ({ ...prev, tingkat: e.target.value }))}
-                    className="w-full p-2.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1 focus:ring-indigo-500"
-                  >
-                    <option value="SEKOLAH">Sekolah / Internal</option>
-                    <option value="KECAMATAN">Kecamatan</option>
-                    <option value="KOTA">Kota / Kabupaten</option>
-                    <option value="PROVINSI">Provinsi</option>
-                    <option value="NASIONAL">Nasional</option>
-                    <option value="INTERNASIONAL">Internasional</option>
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Peringkat / Capaian</Label>
-                  <select
-                    value={formData.peringkat}
-                    onChange={(e) => setFormData(prev => ({ ...prev, peringkat: e.target.value }))}
-                    className="w-full p-2.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1 focus:ring-indigo-500"
-                  >
-                    <option value="Juara 1">Juara 1 / Emas / Medali Utama</option>
-                    <option value="Juara 2">Juara 2 / Perak</option>
-                    <option value="Juara 3">Juara 3 / Perunggu</option>
-                    <option value="Harapan 1">Juara Harapan 1</option>
-                    <option value="Harapan 2">Juara Harapan 2</option>
-                    <option value="Finalis">Finalis / Peserta Terbaik</option>
-                    <option value="Partisipan">Partisipan / Kontingen</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Tanggal Perolehan</Label>
+                  <Label className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">Tanggal Perolehan</Label>
                   <Input
                     type="date"
                     value={formData.tanggal}
                     onChange={(e) => setFormData(prev => ({ ...prev, tanggal: e.target.value }))}
-                    className="w-full text-xs"
+                    className="w-full text-xs bg-white dark:bg-slate-900 border-emerald-200/80"
                     required
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Poin Apresiasi (Reward)</Label>
+                  <Label className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">Poin Apresiasi (Reward)</Label>
                   <Input
                     type="number"
                     min="1"
                     value={formData.poin || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, poin: parseInt(e.target.value) || 0 }))}
-                    className="w-full text-xs"
+                    className="w-full text-xs bg-white dark:bg-slate-900 border-emerald-200/80 font-bold text-emerald-700"
                     required
                   />
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nama Prestasi / Kejuaraan</Label>
-                <Input
-                  placeholder="Contoh: Juara 1 Lomba LKS Cyber Security / KSN Informatika"
-                  value={formData.nama_prestasi}
-                  onChange={(e) => setFormData(prev => ({ ...prev, nama_prestasi: e.target.value }))}
-                  className="w-full text-xs"
-                  required
-                />
-              </div>
+              <div className="space-y-3 p-3.5 rounded-2xl bg-sky-50/45 dark:bg-sky-950/20 border border-sky-200/70">
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-bold uppercase tracking-wider text-sky-800 dark:text-sky-300">Nama Prestasi / Kejuaraan</Label>
+                  <Input
+                    placeholder="Contoh: Juara 1 Lomba LKS Cyber Security / KSN Informatika"
+                    value={formData.nama_prestasi}
+                    onChange={(e) => setFormData(prev => ({ ...prev, nama_prestasi: e.target.value }))}
+                    className="w-full text-xs bg-white dark:bg-slate-900 border-sky-200/80"
+                    required
+                  />
+                </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="keterangan-prestasi" className="text-xs font-bold uppercase tracking-wider text-slate-500">Keterangan / Penyelenggara</Label>
-                <textarea
-                  id="keterangan-prestasi"
-                  aria-label="Keterangan / Penyelenggara"
-                  value={formData.keterangan}
-                  onChange={(e) => setFormData(prev => ({ ...prev, keterangan: e.target.value }))}
-                  placeholder="Penyelenggara lomba, pembimbing, nomor piagam, link sertifikat..."
-                  className="w-full min-h-[70px] p-2.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
+                <div className="space-y-1.5">
+                  <Label htmlFor="keterangan-prestasi" className="text-[11px] font-bold uppercase tracking-wider text-sky-800 dark:text-sky-300">Keterangan / Penyelenggara</Label>
+                  <textarea
+                    id="keterangan-prestasi"
+                    aria-label="Keterangan / Penyelenggara"
+                    value={formData.keterangan}
+                    onChange={(e) => setFormData(prev => ({ ...prev, keterangan: e.target.value }))}
+                    placeholder="Penyelenggara lomba, pembimbing, nomor piagam, link sertifikat..."
+                    className="w-full min-h-[70px] p-2.5 text-xs bg-white dark:bg-slate-900 border border-sky-200/80 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-sky-500"
+                  />
+                </div>
+              </div>
                 />
               </div>
 

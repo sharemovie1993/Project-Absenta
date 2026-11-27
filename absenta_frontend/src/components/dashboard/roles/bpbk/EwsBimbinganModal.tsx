@@ -109,7 +109,7 @@ export const EwsBimbinganModal: React.FC<EwsBimbinganModalProps> = ({
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Ringkasan EWS Siswa */}
-        <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-rose-50/80 via-amber-50/60 to-indigo-50/60 dark:from-rose-950/30 dark:to-indigo-950/30 border border-rose-200/80 dark:border-rose-800/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-black text-slate-900 dark:text-white">
@@ -129,11 +129,11 @@ export const EwsBimbinganModal: React.FC<EwsBimbinganModalProps> = ({
                 {student.riskLevel} ({student.riskScore})
               </Badge>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-slate-600 dark:text-slate-300">
               NIS: <span className="font-mono font-semibold">{student.nis}</span> • Kelas:{' '}
               <span className="font-semibold">{student.kelas}</span> • Pelanggaran:{' '}
               <span className="text-rose-600 font-bold">+{student.violations}</span> • Alpa:{' '}
-              <span className="font-bold">{student.alpaCount}x</span>
+              <span className="font-bold text-amber-700 dark:text-amber-400">{student.alpaCount}x</span>
             </p>
           </div>
 
@@ -143,7 +143,7 @@ export const EwsBimbinganModal: React.FC<EwsBimbinganModalProps> = ({
               variant="toolbarOutline"
               size="toolbar"
               onClick={() => onOpenFullProfile(student.id)}
-              className="shrink-0 text-xs"
+              className="shrink-0 text-xs bg-white/90 hover:bg-white border-rose-200"
             >
               <span>Riwayat Kasus</span>
               <ExternalLink className="w-3.5 h-3.5 ml-1" />
@@ -151,9 +151,9 @@ export const EwsBimbinganModal: React.FC<EwsBimbinganModalProps> = ({
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-sky-50/45 dark:bg-sky-950/20 border border-sky-200/70">
           <div className="space-y-1.5">
-            <Label htmlFor="ews-tanggal" className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <Label htmlFor="ews-tanggal" className="text-[11px] font-bold uppercase tracking-wider text-sky-800 dark:text-sky-300">
               Tanggal Sesi
             </Label>
             <Input
@@ -161,12 +161,12 @@ export const EwsBimbinganModal: React.FC<EwsBimbinganModalProps> = ({
               type="date"
               value={tanggal}
               onChange={(e) => setTanggal(e.target.value)}
-              className="h-10 text-xs rounded-xl"
+              className="h-10 text-xs bg-white dark:bg-slate-900 border-sky-200/80 rounded-xl"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="ews-tipe" className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <Label htmlFor="ews-tipe" className="text-[11px] font-bold uppercase tracking-wider text-sky-800 dark:text-sky-300">
               Tipe Sesi Konseling
             </Label>
             <SearchableSelect
@@ -178,14 +178,14 @@ export const EwsBimbinganModal: React.FC<EwsBimbinganModalProps> = ({
               ]}
               value={tipe}
               onValueChange={(val) => setTipe((val as 'INDIVIDU' | 'KELOMPOK' | 'KARIR') || 'INDIVIDU')}
-              className="h-10 text-xs rounded-xl"
+              className="h-10 text-xs bg-white dark:bg-slate-900 border-sky-200/80 rounded-xl"
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-200/70">
           <div className="space-y-1.5">
-            <Label htmlFor="ews-kasus" className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <Label htmlFor="ews-kasus" className="text-[11px] font-bold uppercase tracking-wider text-indigo-800 dark:text-indigo-300">
               Hubungkan dengan Kasus BK
             </Label>
             <SearchableSelect
@@ -199,12 +199,12 @@ export const EwsBimbinganModal: React.FC<EwsBimbinganModalProps> = ({
               ]}
               value={kasusBkId}
               onValueChange={(val) => setKasusBkId(val || '')}
-              className="h-10 text-xs rounded-xl"
+              className="h-10 text-xs bg-white dark:bg-slate-900 border-indigo-200/80 rounded-xl"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="ews-status" className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <Label htmlFor="ews-status" className="text-[11px] font-bold uppercase tracking-wider text-indigo-800 dark:text-indigo-300">
               Status Pendampingan
             </Label>
             <SearchableSelect
@@ -215,13 +215,13 @@ export const EwsBimbinganModal: React.FC<EwsBimbinganModalProps> = ({
               ]}
               value={status}
               onValueChange={(val) => setStatus((val as 'PROSES' | 'SELESAI') || 'PROSES')}
-              className="h-10 text-xs rounded-xl"
+              className="h-10 text-xs bg-white dark:bg-slate-900 border-indigo-200/80 rounded-xl"
             />
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="ews-masalah" className="text-xs font-bold uppercase tracking-wider text-slate-500">
+        <div className="space-y-1.5 p-3.5 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/80">
+          <Label htmlFor="ews-masalah" className="text-[11px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
             Fokus Bimbingan / Masalah
           </Label>
           <textarea
@@ -230,12 +230,12 @@ export const EwsBimbinganModal: React.FC<EwsBimbinganModalProps> = ({
             value={masalah}
             onChange={(e) => setMasalah(e.target.value)}
             placeholder="Catat hasil observasi atau keluhan siswa..."
-            className="w-full p-3 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+            className="w-full p-3 text-xs bg-white dark:bg-slate-900 border border-amber-200/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400/40"
           />
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="ews-solusi" className="text-xs font-bold uppercase tracking-wider text-slate-500">
+        <div className="space-y-1.5 p-3.5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/80">
+          <Label htmlFor="ews-solusi" className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
             Solusi / Rencana Tindak Lanjut
           </Label>
           <textarea
