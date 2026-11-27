@@ -248,7 +248,7 @@ export default async function settingsRoutes(fastify: any) {
                         },
                         orderBy: { name: 'asc' },
                         include: {
-                            Assignments: {
+                            organizationalAssigns: {
                                 where: { is_active: true },
                                 include: {
                                     User: {
@@ -278,7 +278,7 @@ export default async function settingsRoutes(fastify: any) {
                         code: p.code,
                         name: p.name,
                         isCooperativeRole: Boolean(coopPriority[p.code]) || String(p.code).includes('KOPERASI'),
-                        holders: (p.Assignments || [])
+                        holders: (p.organizationalAssigns || [])
                             .map((a: any) => a.User?.Guru?.nama_guru || a.User?.Siswa?.nama_siswa || a.User?.full_name)
                             .filter(Boolean),
                     }))
