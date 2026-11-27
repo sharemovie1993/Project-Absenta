@@ -452,6 +452,19 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
           activeTab={activeTab}
           onSelectTab={(tabId) => handleTabSelect(tabId as KoperasiTabId)}
           categories={visibleCategories}
+          footerExtra={
+            <button
+              type="button"
+              onClick={() => {
+                setIsMobileSidebarOpen(false);
+                navigate('/dashboard?tab=koperasi-saya');
+              }}
+              className="w-full py-2.5 px-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 border border-emerald-200/80 dark:border-emerald-800/70 text-emerald-700 dark:text-emerald-300 flex items-center justify-center gap-2 text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-[0.98]"
+            >
+              <PiggyBank size={15} className="stroke-[2.2]" />
+              <span>Buka Koperasi Saya (Portal Anggota)</span>
+            </button>
+          }
         />
 
         {/* 2. Desktop 2-Column Layout */}

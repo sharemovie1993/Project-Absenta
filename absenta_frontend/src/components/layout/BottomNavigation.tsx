@@ -14,6 +14,7 @@ import {
   Eye,
   Award,
   Calendar,
+  PiggyBank,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/utils';
@@ -209,6 +210,15 @@ export const BottomNavigation: React.FC = React.memo(() => {
           ] : []),
           { id: 'nilai', label: 'Buku Nilai Guru', shortLabel: 'Nilai', icon: GraduationCap, category: 'operasional', targetPath: '/rapor/input-nilai' },
           { id: 'tugas', label: 'Pusat Tugas & Peringatan', shortLabel: 'Tugas', icon: CheckSquare, category: 'operasional', targetPath: '/dashboard?tab=action_hub' },
+          {
+            id: 'koperasi-saya',
+            label: 'Koperasi Saya (Anggota)',
+            shortLabel: 'Koperasi Saya',
+            icon: PiggyBank,
+            category: 'layanan',
+            targetPath: '/dashboard?tab=koperasi-saya',
+            color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
+          },
         ];
         kbmOps.forEach((op) => {
           if (!seen.has(op.id)) {
@@ -271,8 +281,23 @@ export const BottomNavigation: React.FC = React.memo(() => {
       });
     }
 
+    // Selalu pastikan akses Koperasi Anggota tersedia di drawer
+    if (!seen.has('koperasi-saya') && !seen.has('koperasi') && !isKepsek) {
+      const coopKey = isSiswa ? 'koperasi' : 'koperasi-saya';
+      seen.add(coopKey);
+      list.push({
+        id: coopKey,
+        label: isSiswa ? 'Koperasi Siswa (Anggota)' : 'Koperasi Saya (Anggota)',
+        shortLabel: isSiswa ? 'Koperasi Siswa' : 'Koperasi Saya',
+        icon: PiggyBank,
+        category: (activeEcosystem === 'tu' ? 'persuratan' : 'layanan') as any,
+        targetPath: isSiswa ? '/dashboard?tab=koperasi' : '/dashboard?tab=koperasi-saya',
+        color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
+      });
+    }
+
     return list;
-  }, [activeTabsList, activeEcosystem, isPengawasCbt, pengawasCbtActiveCount, isPengujiSidang, pengujiSidangUnexaminedCount]);
+  }, [activeTabsList, activeEcosystem, isPengawasCbt, pengawasCbtActiveCount, isPengujiSidang, pengujiSidangUnexaminedCount, isSiswa, isKepsek]);
 
   const fallbackCategories = useMemo(() => {
     if (activeEcosystem === 'kaprog') {
@@ -306,6 +331,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
       return [
         { id: 'jabatan', label: 'Ekosistem Jabatan & Peran', shortLabel: 'Jabatan' },
         { id: 'operasional', label: 'Operasional KBM & Mengajar', shortLabel: 'KBM' },
+        { id: 'layanan', label: 'Layanan Anggota & Kesejahteraan', shortLabel: 'Layanan' },
       ];
     }
     if (isSiswa || activeEcosystem === 'siswa') {

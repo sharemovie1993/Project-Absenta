@@ -1453,8 +1453,103 @@ export function getToolmanTabs(currentSubtab?: string): MobileBottomTabItem[] {
 
 export function getKoperasiTabs(
   currentSubtab?: string,
-  canFn?: (capability: string) => boolean
+  canFn?: (capability: string) => boolean,
+  isMemberPortal = false,
+  memberTabName = 'koperasi-saya'
 ): MobileBottomTabItem[] {
+  if (isMemberPortal) {
+    return [
+      {
+        id: 'portal_back',
+        label: 'Kembali ke Portal',
+        shortLabel: 'Kembali',
+        icon: ArrowLeft,
+        targetPath: '/dashboard?tab=ringkasan',
+        isActive: () => false,
+      },
+      {
+        id: 'coop_member_ringkasan',
+        label: 'Ringkasan Anggota',
+        shortLabel: 'Ringkasan',
+        icon: Home,
+        targetPath: `/dashboard?tab=${memberTabName}&subtab=ringkasan`,
+        isActive: (_p, t) =>
+          (t === memberTabName || t === 'koperasi-saya' || t === 'koperasi') &&
+          (!currentSubtab || currentSubtab === 'ringkasan'),
+      },
+      {
+        id: 'coop_member_menu',
+        label: 'Menu Koperasi Saya',
+        shortLabel: 'Menu Anggota',
+        icon: LayoutGrid,
+        targetPath: `/dashboard?tab=${memberTabName}`,
+        isActive: (_p, t) =>
+          (t === memberTabName || t === 'koperasi-saya' || t === 'koperasi') &&
+          Boolean(
+            currentSubtab &&
+              !['ringkasan', 'simpanan', 'pinjaman', 'katalog'].includes(currentSubtab)
+          ),
+        children: [
+          {
+            id: 'shu',
+            label: 'Sisa Hasil Usaha (SHU)',
+            icon: Award,
+            targetPath: `/dashboard?tab=${memberTabName}&subtab=shu`,
+            color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
+          },
+          {
+            id: 'loyalty',
+            label: 'Poin & Voucher',
+            icon: Award,
+            targetPath: `/dashboard?tab=${memberTabName}&subtab=loyalty`,
+            color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400',
+          },
+          {
+            id: 'voting',
+            label: 'Sidang RAT & Voting',
+            icon: CheckSquare,
+            targetPath: `/dashboard?tab=${memberTabName}&subtab=voting`,
+            color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400',
+          },
+          {
+            id: 'pengumuman',
+            label: 'Papan Pengumuman',
+            icon: Bell,
+            targetPath: `/dashboard?tab=${memberTabName}&subtab=pengumuman`,
+            color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
+          },
+          {
+            id: 'bantuan',
+            label: 'Tiket & Bantuan',
+            icon: MessageSquare,
+            targetPath: `/dashboard?tab=${memberTabName}&subtab=bantuan`,
+            color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400',
+          },
+        ],
+      },
+      {
+        id: 'coop_member_savings',
+        label: 'Simpanan Saya',
+        shortLabel: 'Simpanan',
+        icon: PiggyBank,
+        targetPath: `/dashboard?tab=${memberTabName}&subtab=simpanan`,
+        isActive: (_p, t) =>
+          (t === memberTabName || t === 'koperasi-saya' || t === 'koperasi') &&
+          currentSubtab === 'simpanan',
+      },
+      {
+        id: 'coop_member_catalog',
+        label: 'Katalog Toko',
+        shortLabel: 'Toko',
+        icon: ShoppingBag,
+        targetPath: `/dashboard?tab=${memberTabName}&subtab=katalog`,
+        isActive: (_p, t) =>
+          (t === memberTabName || t === 'koperasi-saya' || t === 'koperasi') &&
+          currentSubtab === 'katalog',
+      },
+    ];
+  }
+
   const canPos = !canFn || canFn('cooperative.store.orders.manage') || canFn('coop.pos.access');
   const canSavings =
     !canFn ||
@@ -1692,13 +1787,14 @@ export function getSiswaTabs(
       icon: LayoutGrid,
       targetPath: '/dashboard?tab=ringkasan',
       badge: pendingBadgeCount > 0 ? String(pendingBadgeCount) : undefined,
-      isActive: (p, t) => Boolean(t && ['cbt', 'pkl', 'catatan', 'berkas', 'portal'].includes(t)),
+      isActive: (p, t) => Boolean(t && ['cbt', 'pkl', 'catatan', 'berkas', 'koperasi', 'portal'].includes(t)),
       children: [
         { id: 'ringkasan', label: 'Ringkasan Beranda', icon: Home, targetPath: '/dashboard?tab=ringkasan', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400', category: 'operasional' },
         { id: 'kehadiran', label: 'Presensi & Kehadiran', icon: CheckCircle2, targetPath: '/dashboard?tab=kehadiran', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400', category: 'operasional' },
         { id: 'cbt', label: 'Ujian CBT Online', icon: Laptop, targetPath: '/dashboard?tab=cbt', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400', category: 'akademik' },
         { id: 'catatan', label: 'Catatan BK & Disiplin', icon: FileText, targetPath: '/dashboard?tab=catatan', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400', category: 'operasional' },
         { id: 'berkas', label: 'Berkas Dokumen & Nilai', icon: BookOpen, targetPath: '/dashboard?tab=berkas', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400', category: 'akademik' },
+        { id: 'koperasi', label: 'Koperasi Siswa (Anggota)', icon: PiggyBank, targetPath: '/dashboard?tab=koperasi', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400', category: 'layanan' },
         { id: 'portal', label: 'Portal Aplikasi', icon: LayoutGrid, targetPath: '/dashboard?tab=portal', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400', category: 'layanan' },
         ...(isPetugasKelas ? [
           { id: 'petugas_ops', label: 'Petugas Presensi', icon: CheckCircle2, targetPath: '/attendance/ops', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400', category: 'operasional' }

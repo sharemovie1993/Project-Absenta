@@ -14,7 +14,8 @@ import {
   Award, 
   GraduationCap, 
   LayoutGrid,
-  CheckSquare
+  CheckSquare,
+  PiggyBank
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
@@ -152,8 +153,13 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
 
   // ── DETEKSI EKOSISTEM AKTIF (STEP 2 VS STEP 1 PORTAL) ──
   const activeEcosystem = useMemo<EcosystemType>(() => {
-    if (isSiswa) return 'siswa';
     const path = location.pathname;
+    if (isSiswa) {
+      if ((path === '/dashboard' || path === '/dashboard/') && currentTab === 'koperasi') {
+        return 'koperasi';
+      }
+      return 'siswa';
+    }
     if (path.startsWith('/kurikulum')) return 'kurikulum';
     if (path.startsWith('/kesiswaan')) return 'kesiswaan';
     if (path.startsWith('/hubin/tracer') || path.startsWith('/hubin/bkk')) return 'bkk';
@@ -180,7 +186,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       if (currentTab === 'ketarunaan') return 'ketarunaan';
       if (currentTab === 'pembimbing_pkl') return 'pembimbing_pkl';
       if (currentTab === 'satpam' || currentTab === 'gerbang') return 'satpam';
-      if (currentTab === 'koperasi') return 'koperasi';
+      if (currentTab === 'koperasi' || currentTab === 'koperasi-saya') return 'koperasi';
       if (currentTab === 'kelola' || currentTab === 'piket') return 'piket';
       if (currentTab === 'admin') return 'admin';
       if (currentTab === 'kepsek') return 'kepsek';
@@ -222,7 +228,12 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       case 'satpam':
         return getSatpamTabs(currentSubtab);
       case 'koperasi':
-        return getKoperasiTabs(currentSubtab, (cap) => isAdmin || isAdminRole || can(cap));
+        return getKoperasiTabs(
+          currentSubtab,
+          (cap) => isAdmin || isAdminRole || can(cap),
+          currentTab === 'koperasi-saya' || isSiswa,
+          isSiswa ? 'koperasi' : 'koperasi-saya'
+        );
       case 'piket':
         return getPiketTabs();
       case 'admin':
@@ -299,6 +310,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
           children: teacherDashboards.length > 0 ? teacherDashboards : [
             { id: 'presensi', label: 'Presensi KBM', icon: CheckCircle2, targetPath: '/dashboard?tab=manual_presensi', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
             { id: 'jurnal', label: 'Jurnal Mengajar', icon: FileText, targetPath: '/kurikulum/jurnal', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
+            { id: 'koperasi-saya', label: 'Koperasi Saya (Anggota)', icon: PiggyBank, targetPath: '/dashboard?tab=koperasi-saya', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
           ],
         };
 
@@ -351,14 +363,16 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
     isAdminRole,
     can,
     kepsekTabs,
+    currentTab,
+    isSiswa,
   ]);
 
   // ── LAYER THEME CONFIGURATION (LAYER 1 VS LAYER 2 ROLE WORKSPACE ECOSYSTEM) ──
   const currentTheme = useMemo(() => {
-    return getEcosystemTheme(activeEcosystem, isSiswa, isKepsek);
+    return getEcosystemTheme(activeEcosystem, isSiswa && activeEcosystem === 'siswa', isKepsek);
   }, [activeEcosystem, isSiswa, isKepsek]);
 
-  const activeTabsList = isSiswa ? siswaTabs : isKepsek ? kepsekTabs : staffTabs;
+  const activeTabsList = isSiswa && activeEcosystem === 'siswa' ? siswaTabs : isKepsek ? kepsekTabs : staffTabs;
   const shouldHideNav =
     location.pathname.startsWith('/parent-app') ||
     location.pathname.startsWith('/cooperative/rat') ||
