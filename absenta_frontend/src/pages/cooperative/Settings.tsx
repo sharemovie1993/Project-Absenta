@@ -54,9 +54,10 @@ const PRESET_COLORS = ['#3B82F6',
 ];
 export interface SettingsProps {
   hideLayout?: boolean;
+  initialTab?: 'profile' | 'categories' | 'shu_distribution' | 'shu_periods' | 'delegation';
 }
 
-const Settings: React.FC<SettingsProps> = React.memo(({ hideLayout = false }) => {
+const Settings: React.FC<SettingsProps> = React.memo(({ hideLayout = false, initialTab = 'profile' }) => {
   const queryClient = useQueryClient();
   const {
     user
@@ -70,7 +71,7 @@ const Settings: React.FC<SettingsProps> = React.memo(({ hideLayout = false }) =>
   const confirm = useConfirm();
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<'profile' | 'categories' | 'shu_distribution' | 'shu_periods' | 'delegation'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'categories' | 'shu_distribution' | 'shu_periods' | 'delegation'>(initialTab);
 
   // Capability checks
   const canEditProfile = isAdmin || isKoperasiHead || can('cooperative.members.manage') || can('cooperative.settings.manage');

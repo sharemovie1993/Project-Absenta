@@ -21,7 +21,8 @@ export type KoperasiTabId =
   | 'pengumuman'
   | 'tiket'
   | 'langganan'
-  | 'pengaturan';
+  | 'pengaturan'
+  | 'delegasi_ketua';
 
 export interface KoperasiNavTabItem {
   id: KoperasiTabId;

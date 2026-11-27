@@ -18,6 +18,7 @@ import {
   Boxes,
   Bell,
   Settings,
+  ShieldCheck,
   CreditCard,
   type LucideIcon,
 } from 'lucide-react';
@@ -361,6 +362,20 @@ export const KOPERASI_SUBTABS_BASE: KoperasiTabDefinition[] = [
       'cooperative.settings.update',
       'cooperative.setup.view',
       'cooperative.setup.manage',
+    ],
+  },
+  {
+    id: 'delegasi_ketua',
+    label: 'Delegasi Ketua',
+    shortLabel: 'Delegasi',
+    category: 'organisasi',
+    icon: ShieldCheck,
+    targetPath: '/dashboard?tab=koperasi&subtab=delegasi_ketua',
+    color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
+    anyOfCapabilities: [
+      'cooperative.settings.view',
+      'cooperative.settings.update',
+      'cooperative.members.manage',
     ],
   },
 ];

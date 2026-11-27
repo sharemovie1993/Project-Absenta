@@ -817,6 +817,19 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
                 </Suspense>
               </div>
             )}
+
+            {/* TAB 20: DELEGASI WEWENANG KETUA */}
+            {allowedTabIds.has('delegasi_ketua') && visitedTabs.has('delegasi_ketua') && (
+              <div
+                role="tabpanel"
+                aria-hidden={activeTab !== 'delegasi_ketua'}
+                className={cn('w-full min-w-0', activeTab === 'delegasi_ketua' ? 'block' : 'hidden')}
+              >
+                <Suspense fallback={<SubtabFallbackSkeleton />}>
+                  <SettingsPage hideLayout={true} initialTab="delegation" />
+                </Suspense>
+              </div>
+            )}
           </main>
         </div>
       </div>
