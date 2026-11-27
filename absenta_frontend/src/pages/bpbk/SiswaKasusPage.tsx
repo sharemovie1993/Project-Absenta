@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useMemo, Suspense, lazy } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, Suspense, lazy } from 'react';
+import { useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { SiswaKasusSection } from './components/SiswaKasusSection';
@@ -10,9 +11,17 @@ const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ defaul
 const SiswaDetailView = lazy(() => import('../../components/academic/siswa/SiswaDetailView').then(m => ({ default: m.SiswaDetailView })));
 
 export default React.memo(function SiswaKasusPage() {
+  const { siswaId: routeSiswaId } = useParams<{ siswaId?: string }>();
   const queryClient = useQueryClient();
-  const [selectedSiswaId, setSelectedSiswaId] = useState<string | null>(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [selectedSiswaId, setSelectedSiswaId] = useState<string | null>(routeSiswaId || null);
+  const [isDetailOpen, setIsDetailOpen] = useState(Boolean(routeSiswaId));
+
+  useEffect(() => {
+    if (routeSiswaId) {
+      setSelectedSiswaId(routeSiswaId);
+      setIsDetailOpen(true);
+    }
+  }, [routeSiswaId]);
 
   const viewSiswaDetail = useCallback((id: string) => {
     setSelectedSiswaId(id);

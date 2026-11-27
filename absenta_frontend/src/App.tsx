@@ -836,6 +836,13 @@ function App() {
                         </Suspense>
                       </ProtectedRoute>
                     } />
+                    <Route path="/bpbk/siswa/:siswaId" element={
+                      <ProtectedRoute requiredCapability="bk.cases.view.list">
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <BpbkSiswaPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
                     <Route path="/bpbk/cases" element={
                       <ProtectedRoute requiredCapability="bk.cases.view.list">
                         <Suspense fallback={<div className="p-8"><Loader /></div>}>

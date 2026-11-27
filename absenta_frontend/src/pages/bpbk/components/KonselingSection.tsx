@@ -23,6 +23,7 @@ import { MobileAcademicList } from '../../../components/academic/shared/MobileAc
 
 const Modal = lazy(() => import('../../../components/ui/Modal').then(m => ({ default: m.Modal })));
 const SmartStudentPicker = lazy(() => import('../../../components/common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
+const SiswaDetailView = lazy(() => import('../../../components/academic/siswa/SiswaDetailView').then(m => ({ default: m.SiswaDetailView })));
 
 const konselingFormSchema = z.object({
   siswa_id: z.string().min(1, 'Siswa wajib dipilih'),
@@ -85,6 +86,7 @@ export const KonselingSection: React.FC = React.memo(() => {
   const [pemanggilanAlasan, setPemanggilanAlasan] = useState('');
   const [pemanggilanOrtuNotified, setPemanggilanOrtuNotified] = useState(false);
   const [savingPemanggilan, setSavingPemanggilan] = useState(false);
+  const [historySiswaId, setHistorySiswaId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     siswa_id: '',
     tanggal: new Date().toISOString().split('T')[0],
@@ -430,18 +432,18 @@ export const KonselingSection: React.FC = React.memo(() => {
     {
       key: 'actions',
       label: 'Aksi',
-      render: (_, item: unknown) => (
-        <div className="flex gap-1 justify-end">
+      render: (_, item: any) => (
+        <div className="flex flex-wrap gap-1 justify-end items-center">
           {showDeleted ? (
             can('bk.recyclebin.restore') && (
               <Button
                 variant="ghost"
-                size="icon"
+                size="sm"
                 onClick={() => handleRestore(item.id)}
-                className="w-8 h-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                className="h-7 px-2 text-[11px] font-bold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                 title="Pulihkan Catatan"
               >
-                <RotateCcw size={13} />
+                <RotateCcw size={12} className="mr-1" /> Pulihkan
               </Button>
             )
           ) : (
@@ -450,58 +452,58 @@ export const KonselingSection: React.FC = React.memo(() => {
                 <>
                   <Button
                     variant="ghost"
-                    size="icon"
+                    size="sm"
                     onClick={() => handleMarkComplete(item)}
-                    className="w-8 h-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                    title="Tandai Selesai"
+                    className="h-7 px-2 text-[10px] font-bold text-emerald-700 bg-emerald-50/80 hover:bg-emerald-100 rounded-lg"
+                    title="Tandai Sesi Selesai"
                   >
-                    <CheckCircle2 size={14} />
+                    <CheckCircle2 size={12} className="mr-1" /> Selesai
                   </Button>
                   <Button
                     variant="ghost"
-                    size="icon"
+                    size="sm"
                     onClick={() => handleFollowUp(item)}
-                    className="w-8 h-8 text-sky-600 hover:text-sky-700 hover:bg-sky-50"
+                    className="h-7 px-2 text-[10px] font-bold text-sky-700 bg-sky-50/80 hover:bg-sky-100 rounded-lg"
                     title="Catat Sesi Lanjutan"
                   >
-                    <PlusCircle size={14} />
+                    <PlusCircle size={12} className="mr-1" /> Lanjut
                   </Button>
                   <Button
                     variant="ghost"
-                    size="icon"
+                    size="sm"
                     onClick={() => handleOpenPemanggilan(item)}
-                    className="w-8 h-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                    title="Eskalasi: Panggil Orang Tua"
+                    className="h-7 px-2 text-[10px] font-bold text-amber-700 bg-amber-50/80 hover:bg-amber-100 rounded-lg"
+                    title="Buat Surat Panggilan Orang Tua"
                   >
-                    <MailOpen size={14} />
+                    <MailOpen size={12} className="mr-1" /> Panggil Ortu
                   </Button>
+                  {!item.kasus_bk_id && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleOpenEscalate(item)}
+                      className="h-7 px-2 text-[10px] font-bold text-purple-700 bg-purple-50/80 hover:bg-purple-100 rounded-lg"
+                      title="Eskalasi ke Kasus BK"
+                    >
+                      <FolderPlus size={12} className="mr-1" /> Buat Kasus
+                    </Button>
+                  )}
                 </>
-              )}
-              {!item.kasus_bk_id && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleOpenEscalate(item)}
-                  className="w-8 h-8 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                  title="Buka / Eskalasi ke Kasus BK"
-                >
-                  <FolderPlus size={14} />
-                </Button>
               )}
               <Button
                 variant="ghost"
-                size="icon"
-                onClick={() => navigate(`/bpbk/siswa/${item.siswa_id}`)}
-                className="w-8 h-8 text-slate-600 hover:text-slate-800 hover:bg-slate-100"
+                size="sm"
+                onClick={() => setHistorySiswaId(item.siswa_id)}
+                className="h-7 px-2 text-[10px] font-bold text-slate-700 bg-slate-100/80 hover:bg-slate-200 rounded-lg"
                 title="Lihat Riwayat & Kasus Siswa"
               >
-                <ExternalLink size={13} />
+                <ExternalLink size={12} className="mr-1" /> Riwayat
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => handleEdit(item)}
-                className="w-8 h-8 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                className="w-7 h-7 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
                 title="Edit Catatan"
               >
                 <Edit2 size={13} />
@@ -510,7 +512,7 @@ export const KonselingSection: React.FC = React.memo(() => {
                 variant="ghost"
                 size="icon"
                 onClick={() => handleDelete(item.id)}
-                className="w-8 h-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                className="w-7 h-7 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
                 title="Hapus Catatan"
               >
                 <Trash2 size={13} />
@@ -520,7 +522,7 @@ export const KonselingSection: React.FC = React.memo(() => {
         </div>
       )
     }
-  ], [showDeleted, can, handleRestore, handleMarkComplete, handleFollowUp, handleOpenEscalate, handleOpenPemanggilan, navigate, handleEdit, handleDelete]);
+  ], [showDeleted, can, handleRestore, handleMarkComplete, handleFollowUp, handleOpenEscalate, handleOpenPemanggilan, handleEdit, handleDelete]);
 
   const isMobile = useIsMobile();
 
@@ -569,7 +571,7 @@ export const KonselingSection: React.FC = React.memo(() => {
             BK: {item.Petugas?.full_name || 'Petugas BK'}
           </span>
 
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1 justify-end">
             {showDeleted ? (
               can('bk.recyclebin.restore') && (
                 <Button
@@ -587,66 +589,61 @@ export const KonselingSection: React.FC = React.memo(() => {
                   <>
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="sm"
                       onClick={() => handleMarkComplete(item)}
-                      className="w-8 h-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                      title="Tandai Selesai"
+                      className="h-7 px-2 text-[10px] font-bold text-emerald-700 bg-emerald-50/80 hover:bg-emerald-100 rounded-lg"
                     >
-                      <CheckCircle2 size={14} />
+                      <CheckCircle2 size={12} className="mr-1" /> Selesai
                     </Button>
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="sm"
                       onClick={() => handleFollowUp(item)}
-                      className="w-8 h-8 text-sky-600 hover:text-sky-700 hover:bg-sky-50"
-                      title="Catat Sesi Lanjutan"
+                      className="h-7 px-2 text-[10px] font-bold text-sky-700 bg-sky-50/80 hover:bg-sky-100 rounded-lg"
                     >
-                      <PlusCircle size={14} />
+                      <PlusCircle size={12} className="mr-1" /> Lanjut
                     </Button>
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="sm"
                       onClick={() => handleOpenPemanggilan(item)}
-                      className="w-8 h-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                      title="Eskalasi: Panggil Orang Tua"
+                      className="h-7 px-2 text-[10px] font-bold text-amber-700 bg-amber-50/80 hover:bg-amber-100 rounded-lg"
                     >
-                      <MailOpen size={14} />
+                      <MailOpen size={12} className="mr-1" /> Panggil Ortu
                     </Button>
+                    {!item.kasus_bk_id && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleOpenEscalate(item)}
+                        className="h-7 px-2 text-[10px] font-bold text-purple-700 bg-purple-50/80 hover:bg-purple-100 rounded-lg"
+                      >
+                        <FolderPlus size={12} className="mr-1" /> Buat Kasus
+                      </Button>
+                    )}
                   </>
-                )}
-                {!item.kasus_bk_id && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleOpenEscalate(item)}
-                    className="w-8 h-8 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                    title="Buka / Eskalasi ke Kasus BK"
-                  >
-                    <FolderPlus size={14} />
-                  </Button>
                 )}
                 <Button
                   variant="ghost"
-                  size="icon"
-                  onClick={() => navigate(`/bpbk/siswa/${item.siswa_id}`)}
-                  className="w-8 h-8 text-slate-600 hover:text-slate-800 hover:bg-slate-100"
-                  title="Lihat Riwayat & Kasus Siswa"
+                  size="sm"
+                  onClick={() => setHistorySiswaId(item.siswa_id)}
+                  className="h-7 px-2 text-[10px] font-bold text-slate-700 bg-slate-100/80 hover:bg-slate-200 rounded-lg"
                 >
-                  <ExternalLink size={13} />
+                  <ExternalLink size={12} className="mr-1" /> Riwayat
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => handleEdit(item)}
-                  className="h-8 px-2.5 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 text-[11px] font-bold"
+                  className="h-7 px-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 text-[10px] font-bold"
                 >
-                  <Edit2 size={13} className="mr-1" /> Edit
+                  <Edit2 size={12} className="mr-1" /> Edit
                 </Button>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => handleDelete(item.id)}
-                  className="w-8 h-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                  className="w-7 h-7 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
                   title="Hapus Catatan"
                 >
                   <Trash2 size={13} />
@@ -1091,6 +1088,27 @@ export const KonselingSection: React.FC = React.memo(() => {
                 </Button>
               </div>
             </form>
+          )}
+        </Modal>
+      </Suspense>
+      {/* Modal Riwayat & Rekam Jejak Siswa In-Place */}
+      <Suspense fallback={null}>
+        <Modal
+          isOpen={Boolean(historySiswaId)}
+          onClose={() => setHistorySiswaId(null)}
+          title="Riwayat & Rekam Jejak Siswa"
+          size="4xl"
+        >
+          {historySiswaId && (
+            <Suspense fallback={<div className="p-10 flex justify-center"><Loader /></div>}>
+              <SiswaDetailView
+                siswaId={historySiswaId}
+                onSuccess={() => {
+                  setHistorySiswaId(null);
+                  invalidateBpbkCache();
+                }}
+              />
+            </Suspense>
           )}
         </Modal>
       </Suspense>
