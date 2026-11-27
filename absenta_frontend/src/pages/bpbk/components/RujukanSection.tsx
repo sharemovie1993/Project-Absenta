@@ -12,14 +12,16 @@ import { SearchableSelect } from '../../../components/ui/SearchableSelect';
 import { Loader } from '../../../components/ui/Loader';
 import { Badge } from '../../../components/ui/Badge';
 import { Label } from '../../../components/ui/Label';
+import { DebouncedSearchInput } from '../../../components/ui';
 import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
-import { Plus, Edit2, Trash2, Share2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Share2, CheckCircle2, Clock, Eye, History, Building2 } from 'lucide-react';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../../components/academic/shared/MobileAcademicList';
 
 const Modal = lazy(() => import('../../../components/ui/Modal').then(m => ({ default: m.Modal })));
 const SmartStudentPicker = lazy(() => import('../../../components/common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
+const BpbkSiswaHistoryView = lazy(() => import('./BpbkSiswaHistoryView').then(m => ({ default: m.BpbkSiswaHistoryView })));
 
 const rujukanFormSchema = z.object({
   kasus_bk_id: z.string().min(1, 'Kasus wajib dipilih'),
@@ -44,10 +46,14 @@ export const RujukanSection: React.FC = React.memo(() => {
   const confirm = useConfirm();
   const queryClient = useQueryClient();
 
-  // Form states
+  // Form & Filter states
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedSiswa, setSelectedSiswa] = useState<any>(null);
+  const [detailTarget, setDetailTarget] = useState<RujukanKasus | null>(null);
+  const [historySiswaId, setHistorySiswaId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     siswa_id: '',
     tanggal: new Date().toISOString().split('T')[0],
@@ -65,6 +71,43 @@ export const RujukanSection: React.FC = React.memo(() => {
 
   const data = useMemo(() => rujukanRes?.data?.list || [], [rujukanRes]);
   const totalPages = rujukanRes?.data?.pagination?.totalPages || 1;
+  const totalItems = rujukanRes?.data?.pagination?.total || data.length;
+
+  const filteredData = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return data.filter((item: RujukanKasus) => {
+      const matchesStatus = !statusFilter || item.status === statusFilter;
+      const matchesQuery =
+        !q ||
+        (item.Siswa?.nama_siswa || '').toLowerCase().includes(q) ||
+        (item.rujukan_ke || '').toLowerCase().includes(q) ||
+        (item.alasan || '').toLowerCase().includes(q);
+      return matchesStatus && matchesQuery;
+    });
+  }, [data, search, statusFilter]);
+
+  const analytics = useMemo(() => {
+    const diusulkan = data.filter((i: RujukanKasus) => i.status !== 'SELESAI').length;
+    const selesai = data.filter((i: RujukanKasus) => i.status === 'SELESAI').length;
+    const instansiCount = new Set(data.map((i: RujukanKasus) => (i.rujukan_ke || '').trim()).filter(Boolean)).size;
+    return {
+      total: totalItems,
+      diusulkan,
+      selesai,
+      instansiCount,
+    };
+  }, [data, totalItems]);
+
+  const handleMarkComplete = useCallback(async (item: RujukanKasus) => {
+    try {
+      await bpbkApi.updateRujukan(item.id, { status: 'SELESAI' });
+      toast.success('Status rujukan ditandai Tuntas (SELESAI)');
+      queryClient.invalidateQueries({ queryKey: bpbkQueryKeys.all });
+      refetch();
+    } catch {
+      toast.error('Gagal memperbarui status rujukan');
+    }
+  }, [queryClient, refetch]);
 
   const resetForm = useCallback(() => {
     setFormData({
@@ -156,17 +199,23 @@ export const RujukanSection: React.FC = React.memo(() => {
       label: 'Tanggal Rujukan',
       sortable: true,
       render: (value: string) => (
-        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-          {new Date(value).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+          {new Date(value).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
         </span>
       )
     },
     {
       key: 'siswa',
       label: 'Profil Siswa',
-      render: (_, item: unknown) => (
-        <div>
-          <div className="font-bold text-slate-800 dark:text-white text-xs">{item.Siswa?.nama_siswa}</div>
+      render: (_, item: any) => (
+        <div
+          className="cursor-pointer group min-w-[130px]"
+          onClick={() => item.siswa_id && setHistorySiswaId(item.siswa_id)}
+          title="Lihat Riwayat & Rekam Jejak BP/BK Siswa"
+        >
+          <div className="font-bold text-slate-800 dark:text-white text-xs group-hover:text-indigo-600 transition-colors">
+            {item.Siswa?.nama_siswa}
+          </div>
           <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{item.Siswa?.Kelas?.nama_kelas || '-'}</div>
         </div>
       )
@@ -175,21 +224,21 @@ export const RujukanSection: React.FC = React.memo(() => {
       key: 'rujukan_ke',
       label: 'Dirujuk Ke',
       render: (value: string) => (
-        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{value}</span>
+        <span className="text-xs font-bold text-blue-700 dark:text-blue-300">{value}</span>
       )
     },
     {
       key: 'alasan',
       label: 'Alasan / Deskripsi Kasus',
       render: (value: string) => (
-        <p className="text-xs font-medium text-slate-600 line-clamp-1 max-w-xs">{value}</p>
+        <p className="text-xs font-medium text-slate-600 dark:text-slate-300 line-clamp-2 max-w-xs">{value}</p>
       )
     },
     {
       key: 'status',
       label: 'Status',
       render: (value: string) => (
-        <Badge variant={value === 'SELESAI' ? 'success' : 'warning'} className="text-[9px] font-black uppercase">
+        <Badge variant={value === 'SELESAI' ? 'success' : 'warning'} className="text-[9px] font-black uppercase whitespace-nowrap">
           {value}
         </Badge>
       )
@@ -197,13 +246,43 @@ export const RujukanSection: React.FC = React.memo(() => {
     {
       key: 'actions',
       label: 'Aksi',
-      render: (_, item: unknown) => (
-        <div className="flex gap-1 justify-end">
+      render: (_, item: any) => (
+        <div className="flex items-center gap-1 justify-end whitespace-nowrap">
+          {item.status !== 'SELESAI' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleMarkComplete(item)}
+              className="h-7 px-2 text-[10px] font-bold text-emerald-700 bg-emerald-50/90 hover:bg-emerald-100 rounded-lg"
+              title="Tandai Rujukan Tuntas"
+            >
+              <CheckCircle2 size={12} className="mr-1" /> Tuntas
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setDetailTarget(item)}
+            className="w-7 h-7 text-blue-600 bg-blue-50/80 hover:bg-blue-100 rounded-lg"
+            title="Lihat Detail Rujukan"
+          >
+            <Eye size={13} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => item.siswa_id && setHistorySiswaId(item.siswa_id)}
+            className="w-7 h-7 text-slate-600 bg-slate-100/80 hover:bg-slate-200 rounded-lg"
+            title="Riwayat BP/BK Siswa"
+          >
+            <History size={13} />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => handleEdit(item)}
-            className="w-8 h-8 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+            className="w-7 h-7 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg"
+            title="Edit Rujukan"
           >
             <Edit2 size={13} />
           </Button>
@@ -211,14 +290,15 @@ export const RujukanSection: React.FC = React.memo(() => {
             variant="ghost"
             size="icon"
             onClick={() => handleDelete(item.id)}
-            className="w-8 h-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+            className="w-7 h-7 text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg"
+            title="Hapus Rujukan"
           >
             <Trash2 size={13} />
           </Button>
         </div>
       )
     }
-  ], [handleEdit, handleDelete]);
+  ], [handleEdit, handleDelete, handleMarkComplete]);
 
   const isMobile = useIsMobile();
 
@@ -258,24 +338,56 @@ export const RujukanSection: React.FC = React.memo(() => {
           </p>
         </div>
 
-        <div className="flex items-center justify-end gap-1 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleEdit(item)}
-            className="h-8 px-2.5 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 text-[11px] font-bold"
-          >
-            <Edit2 size={13} className="mr-1" /> Edit
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleDelete(item.id)}
-            className="w-8 h-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
-            title="Hapus Rujukan"
-          >
-            <Trash2 size={13} />
-          </Button>
+        <div className="flex items-center justify-between gap-1 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+          <div className="flex items-center gap-1">
+            {item.status !== 'SELESAI' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleMarkComplete(item)}
+                className="h-8 px-2.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 text-[11px] font-bold rounded-lg"
+              >
+                <CheckCircle2 size={13} className="mr-1" /> Tuntas
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDetailTarget(item)}
+              className="h-8 px-2.5 text-blue-700 bg-blue-50 hover:bg-blue-100 text-[11px] font-bold rounded-lg"
+            >
+              <Eye size={13} className="mr-1" /> Detail
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => item.siswa_id && setHistorySiswaId(item.siswa_id)}
+              className="w-8 h-8 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg"
+              title="Riwayat Siswa"
+            >
+              <History size={13} />
+            </Button>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleEdit(item)}
+              className="w-8 h-8 text-indigo-600 hover:bg-indigo-50"
+              title="Edit Rujukan"
+            >
+              <Edit2 size={13} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleDelete(item.id)}
+              className="w-8 h-8 text-rose-600 hover:bg-rose-50"
+              title="Hapus Rujukan"
+            >
+              <Trash2 size={13} />
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -298,8 +410,72 @@ export const RujukanSection: React.FC = React.memo(() => {
         </Button>
       </div>
 
-      {/* Table / Mobile Cards */}
+      {/* Analytics Strip (Standar Konseling) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Total Rujukan</span>
+            <span className="text-xl font-black text-slate-800 dark:text-white font-mono">{analytics.total}</span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
+            <Share2 size={15} />
+          </div>
+        </div>
+        <div className="p-3.5 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-900/40 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 block">Diusulkan</span>
+            <span className="text-xl font-black text-amber-700 dark:text-amber-300 font-mono">{analytics.diusulkan}</span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-600 flex items-center justify-center">
+            <Clock size={15} />
+          </div>
+        </div>
+        <div className="p-3.5 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/70 dark:border-emerald-900/40 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">Tuntas / Selesai</span>
+            <span className="text-xl font-black text-emerald-700 dark:text-emerald-300 font-mono">{analytics.selesai}</span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 flex items-center justify-center">
+            <CheckCircle2 size={15} />
+          </div>
+        </div>
+        <div className="p-3.5 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/70 dark:border-blue-900/40 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 block">Pihak / Instansi</span>
+            <span className="text-xl font-black text-blue-700 dark:text-blue-300 font-mono">{analytics.instansiCount}</span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 flex items-center justify-center">
+            <Building2 size={15} />
+          </div>
+        </div>
+      </div>
+
+      {/* Filters & Table Card */}
       <Card noPadding className="rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden bg-white dark:bg-slate-900">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="sm:col-span-2">
+            <DebouncedSearchInput
+              placeholder="Cari siswa, instansi rujukan, atau alasan..."
+              value={search}
+              onChange={setSearch}
+              isLoading={loading}
+              className="w-full"
+              inputClassName="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
+            />
+          </div>
+          <div>
+            <SearchableSelect
+              options={[
+                { value: '', label: 'Semua Status' },
+                { value: 'DIUSULKAN', label: 'Diusulkan' },
+                { value: 'SELESAI', label: 'Tuntas / Selesai' }
+              ]}
+              value={statusFilter}
+              onValueChange={setStatusFilter}
+              placeholder="Status Rujukan"
+            />
+          </div>
+        </div>
       {loading && data.length === 0 ? (
         <div className="py-20 flex flex-col items-center justify-center">
           <Loader className="mb-4" />
@@ -309,9 +485,9 @@ export const RujukanSection: React.FC = React.memo(() => {
         <div className="space-y-4">
           <MobileAcademicList
             title="Daftar Rujukan Kasus"
-            data={data}
+            data={filteredData}
             loading={loading}
-            totalItems={totalPages * limit}
+            totalItems={filteredData.length}
             emptyMessage="Belum ada catatan rujukan kasus siswa."
             pagination={{
               currentPage: page,
@@ -330,7 +506,7 @@ export const RujukanSection: React.FC = React.memo(() => {
       ) : (
         <Table
           columns={columns}
-          data={data}
+          data={filteredData}
           sortBy={sortBy}
           sortOrder={sortOrder}
           onSort={handleSort}
@@ -471,6 +647,89 @@ export const RujukanSection: React.FC = React.memo(() => {
             </div>
           </form>
         </Modal>
+
+        {/* Modal Detail Rujukan */}
+        {detailTarget && (
+          <Modal
+            isOpen={Boolean(detailTarget)}
+            onClose={() => setDetailTarget(null)}
+            title={`Detail Rujukan: ${detailTarget.Siswa?.nama_siswa || 'Siswa'}`}
+            size="lg"
+          >
+            <div className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3 p-3.5 rounded-2xl bg-blue-50/50 border border-blue-200/80">
+                <div>
+                  <span className="text-[10px] font-bold uppercase text-blue-600 block">Tanggal Rujukan</span>
+                  <span className="font-bold text-slate-800">{formatDate(detailTarget.tanggal)}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase text-blue-600 block">Dirujuk Ke</span>
+                  <span className="font-bold text-blue-900">{detailTarget.rujukan_ke}</span>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold uppercase text-amber-700 block">Alasan & Rekomendasi Rujukan</span>
+                <p className="p-3.5 rounded-2xl bg-amber-50/40 border border-amber-200/80 text-slate-700 leading-relaxed">
+                  {detailTarget.alasan}
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                {detailTarget.status !== 'SELESAI' && (
+                  <Button
+                    type="button"
+                    variant="toolbarPrimary"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    onClick={() => {
+                      const target = detailTarget;
+                      setDetailTarget(null);
+                      handleMarkComplete(target);
+                    }}
+                  >
+                    <CheckCircle2 size={13} className="mr-1.5" /> Tandai Tuntas
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    const sid = detailTarget.siswa_id;
+                    setDetailTarget(null);
+                    if (sid) setHistorySiswaId(sid);
+                  }}
+                >
+                  <History size={13} className="mr-1.5" /> Riwayat Siswa
+                </Button>
+                <Button
+                  type="button"
+                  variant="toolbarPrimary"
+                  onClick={() => {
+                    const target = detailTarget;
+                    setDetailTarget(null);
+                    handleEdit(target);
+                  }}
+                >
+                  <Edit2 size={13} className="mr-1.5" /> Edit
+                </Button>
+              </div>
+            </div>
+          </Modal>
+        )}
+
+        {/* Modal Riwayat BP/BK Siswa */}
+        {historySiswaId && (
+          <Modal
+            isOpen={Boolean(historySiswaId)}
+            onClose={() => setHistorySiswaId(null)}
+            title="Riwayat & Rekam Jejak BP/BK Siswa"
+            size="3xl"
+          >
+            <Suspense fallback={<div className="p-10 flex justify-center"><Loader /></div>}>
+              <BpbkSiswaHistoryView siswaId={historySiswaId} />
+            </Suspense>
+          </Modal>
+        )}
       </Suspense>
     </div>
   );

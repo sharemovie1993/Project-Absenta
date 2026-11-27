@@ -414,44 +414,50 @@ export const AsesmenSection: React.FC = React.memo(() => {
         </div>
       </div>
 
-      {/* Analytics Summary Cards (Standard Premium Components) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <AnalyticsCard
-          variant="premium"
-          title="Total Dokumen Asesmen"
-          value={totalItems || data?.length || 0}
-          subtitle="Berkas Tersimpan"
-          icon={<FileText className="text-white" size={20} />}
-          gradient="bg-gradient-to-br from-indigo-500 to-indigo-700 text-white border-indigo-400/30"
-          isLoading={loading}
-        />
-        <AnalyticsCard
-          variant="premium"
-          title="Siswa Terasesmen"
-          value={useMemo(() => new Set((data || [])?.map(item => item.siswa_id)).size, [data])}
-          subtitle="Profil Individu"
-          icon={<Users className="text-white" size={20} />}
-          gradient="bg-gradient-to-br from-violet-500 to-violet-700 text-white border-violet-400/30"
-          isLoading={loading}
-        />
-        <AnalyticsCard
-          variant="premium"
-          title="Asesmen Massal"
-          value={useMemo(() => (data || [])?.filter(item => !(item.nama_asesmen?.includes('DCM') || item.nama_asesmen?.includes('Sosiometri'))).length, [data])}
-          subtitle="Kelas / Klasikal"
-          icon={<BarChart2 className="text-white" size={20} />}
-          gradient="bg-gradient-to-br from-emerald-500 to-emerald-700 text-white border-emerald-400/30"
-          isLoading={loading}
-        />
-        <AnalyticsCard
-          variant="premium"
-          title="Asesmen Khusus"
-          value={useMemo(() => (data || [])?.filter(item => item.nama_asesmen?.includes('DCM') || item.nama_asesmen?.includes('Sosiometri')).length, [data])}
-          subtitle="Kasus / Fokus Masalah"
-          icon={<ShieldAlert className="text-white" size={20} />}
-          gradient="bg-gradient-to-br from-amber-500 to-amber-700 text-white border-amber-400/30"
-          isLoading={loading}
-        />
+      {/* Analytics Strip (Standar Konseling) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Total Asesmen</span>
+            <span className="text-xl font-black text-slate-800 dark:text-white font-mono">{totalItems || data?.length || 0}</span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
+            <FileText size={15} />
+          </div>
+        </div>
+        <div className="p-3.5 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/70 dark:border-indigo-900/40 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 block">Siswa Terasesmen</span>
+            <span className="text-xl font-black text-indigo-700 dark:text-indigo-300 font-mono">
+              {useMemo(() => new Set((data || [])?.map(item => item.siswa_id)).size, [data])}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 flex items-center justify-center">
+            <Users size={15} />
+          </div>
+        </div>
+        <div className="p-3.5 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/70 dark:border-emerald-900/40 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">Asesmen Massal</span>
+            <span className="text-xl font-black text-emerald-700 dark:text-emerald-300 font-mono">
+              {useMemo(() => (data || [])?.filter(item => !(item.nama_asesmen?.includes('DCM') || item.nama_asesmen?.includes('Sosiometri'))).length, [data])}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 flex items-center justify-center">
+            <BarChart2 size={15} />
+          </div>
+        </div>
+        <div className="p-3.5 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-900/40 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 block">Asesmen Khusus</span>
+            <span className="text-xl font-black text-amber-700 dark:text-amber-300 font-mono">
+              {useMemo(() => (data || [])?.filter(item => item.nama_asesmen?.includes('DCM') || item.nama_asesmen?.includes('Sosiometri')).length, [data])}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-600 flex items-center justify-center">
+            <ShieldAlert size={15} />
+          </div>
+        </div>
       </div>
 
       {/* Panel Pencarian & Penyaringan + Table Card */}
