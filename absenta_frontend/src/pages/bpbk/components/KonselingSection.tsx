@@ -77,6 +77,14 @@ export const KonselingSection: React.FC = React.memo(() => {
   const [escalateKategori, setEscalateKategori] = useState<'KEDISIPLINAN' | 'AKADEMIS' | 'PRIBADI' | 'SOSIAL'>('KEDISIPLINAN');
   const [escalatePrioritas, setEscalatePrioritas] = useState<'RENDAH' | 'SEDANG' | 'TINGGI'>('SEDANG');
   const [escalating, setEscalating] = useState(false);
+
+  const [pemanggilanTarget, setPemanggilanTarget] = useState<KonselingSiswa | null>(null);
+  const [pemanggilanTanggal, setPemanggilanTanggal] = useState(() => new Date().toISOString().split('T')[0]);
+  const [pemanggilanWaktu, setPemanggilanWaktu] = useState('09:00 WIB');
+  const [pemanggilanTempat, setPemanggilanTempat] = useState('Ruang Bimbingan Konseling (BP/BK)');
+  const [pemanggilanAlasan, setPemanggilanAlasan] = useState('');
+  const [pemanggilanOrtuNotified, setPemanggilanOrtuNotified] = useState(false);
+  const [savingPemanggilan, setSavingPemanggilan] = useState(false);
   const [formData, setFormData] = useState({
     siswa_id: '',
     tanggal: new Date().toISOString().split('T')[0],
@@ -144,58 +152,6 @@ export const KonselingSection: React.FC = React.memo(() => {
     });
     setModalOpen(true);
   }, []);
-
-  const handleOpenEscalate = useCallback((item: KonselingSiswa) => {
-    setEscalateTarget(item);
-    const cleanTitle = (item.masalah || 'Kasus Bimbingan Siswa').slice(0, 80);
-    setEscalateJudul(cleanTitle);
-    const lower = (item.masalah || '').toLowerCase();
-    if (lower.includes('pelanggaran') || lower.includes('terlambat') || lower.includes('alpa')) {
-      setEscalateKategori('KEDISIPLINAN');
-    } else if (item.tipe === 'KARIR' || lower.includes('akademik') || lower.includes('nilai')) {
-      setEscalateKategori('AKADEMIS');
-    } else {
-      setEscalateKategori('PRIBADI');
-    }
-    setEscalatePrioritas(lower.includes('high') ? 'TINGGI' : 'SEDANG');
-  }, []);
-
-  const handleSubmitEscalate = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!escalateTarget) return;
-    if (!escalateJudul.trim()) {
-      toast.error('Judul Kasus BK wajib diisi');
-      return;
-    }
-    setEscalating(true);
-    try {
-      const created = await bpbkApi.createKasusBK({
-        siswa_id: escalateTarget.siswa_id,
-        judul: escalateJudul.trim(),
-        kategori: escalateKategori,
-        status: 'PROSES',
-        prioritas: escalatePrioritas,
-        visibility: escalateTarget.visibility || 'LIMITED',
-        tanggal_kasus: new Date().toISOString().split('T')[0],
-        keterangan: `${escalateTarget.masalah}${escalateTarget.solusi ? `\n\nHasil/Catatan Konseling: ${escalateTarget.solusi}` : ''}`,
-      });
-      const kasusId = created?.data?.id;
-      if (kasusId) {
-        await bpbkApi.updateKonseling(escalateTarget.id, { kasus_bk_id: kasusId });
-      }
-      await Promise.all([
-        invalidateBpbkCache(),
-        queryClient.invalidateQueries({ queryKey: ['bpbk-cases-by-student', escalateTarget.siswa_id] }),
-      ]);
-      toast.success('Sesi konseling berhasil dieskalasi & ditautkan ke Kasus BK');
-      setEscalateTarget(null);
-      refetch();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || 'Gagal membuat Kasus BK');
-    } finally {
-      setEscalating(false);
-    }
-  }, [escalateTarget, escalateJudul, escalateKategori, escalatePrioritas, invalidateBpbkCache, queryClient, refetch]);
 
   const handleMarkComplete = useCallback(async (item: KonselingSiswa) => {
     const ok = await confirm({
@@ -283,6 +239,47 @@ export const KonselingSection: React.FC = React.memo(() => {
       setEscalating(false);
     }
   }, [escalateTarget, escalateJudul, escalateKategori, escalatePrioritas, invalidateBpbkCache, queryClient, refetch]);
+
+  const handleOpenPemanggilan = useCallback((item: KonselingSiswa) => {
+    setPemanggilanTarget(item);
+    setPemanggilanTanggal(new Date().toISOString().split('T')[0]);
+    setPemanggilanWaktu('09:00 WIB');
+    setPemanggilanTempat('Ruang Bimbingan Konseling (BP/BK)');
+    setPemanggilanAlasan(`Tindak lanjut konseling: ${item.masalah}`);
+    setPemanggilanOrtuNotified(false);
+  }, []);
+
+  const handleSubmitPemanggilan = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pemanggilanTarget) return;
+    if (!pemanggilanAlasan.trim()) {
+      toast.error('Alasan pemanggilan wajib diisi');
+      return;
+    }
+    setSavingPemanggilan(true);
+    try {
+      await bpbkApi.createPemanggilan({
+        siswa_id: pemanggilanTarget.siswa_id,
+        tanggal_pemanggilan: pemanggilanTanggal,
+        alasan: pemanggilanAlasan.trim(),
+        waktu_pertemuan: pemanggilanWaktu.trim() || undefined,
+        tempat_pertemuan: pemanggilanTempat.trim() || undefined,
+        kasus_bk_id: pemanggilanTarget.kasus_bk_id || undefined,
+        visibility: pemanggilanTarget.visibility || 'LIMITED',
+        ortu_notified: pemanggilanOrtuNotified,
+      });
+      await Promise.all([
+        invalidateBpbkCache(),
+        queryClient.invalidateQueries({ queryKey: ['bpbk-pemanggilan-list'] }),
+      ]);
+      toast.success(`Surat panggilan orang tua untuk ${pemanggilanTarget.Siswa?.nama_siswa || 'siswa'} berhasil dibuat`);
+      setPemanggilanTarget(null);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Gagal membuat pemanggilan orang tua');
+    } finally {
+      setSavingPemanggilan(false);
+    }
+  }, [pemanggilanTarget, pemanggilanTanggal, pemanggilanAlasan, pemanggilanWaktu, pemanggilanTempat, pemanggilanOrtuNotified, invalidateBpbkCache, queryClient]);
 
   const handleDelete = useCallback(async (id: string) => {
     const ok = await confirm({
@@ -469,7 +466,7 @@ export const KonselingSection: React.FC = React.memo(() => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => navigate(`/dashboard?tab=bpbk&subtab=pemanggilan&siswa_id=${item.siswa_id}`)}
+                    onClick={() => handleOpenPemanggilan(item)}
                     className="w-8 h-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
                     title="Eskalasi: Panggil Orang Tua"
                   >
@@ -520,7 +517,7 @@ export const KonselingSection: React.FC = React.memo(() => {
         </div>
       )
     }
-  ], [showDeleted, can, handleRestore, handleMarkComplete, handleFollowUp, handleOpenEscalate, navigate, handleEdit, handleDelete]);
+  ], [showDeleted, can, handleRestore, handleMarkComplete, handleFollowUp, handleOpenEscalate, handleOpenPemanggilan, navigate, handleEdit, handleDelete]);
 
   const isMobile = useIsMobile();
 
@@ -606,13 +603,24 @@ export const KonselingSection: React.FC = React.memo(() => {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => navigate(`/dashboard?tab=bpbk&subtab=pemanggilan&siswa_id=${item.siswa_id}`)}
+                      onClick={() => handleOpenPemanggilan(item)}
                       className="w-8 h-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
                       title="Eskalasi: Panggil Orang Tua"
                     >
                       <MailOpen size={14} />
                     </Button>
                   </>
+                )}
+                {!item.kasus_bk_id && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleOpenEscalate(item)}
+                    className="w-8 h-8 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                    title="Buka / Eskalasi ke Kasus BK"
+                  >
+                    <FolderPlus size={14} />
+                  </Button>
                 )}
                 <Button
                   variant="ghost"
@@ -993,6 +1001,90 @@ export const KonselingSection: React.FC = React.memo(() => {
                 <Button type="submit" variant="toolbarPrimary" size="toolbar" disabled={escalating} className="px-5">
                   <FolderPlus className="w-3.5 h-3.5 mr-1.5" />
                   <span>{escalating ? 'Membuat Kasus...' : 'Buat & Tautkan Kasus'}</span>
+                </Button>
+              </div>
+            </form>
+          )}
+        </Modal>
+      </Suspense>
+
+      {/* Modal In-Place Pemanggilan Orang Tua */}
+      <Suspense fallback={null}>
+        <Modal
+          isOpen={Boolean(pemanggilanTarget)}
+          onClose={() => setPemanggilanTarget(null)}
+          title="Buat Pemanggilan Orang Tua / Wali"
+          size="md"
+        >
+          {pemanggilanTarget && (
+            <form onSubmit={handleSubmitPemanggilan} className="space-y-4">
+              <div className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-800 text-xs">
+                <p className="font-bold text-amber-900 dark:text-amber-200">
+                  {pemanggilanTarget.Siswa?.nama_siswa || 'Siswa'} ({pemanggilanTarget.Siswa?.Kelas?.nama_kelas || '-'})
+                </p>
+                <p className="text-amber-800/80 dark:text-amber-300/80 mt-0.5 line-clamp-2">
+                  Pemanggilan orang tua akan tercatat langsung di daftar Pemanggilan Ortu dan terhubung dengan siswa ini.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Tanggal Pertemuan</Label>
+                  <Input
+                    type="date"
+                    value={pemanggilanTanggal}
+                    onChange={(e) => setPemanggilanTanggal(e.target.value)}
+                    className="h-10 text-xs rounded-xl"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Waktu Pertemuan</Label>
+                  <Input
+                    value={pemanggilanWaktu}
+                    onChange={(e) => setPemanggilanWaktu(e.target.value)}
+                    placeholder="Contoh: 09:00 WIB"
+                    className="h-10 text-xs rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Tempat Pertemuan</Label>
+                <Input
+                  value={pemanggilanTempat}
+                  onChange={(e) => setPemanggilanTempat(e.target.value)}
+                  placeholder="Ruang Bimbingan Konseling (BP/BK)"
+                  className="h-10 text-xs rounded-xl"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Alasan Pemanggilan</Label>
+                <textarea
+                  rows={3}
+                  value={pemanggilanAlasan}
+                  onChange={(e) => setPemanggilanAlasan(e.target.value)}
+                  className="w-full p-3 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={pemanggilanOrtuNotified}
+                  onChange={(e) => setPemanggilanOrtuNotified(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+                />
+                <span>Kirim notifikasi otomatis ke aplikasi Orang Tua</span>
+              </label>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <Button type="button" variant="toolbarOutline" size="toolbar" onClick={() => setPemanggilanTarget(null)}>
+                  Batal
+                </Button>
+                <Button type="submit" variant="toolbarPrimary" size="toolbar" disabled={savingPemanggilan} className="px-5 bg-amber-600 hover:bg-amber-700">
+                  <MailOpen className="w-3.5 h-3.5 mr-1.5" />
+                  <span>{savingPemanggilan ? 'Menyimpan...' : 'Simpan Panggilan Ortu'}</span>
                 </Button>
               </div>
             </form>
