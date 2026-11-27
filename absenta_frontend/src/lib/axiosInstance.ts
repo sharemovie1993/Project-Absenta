@@ -222,7 +222,9 @@ axiosInstance.interceptors.response.use(
         (headers as any)['x-backend-node'] ??
         (headers as any)['X-Backend-Node'];
       if (backendNodeHeader && typeof window !== 'undefined') {
-        (window as any).__BACKEND_NODE_ID__ = String(backendNodeHeader);
+        const nodeStr = String(backendNodeHeader);
+        (window as any).__BACKEND_NODE_ID__ = nodeStr;
+        window.dispatchEvent(new CustomEvent('absenta:backend-node', { detail: nodeStr }));
       }
 
       // Hitung perbedaan waktu antara Client dan Server untuk mencegah bug deteksi offline akibat clock drift

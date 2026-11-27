@@ -1,15 +1,25 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '@/lib/axiosInstance';
 import { cn } from '@/lib/utils';
 import { useSocketPing } from '@/hooks/useSocketPing';
 import { SignalBars } from './SignalBars';
 
+function formatShortNodeLabel(raw?: string | null): string | null {
+  if (!raw) return null;
+  const m = raw.match(/absenta-node-(\d+)(?:-w(\d+))?/i);
+  if (m) {
+    return m[2] !== undefined ? `N${m[1]}:w${m[2]}` : `N${m[1]}`;
+  }
+  return raw;
+}
+
 export interface RouteInfo {
   route: 'LOCAL' | 'TUNNEL';
   label: string;
   name?: string;
   latencyMs?: number; // RTT dari browser ke server (diukur client-side, nol beban server)
+  backendNode?: string;
 }
 
 const ROUTE_QUERY_KEY = ['network-access-route'];
@@ -20,11 +30,13 @@ async function fetchAccessRoute(): Promise<RouteInfo> {
     const res = await axiosInstance.get('/auth/tenant-info');
     const latencyMs = Date.now() - t0; // RTT round-trip time, diukur di sisi klien
     const data = res.data?.data;
+    const hdrNode = (res.headers as any)?.['x-backend-node'] ?? (res.headers as any)?.['X-Backend-Node'];
     const resObj: RouteInfo = {
       route: (data?.access_route as 'LOCAL' | 'TUNNEL') || 'LOCAL',
       label: data?.access_label || (data?.access_route === 'TUNNEL' ? 'Tunnel' : 'Lokal'),
       name: data?.name,
       latencyMs,
+      backendNode: hdrNode ? String(hdrNode) : undefined,
     };
     // Tidak disimpan ke localStorage lagi — hindari cache stale antar sesi/jaringan
     return resObj;
@@ -91,10 +103,24 @@ export const RouteAccessBadge: React.FC<RouteAccessBadgeProps> = ({
 }) => {
   const { data } = useAccessRoute();
   const ping = useSocketPing(2000);
+  const [backendNode, setBackendNode] = useState<string | null>(() =>
+    typeof window !== 'undefined' ? ((window as any).__BACKEND_NODE_ID__ || null) : null
+  );
+
+  useEffect(() => {
+    const onNodeUpdate = (e: Event) => {
+      const detail = (e as CustomEvent<string>).detail;
+      if (detail) setBackendNode(detail);
+    };
+    window.addEventListener('absenta:backend-node', onNodeUpdate);
+    return () => window.removeEventListener('absenta:backend-node', onNodeUpdate);
+  }, []);
 
   if (!data?.route) return null;
 
   const isLocal = data.route === 'LOCAL';
+  const resolvedNode = backendNode || data.backendNode || null;
+  const shortNode = formatShortNodeLabel(resolvedNode);
 
   // ── Mode tampilan berdasarkan ketersediaan socket ──
   // Socket tersambung → signal bar real-time (seperti ML)
@@ -109,7 +135,8 @@ export const RouteAccessBadge: React.FC<RouteAccessBadgeProps> = ({
   const pingDesc = socketAvailable
     ? ping.latencyMs !== null ? `Ping WebSocket: ${ping.latencyMs}ms` : 'Mengukur...'
     : httpMs !== undefined ? `HTTP RTT: ${httpMs}ms` : 'Belum terukur';
-  const tooltipText = `${routeDesc} · ${pingDesc}`;
+  const nodeDesc = resolvedNode ? ` · Server: ${resolvedNode}` : '';
+  const tooltipText = `${routeDesc} · ${pingDesc}${nodeDesc}`;
 
   return (
     <div
@@ -156,6 +183,12 @@ export const RouteAccessBadge: React.FC<RouteAccessBadgeProps> = ({
             </span>
           )}
         </span>
+      )}
+      {shortNode && (
+        <>
+          <span className="opacity-25 font-normal">|</span>
+          <span className="font-mono text-[10px] opacity-90">{shortNode}</span>
+        </>
       )}
     </div>
   );
