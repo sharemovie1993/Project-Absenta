@@ -122,6 +122,7 @@ export const KonselingSection: React.FC = React.memo(() => {
 
   const data = useMemo(() => Array.isArray(konselingRes?.data) ? konselingRes.data : konselingRes?.data?.list || [], [konselingRes]);
   const totalPages = konselingRes?.data?.pagination?.totalPages || 1;
+  const totalItems = konselingRes?.data?.pagination?.total || konselingRes?.data?.pagination?.totalItems || data.length;
   const cases = useMemo(() => Array.isArray(studentCasesRes?.data) ? studentCasesRes.data : studentCasesRes?.data?.list || [], [studentCasesRes]);
 
   const resetForm = useCallback(() => {
