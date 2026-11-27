@@ -52,11 +52,11 @@ export const BPBK_CATEGORIES: UniversalSubtabCategory[] = [
 ];
 
 export const BPBK_SUBTABS_BASE: BpbkTabDefinition[] = [
-  // 🤝 KATEGORI 1: LAYANAN & PEMETAAN (Identifikasi -> Asesmen -> Kasus -> Konseling)
+  // 🤝 KATEGORI 1: LAYANAN & PEMETAAN (Ringkasan/EWS -> Konseling -> Kasus -> Asesmen)
   { id: 'ringkasan', label: 'Ringkasan', shortLabel: 'Ringkasan', category: 'layanan', icon: LayoutDashboard, targetPath: '/dashboard?tab=bpbk&subtab=ringkasan', color: 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400' },
-  { id: 'asesmen', label: 'Asesmen', shortLabel: 'Asesmen', category: 'layanan', icon: ClipboardList, targetPath: '/dashboard?tab=bpbk&subtab=asesmen', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
-  { id: 'cases', label: 'Kasus', shortLabel: 'Kasus', category: 'layanan', icon: FileText, targetPath: '/dashboard?tab=bpbk&subtab=cases', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
   { id: 'konseling', label: 'Konseling', shortLabel: 'Konseling', category: 'layanan', icon: HeartHandshake, targetPath: '/dashboard?tab=bpbk&subtab=konseling', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
+  { id: 'cases', label: 'Kasus', shortLabel: 'Kasus', category: 'layanan', icon: FileText, targetPath: '/dashboard?tab=bpbk&subtab=cases', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
+  { id: 'asesmen', label: 'Asesmen', shortLabel: 'Asesmen', category: 'layanan', icon: ClipboardList, targetPath: '/dashboard?tab=bpbk&subtab=asesmen', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
 
   // 📋 KATEGORI 2: INTERVENSI & PELAPORAN (Eskalasi -> Pelaporan -> Struktur)
   { id: 'pemanggilan', label: 'Panggilan', shortLabel: 'Panggilan', category: 'intervensi', icon: MailOpen, targetPath: '/dashboard?tab=bpbk&subtab=pemanggilan', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },

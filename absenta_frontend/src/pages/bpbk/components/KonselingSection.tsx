@@ -17,7 +17,7 @@ import { DebouncedSearchInput } from '../../../components/ui';
 import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
 import { useCapabilities } from '../../../hooks/useCapabilities';
-import { Search, Plus, Edit2, Trash2, Calendar, Clipboard, UserCheck, MessageSquare, RotateCcw, CheckCircle2, PlusCircle, MailOpen, ExternalLink } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Calendar, Clipboard, UserCheck, MessageSquare, RotateCcw, CheckCircle2, PlusCircle, MailOpen, ExternalLink, FolderPlus } from 'lucide-react';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../../components/academic/shared/MobileAcademicList';
 
@@ -72,6 +72,11 @@ export const KonselingSection: React.FC = React.memo(() => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedSiswa, setSelectedSiswa] = useState<any>(null);
+  const [escalateTarget, setEscalateTarget] = useState<KonselingSiswa | null>(null);
+  const [escalateJudul, setEscalateJudul] = useState('');
+  const [escalateKategori, setEscalateKategori] = useState<'KEDISIPLINAN' | 'AKADEMIS' | 'PRIBADI' | 'SOSIAL'>('KEDISIPLINAN');
+  const [escalatePrioritas, setEscalatePrioritas] = useState<'RENDAH' | 'SEDANG' | 'TINGGI'>('SEDANG');
+  const [escalating, setEscalating] = useState(false);
   const [formData, setFormData] = useState({
     siswa_id: '',
     tanggal: new Date().toISOString().split('T')[0],
@@ -140,6 +145,58 @@ export const KonselingSection: React.FC = React.memo(() => {
     setModalOpen(true);
   }, []);
 
+  const handleOpenEscalate = useCallback((item: KonselingSiswa) => {
+    setEscalateTarget(item);
+    const cleanTitle = (item.masalah || 'Kasus Bimbingan Siswa').slice(0, 80);
+    setEscalateJudul(cleanTitle);
+    const lower = (item.masalah || '').toLowerCase();
+    if (lower.includes('pelanggaran') || lower.includes('terlambat') || lower.includes('alpa')) {
+      setEscalateKategori('KEDISIPLINAN');
+    } else if (item.tipe === 'KARIR' || lower.includes('akademik') || lower.includes('nilai')) {
+      setEscalateKategori('AKADEMIS');
+    } else {
+      setEscalateKategori('PRIBADI');
+    }
+    setEscalatePrioritas(lower.includes('high') ? 'TINGGI' : 'SEDANG');
+  }, []);
+
+  const handleSubmitEscalate = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!escalateTarget) return;
+    if (!escalateJudul.trim()) {
+      toast.error('Judul Kasus BK wajib diisi');
+      return;
+    }
+    setEscalating(true);
+    try {
+      const created = await bpbkApi.createKasusBK({
+        siswa_id: escalateTarget.siswa_id,
+        judul: escalateJudul.trim(),
+        kategori: escalateKategori,
+        status: 'PROSES',
+        prioritas: escalatePrioritas,
+        visibility: escalateTarget.visibility || 'LIMITED',
+        tanggal_kasus: new Date().toISOString().split('T')[0],
+        keterangan: `${escalateTarget.masalah}${escalateTarget.solusi ? `\n\nHasil/Catatan Konseling: ${escalateTarget.solusi}` : ''}`,
+      });
+      const kasusId = created?.data?.id;
+      if (kasusId) {
+        await bpbkApi.updateKonseling(escalateTarget.id, { kasus_bk_id: kasusId });
+      }
+      await Promise.all([
+        invalidateBpbkCache(),
+        queryClient.invalidateQueries({ queryKey: ['bpbk-cases-by-student', escalateTarget.siswa_id] }),
+      ]);
+      toast.success('Sesi konseling berhasil dieskalasi & ditautkan ke Kasus BK');
+      setEscalateTarget(null);
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Gagal membuat Kasus BK');
+    } finally {
+      setEscalating(false);
+    }
+  }, [escalateTarget, escalateJudul, escalateKategori, escalatePrioritas, invalidateBpbkCache, queryClient, refetch]);
+
   const handleMarkComplete = useCallback(async (item: KonselingSiswa) => {
     const ok = await confirm({
       title: 'Selesaikan Sesi Konseling',
@@ -174,6 +231,58 @@ export const KonselingSection: React.FC = React.memo(() => {
     });
     setModalOpen(true);
   }, []);
+
+  const handleOpenEscalate = useCallback((item: KonselingSiswa) => {
+    setEscalateTarget(item);
+    const cleanTitle = (item.masalah || 'Kasus Bimbingan Siswa').slice(0, 80);
+    setEscalateJudul(cleanTitle);
+    const lower = (item.masalah || '').toLowerCase();
+    if (lower.includes('pelanggaran') || lower.includes('terlambat') || lower.includes('alpa')) {
+      setEscalateKategori('KEDISIPLINAN');
+    } else if (item.tipe === 'KARIR' || lower.includes('akademik') || lower.includes('nilai')) {
+      setEscalateKategori('AKADEMIS');
+    } else {
+      setEscalateKategori('PRIBADI');
+    }
+    setEscalatePrioritas(lower.includes('high') ? 'TINGGI' : 'SEDANG');
+  }, []);
+
+  const handleSubmitEscalate = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!escalateTarget) return;
+    if (!escalateJudul.trim()) {
+      toast.error('Judul Kasus BK wajib diisi');
+      return;
+    }
+    setEscalating(true);
+    try {
+      const created = await bpbkApi.createKasusBK({
+        siswa_id: escalateTarget.siswa_id,
+        judul: escalateJudul.trim(),
+        kategori: escalateKategori,
+        status: 'PROSES',
+        prioritas: escalatePrioritas,
+        visibility: escalateTarget.visibility || 'LIMITED',
+        tanggal_kasus: new Date().toISOString().split('T')[0],
+        keterangan: `${escalateTarget.masalah}${escalateTarget.solusi ? `\n\nHasil/Catatan Konseling: ${escalateTarget.solusi}` : ''}`,
+      });
+      const kasusId = created?.data?.id;
+      if (kasusId) {
+        await bpbkApi.updateKonseling(escalateTarget.id, { kasus_bk_id: kasusId });
+      }
+      await Promise.all([
+        invalidateBpbkCache(),
+        queryClient.invalidateQueries({ queryKey: ['bpbk-cases-by-student', escalateTarget.siswa_id] }),
+      ]);
+      toast.success('Sesi konseling berhasil dieskalasi & ditautkan ke Kasus BK');
+      setEscalateTarget(null);
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Gagal membuat Kasus BK');
+    } finally {
+      setEscalating(false);
+    }
+  }, [escalateTarget, escalateJudul, escalateKategori, escalatePrioritas, invalidateBpbkCache, queryClient, refetch]);
 
   const handleDelete = useCallback(async (id: string) => {
     const ok = await confirm({
@@ -289,8 +398,15 @@ export const KonselingSection: React.FC = React.memo(() => {
     {
       key: 'masalah',
       label: 'Ringkasan Kasus',
-      render: (value: string) => (
-        <p className="text-xs font-medium text-slate-600 dark:text-slate-400 line-clamp-1 max-w-xs">{value}</p>
+      render: (value: string, item: any) => (
+        <div className="space-y-0.5 max-w-xs">
+          <p className="text-xs font-medium text-slate-600 dark:text-slate-400 line-clamp-1">{value}</p>
+          {item?.KasusBK?.judul && (
+            <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 truncate max-w-full">
+              Kasus: {item.KasusBK.judul}
+            </span>
+          )}
+        </div>
       )
     },
     {
@@ -361,6 +477,17 @@ export const KonselingSection: React.FC = React.memo(() => {
                   </Button>
                 </>
               )}
+              {!item.kasus_bk_id && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleOpenEscalate(item)}
+                  className="w-8 h-8 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                  title="Buka / Eskalasi ke Kasus BK"
+                >
+                  <FolderPlus size={14} />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
@@ -393,7 +520,7 @@ export const KonselingSection: React.FC = React.memo(() => {
         </div>
       )
     }
-  ], [showDeleted, can, handleRestore, handleMarkComplete, handleFollowUp, navigate, handleEdit, handleDelete]);
+  ], [showDeleted, can, handleRestore, handleMarkComplete, handleFollowUp, handleOpenEscalate, navigate, handleEdit, handleDelete]);
 
   const isMobile = useIsMobile();
 
@@ -799,6 +926,77 @@ export const KonselingSection: React.FC = React.memo(() => {
               </Button>
             </div>
           </form>
+        </Modal>
+      </Suspense>
+
+      {/* Modal Eskalasi Konseling -> Kasus BK */}
+      <Suspense fallback={null}>
+        <Modal
+          isOpen={Boolean(escalateTarget)}
+          onClose={() => setEscalateTarget(null)}
+          title="Eskalasi Konseling ke Kasus BK"
+          size="md"
+        >
+          {escalateTarget && (
+            <form onSubmit={handleSubmitEscalate} className="space-y-4">
+              <div className="p-3 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/70 dark:border-purple-800 text-xs">
+                <p className="font-bold text-purple-900 dark:text-purple-200">
+                  {escalateTarget.Siswa?.nama_siswa || 'Siswa'} ({escalateTarget.Siswa?.Kelas?.nama_kelas || '-'})
+                </p>
+                <p className="text-purple-700/80 dark:text-purple-300/80 mt-0.5 line-clamp-2">
+                  Sesi konseling ini akan ditautkan ke Kasus BK baru agar dapat dipantau di menu Kasus, Pemanggilan Ortu, Home Visit, dan Rujukan.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Judul Kasus BK</Label>
+                <Input
+                  value={escalateJudul}
+                  onChange={(e) => setEscalateJudul(e.target.value)}
+                  placeholder="Contoh: Pembinaan Kedisiplinan Berkelanjutan"
+                  className="h-10 text-xs rounded-xl"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Kategori</Label>
+                  <SearchableSelect
+                    value={escalateKategori}
+                    onValueChange={(v) => setEscalateKategori((v as any) || 'KEDISIPLINAN')}
+                    options={[
+                      { value: 'KEDISIPLINAN', label: 'Kedisiplinan' },
+                      { value: 'AKADEMIS', label: 'Akademis' },
+                      { value: 'PRIBADI', label: 'Pribadi' },
+                      { value: 'SOSIAL', label: 'Sosial' },
+                    ]}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Prioritas</Label>
+                  <SearchableSelect
+                    value={escalatePrioritas}
+                    onValueChange={(v) => setEscalatePrioritas((v as any) || 'SEDANG')}
+                    options={[
+                      { value: 'RENDAH', label: 'Rendah' },
+                      { value: 'SEDANG', label: 'Sedang' },
+                      { value: 'TINGGI', label: 'Tinggi' },
+                    ]}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <Button type="button" variant="toolbarOutline" size="toolbar" onClick={() => setEscalateTarget(null)}>
+                  Batal
+                </Button>
+                <Button type="submit" variant="toolbarPrimary" size="toolbar" disabled={escalating} className="px-5">
+                  <FolderPlus className="w-3.5 h-3.5 mr-1.5" />
+                  <span>{escalating ? 'Membuat Kasus...' : 'Buat & Tautkan Kasus'}</span>
+                </Button>
+              </div>
+            </form>
+          )}
         </Modal>
       </Suspense>
     </Card>
