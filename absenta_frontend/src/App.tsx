@@ -62,12 +62,6 @@ const MonitoringKbmPage = lazy(() => import('./pages/attendance/monitoring/Monit
 
 const UsersPage = lazy(() => import('./pages/users/UsersPage'));
 const TenantsPage = lazy(() => import('./pages/tenants/TenantsPage'));
-const TenantDetailPage = lazy(() => import('./pages/superadmin/TenantDetailPage'));
-const InfrastructureDashboard = lazy(() => import('./pages/superadmin/infra/InfrastructureDashboard'));
-const PlatformIntelligencePage = lazy(() => import('./pages/superadmin/PlatformIntelligencePage'));
-const RevenueIntelligencePage = lazy(() => import('./pages/superadmin/intelligence/RevenueIntelligencePage'));
-const UpgradeIntelligencePage = lazy(() => import('./pages/superadmin/intelligence/UpgradeIntelligencePage'));
-const RevenueDashboardPage = lazy(() => import('./pages/superadmin/revenue/RevenueDashboardPage'));
 const BackupsPage = lazy(() => import('./pages/superadmin/BackupsPage'));
 const MapelPresetsPage = lazy(() => import('./pages/superadmin/MapelPresetsPage'));
 const TopikPresetsPage = lazy(() => import('./pages/superadmin/TopikPresetsPage'));
@@ -126,7 +120,6 @@ const ProfilePage = lazy(() => import('./pages/account/ProfilePage'));
 const ComponentsDemo = lazy(() => import('./pages/ComponentsDemo'));
 const MenuManagementPage = lazy(() => import('./pages/management/MenuManagementPage'));
 const RoleManagementPage = lazy(() => import('./pages/management/RoleManagementPage'));
-const MenuAuditPage = lazy(() => import('./pages/management/MenuAuditPage'));
 const WebSekolahCmsPage = lazy(() => import('./pages/management/WebSekolahCmsPage'));
 const PlatformComplianceFollowUpPage = lazy(() => import('./pages/management/PlatformComplianceFollowUpPage'));
 const DailyBriefingPage = lazy(() => import('./pages/reporting/DailyBriefingPage'));
@@ -610,7 +603,7 @@ function App() {
                     <Route path="/onboarding" element={<OnboardingDashboard />} />
                     <Route path="/dashboard" element={
                       <RoleSwitch
-                        superadmin={<PlatformIntelligencePage />}
+                        superadmin={<Navigate to="/tenants" replace />}
                         admin={<UnifiedStaffDashboardPage />}
                         guru={<UnifiedStaffDashboardPage />}
                         siswa={<SiswaDashboard />}
@@ -1326,20 +1319,12 @@ function App() {
                     <Route path="/billing/my-subscription" element={<Navigate to="/service-center?tab=status" replace />} />
                     <Route path="/billing" element={
                       <ProtectedRoute requiredCapability="billing.my.subscription.view">
-                        <RoleSwitch
-                          superadmin={<Navigate to="/superadmin/revenue" replace />}
-                          admin={<Navigate to="/service-center?tab=status" replace />}
-                          fallback={<Navigate to="/service-center?tab=status" replace />}
-                        />
+                        <Navigate to="/service-center?tab=status" replace />
                       </ProtectedRoute>
                     } />
                     <Route path="/billing/dashboard" element={
                       <ProtectedRoute requiredCapability="billing.subscriptions.view.list">
-                        <RoleSwitch
-                          superadmin={<Navigate to="/superadmin/revenue" replace />}
-                          admin={<Navigate to="/service-center?tab=status" replace />}
-                          fallback={<Navigate to="/service-center?tab=status" replace />}
-                        />
+                        <Navigate to="/service-center?tab=status" replace />
                       </ProtectedRoute>
                     } />
                     {/* Redirects from legacy billing paths to Service Center canonical tabs */}
@@ -1351,7 +1336,7 @@ function App() {
                     <Route path="/billing/payments" element={<Navigate to="/service-center?tab=payments" replace />} />
                     <Route path="/billing/approvals" element={<Navigate to="/service-center?tab=status" replace />} />
                     <Route path="/billing/settings" element={<Navigate to="/service-center?tab=status" replace />} />
-                    <Route path="/billing/reports" element={<Navigate to="/superadmin/revenue" replace />} />
+                    <Route path="/billing/reports" element={<Navigate to="/service-center?tab=status" replace />} />
 
                     <Route path="/users" element={
                       <ProtectedRoute requiredCapability="core.users.view.list">
@@ -1364,42 +1349,6 @@ function App() {
                         <Route path="/tenants" element={
                           <ProtectedRoute requiredCapability="core.tenants.view.list">
                             <TenantsPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/tenants/:tenantId" element={
-                          <ProtectedRoute requiredCapability="core.tenants.view.detail">
-                            <TenantDetailPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/superadmin/infra" element={
-                          <ProtectedRoute
-                            requiredCapability={[
-                              'superadmin.infra.view.socket.global',
-                              'superadmin.infra.view.socket.tenants',
-                            ]}
-                          >
-                            <InfrastructureDashboard />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/superadmin/infra/monitoring" element={<Navigate to="/superadmin/infra" replace />} />
-                        <Route path="/superadmin/intelligence" element={
-                          <ProtectedRoute requiredCapability="core.tenants.view.list">
-                            <PlatformIntelligencePage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/superadmin/intelligence/revenue" element={
-                          <ProtectedRoute requiredCapability="core.tenants.view.list">
-                            <RevenueIntelligencePage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/superadmin/intelligence/upgrade" element={
-                          <ProtectedRoute requiredCapability="core.tenants.view.list">
-                            <UpgradeIntelligencePage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/superadmin/revenue" element={
-                          <ProtectedRoute requiredCapability="superadmin.revenue.view.overview">
-                            <RevenueDashboardPage />
                           </ProtectedRoute>
                         } />
                       </>
@@ -1446,7 +1395,6 @@ function App() {
 
                     <Route path="/komunikasi" element={<CommunicationCenterPage />} />
                     <Route path="/support" element={<SupportHelpdeskPage />} />
-                    <Route path="/superadmin/support" element={<SupportHelpdeskPage />} />
                     {/* Services Catalog (Internal Admin / School Store) */}
                     <Route path="/catalog" element={
                       <ProtectedRoute requiredCapability="billing.my.subscription.view">
@@ -1708,11 +1656,6 @@ function App() {
                     <Route path="/management/roles" element={
                       <ProtectedRoute requiredRole="SUPERADMIN" requiredCapability="core.users.view.roles">
                         <RoleManagementPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/management/menu-audit" element={
-                      <ProtectedRoute requiredRole="SUPERADMIN" requiredCapability="core.menu.view.list">
-                        <MenuAuditPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/management/web-sekolah" element={

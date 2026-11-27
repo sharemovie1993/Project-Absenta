@@ -105,7 +105,6 @@ export const VALID_ROUTE_SET = new Set<string>([
   '/billing/payments',
   '/billing/reports',
   '/billing/monitoring',
-  '/superadmin/infra/monitoring',
   '/invoice',
   '/invoice/dashboard',
   '/invoice/list',

@@ -64,17 +64,15 @@ export function InAppSidebar({
 
   // 3. Ekstraksi menu yang relevan dengan domain aplikasi aktif secara rekursif (Dengan Pemisah Divider Klaster)
   const subMenuItems = useMemo<ParsedMenuItem[]>(() => {
-    // Platform Superadmin Console: tampilkan seluruh menu PLATFORM tanpa disaring activeApp sekolah
+    // Platform Superadmin Console: tampilkan seluruh menu kanonikal Superadmin
     if (isSuperAdmin) {
-      const items: ParsedMenuItem[] = [
-        {
-          id: 'platform-dashboard',
-          label: 'Ringkasan Platform',
-          path: '/dashboard',
-          icon: iconForName('LayoutDashboard', Home),
-          isDivider: false,
-        },
-      ];
+      const items: ParsedMenuItem[] = [];
+
+      const pushDivider = (id: string, label: string) => {
+        if (items.length > 0 && !items[items.length - 1].isDivider) {
+          items.push({ id, label: label.toUpperCase(), path: '', icon: null, isDivider: true });
+        }
+      };
 
       const pushNode = (node: any, defaultIcon: any = Home) => {
         const rawPath = String(node.path || node.route || node.url || '').trim();
@@ -87,6 +85,23 @@ export function InAppSidebar({
           return;
         }
         const hasValidPath = normPath && normPath !== '#' && !normPath.startsWith('menu:');
+        // Abaikan route Superadmin lama yang sudah dihapus
+        const removedSuperadminPaths = new Set([
+          '/dashboard',
+          '/superadmin/infra',
+          '/superadmin/infra/monitoring',
+          '/superadmin/infra/jobs',
+          '/superadmin/infra/tripay-health',
+          '/superadmin/infra/tripay-simulator',
+          '/superadmin/intelligence',
+          '/superadmin/intelligence/revenue',
+          '/superadmin/intelligence/upgrade',
+          '/superadmin/revenue',
+          '/superadmin/support',
+          '/management/menu-audit',
+        ]);
+        if (removedSuperadminPaths.has(normPath)) return;
+
         if (hasValidPath && !items.some(u => !u.isDivider && u.path.toLowerCase() === normPath)) {
           const rawName = String(node.name || node.label || node.title || '').trim();
           const cleanLabel = rawName.replace(/^\d+\.\s*/, '');
@@ -108,37 +123,43 @@ export function InAppSidebar({
             pushNode(rootNode);
           }
           if (Array.isArray(childNodes) && childNodes.length > 0) {
-            if (items.length > 0 && !items[items.length - 1].isDivider) {
-              items.push({
-                id: `div-${rootNode.id || rootNode.name || items.length}`,
-                label: String(rootNode.name || '---').toUpperCase(),
-                path: '',
-                icon: null,
-                isDivider: true,
-              });
-            }
+            pushDivider(`div-${rootNode.id || rootNode.name || items.length}`, String(rootNode.name || '---'));
             for (const child of childNodes) {
               pushNode(child);
             }
-            if (String(rootNode.name || '').toUpperCase().includes('PRESET')) {
-              pushNode({
-                id: 'sa-preset-wilayah',
-                name: 'Master Wilayah',
-                path: '/superadmin/wilayah',
-                icon: 'MapPin',
-              });
-            }
           }
         }
-      } else {
-        // Fallback minimal saat menu DB kosong agar Superadmin tetap dapat bernavigasi
-        pushNode({ id: 'sa-tenants', name: 'Kelola Tenant', path: '/tenants', icon: 'Users' });
-        pushNode({ id: 'sa-wilayah', name: 'Master Wilayah', path: '/superadmin/wilayah', icon: 'MapPin' });
-        pushNode({ id: 'sa-backups', name: 'Cadangan Sistem', path: '/superadmin/backups', icon: 'Archive' });
-        pushNode({ id: 'sa-roles', name: 'Hak Akses', path: '/management/roles', icon: 'UserCog' });
-        pushNode({ id: 'sa-menus', name: 'Kelola Menu', path: '/management/menus', icon: 'Sliders' });
-        pushNode({ id: 'sa-support', name: 'Tiket Bantuan', path: '/support', icon: 'MessageSquare' });
       }
+
+      // Pastikan seluruh menu kanonikal Superadmin selalu terdaftar
+      pushDivider('div-sa-platform', 'PLATFORM & TENANT');
+      pushNode({ id: 'sa-tenants', name: 'Kelola Tenant', path: '/tenants', icon: 'Users' });
+      pushNode({ id: 'sa-backups', name: 'Cadangan Sistem', path: '/superadmin/backups', icon: 'Archive' });
+
+      pushDivider('div-sa-presets', 'MASTER PRESET GLOBAL');
+      pushNode({ id: 'sa-preset-mapel', name: 'Preset Mapel', path: '/superadmin/mapel-presets', icon: 'BookOpen' });
+      pushNode({ id: 'sa-preset-topik', name: 'Preset Topik', path: '/superadmin/topik-presets', icon: 'Sparkles' });
+      pushNode({ id: 'sa-preset-library', name: 'Katalog Modul', path: '/superadmin/library-templates', icon: 'Library' });
+      pushNode({ id: 'sa-preset-kalender', name: 'Preset Kalender', path: '/superadmin/calendar-presets', icon: 'Calendar' });
+      pushNode({ id: 'sa-preset-jurusan', name: 'Preset Jurusan', path: '/superadmin/jurusan-presets', icon: 'Briefcase' });
+      pushNode({ id: 'sa-preset-jp', name: 'Standar JP', path: '/superadmin/kurikulum-standards', icon: 'Clock' });
+      pushNode({ id: 'sa-preset-wilayah', name: 'Master Wilayah', path: '/superadmin/wilayah', icon: 'MapPin' });
+
+      pushDivider('div-sa-billing', 'BILLING & LANGGANAN');
+      pushNode({ id: 'sa-service-center', name: 'Service Center', path: '/service-center', icon: 'Crown' });
+      pushNode({ id: 'sa-catalog', name: 'Katalog Layanan', path: '/catalog', icon: 'Package' });
+      pushNode({ id: 'sa-rab-calc', name: 'Kalkulator RAB', path: '/billing/rab-calculator', icon: 'Calculator' });
+
+      pushDivider('div-sa-management', 'MANAJEMEN & PENGATURAN');
+      pushNode({ id: 'sa-menus', name: 'Kelola Menu', path: '/management/menus', icon: 'Sliders' });
+      pushNode({ id: 'sa-roles', name: 'Hak Akses & Role', path: '/management/roles', icon: 'UserCog' });
+      pushNode({ id: 'sa-compliance', name: 'Kepatuhan Platform', path: '/management/platform-compliance', icon: 'ShieldCheck' });
+      pushNode({ id: 'sa-web-sekolah', name: 'CMS Web Sekolah', path: '/management/web-sekolah', icon: 'Globe' });
+      pushNode({ id: 'sa-sys-update', name: 'System Update', path: '/settings/system-update', icon: 'RefreshCw' });
+      pushNode({ id: 'sa-easy-tunnel', name: 'Easy Tunnel', path: '/settings/easy-tunnel', icon: 'Wifi' });
+      pushNode({ id: 'sa-tenant-backup', name: 'Backup Sekolah', path: '/settings/backup', icon: 'Database' });
+      pushNode({ id: 'sa-whatsapp', name: 'Pengaturan WhatsApp', path: '/settings/whatsapp', icon: 'MessageSquare' });
+      pushNode({ id: 'sa-components-demo', name: 'Components Demo', path: '/components-demo', icon: 'LayoutGrid' });
 
       while (items.length > 0 && items[items.length - 1].isDivider) {
         items.pop();

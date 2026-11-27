@@ -486,18 +486,7 @@ async function main() {
   ];
 
   const PLATFORM_NAV_ITEMS: NavItem[] = [
-    { label: 'Ringkasan Platform', icon: 'LayoutDashboard', path: '/dashboard', required_capability: 'superadmin.tenants.manage', order: 95 },
     { label: 'Kelola Tenant', icon: 'Users', path: '/tenants', required_capability: 'superadmin.tenants.manage', order: 100 },
-    {
-      label: 'Helpdesk & Support',
-      icon: 'HelpCircle',
-      path: null,
-      required_capability: null,
-      order: 105,
-      children: [
-        { label: 'Tiket Bantuan', icon: 'MessageSquare', path: '/support', required_capability: 'admin.tickets.view.list' },
-      ],
-    },
     {
       label: 'PRESET GLOBAL',
       icon: 'LayoutTemplate',
@@ -511,7 +500,19 @@ async function main() {
         { label: 'Preset Jurusan', icon: 'Briefcase', path: '/superadmin/jurusan-presets', required_capability: 'superadmin.tenants.manage' },
         { label: 'Preset Kalender', icon: 'Calendar', path: '/superadmin/calendar-presets', required_capability: 'superadmin.tenants.manage' },
         { label: 'Standar JP', icon: 'Clock', path: '/superadmin/kurikulum-standards', required_capability: 'superadmin.tenants.manage' },
-        { label: 'Katalog Aset', icon: 'Package', path: '/sarpras/catalog', required_capability: 'superadmin.tenants.manage' },
+        { label: 'Master Wilayah', icon: 'MapPin', path: '/superadmin/wilayah', required_capability: 'superadmin.tenants.manage' },
+      ],
+    },
+    {
+      label: 'Billing & Langganan',
+      icon: 'Crown',
+      path: null,
+      required_capability: null,
+      order: 115,
+      children: [
+        { label: 'Service Center', icon: 'Crown', path: '/service-center', required_capability: 'billing.my.subscription.view' },
+        { label: 'Katalog Layanan', icon: 'Package', path: '/catalog', required_capability: 'billing.my.subscription.view' },
+        { label: 'Kalkulator RAB', icon: 'Calculator', path: '/billing/rab-calculator', required_capability: null },
       ],
     },
     {
@@ -522,17 +523,24 @@ async function main() {
       order: 120,
       children: [
         { label: 'Cadangan Sistem', icon: 'Archive', path: '/superadmin/backups', required_capability: 'academic.backups.view.list' },
+        { label: 'System Update', icon: 'RefreshCw', path: '/settings/system-update', required_capability: 'core.sekolah.update.profile' },
+        { label: 'Easy Tunnel', icon: 'Wifi', path: '/settings/easy-tunnel', required_capability: 'core.sekolah.update.profile' },
+        { label: 'Backup Sekolah', icon: 'Database', path: '/settings/backup', required_capability: 'academic.backups.view.list' },
+        { label: 'Pengaturan WhatsApp', icon: 'MessageSquare', path: '/settings/whatsapp', required_capability: 'core.tenants.update' },
       ],
     },
     {
-      label: 'Kontrol Akses (Security)',
+      label: 'Manajemen & Kontrol Akses',
       icon: 'Shield',
       path: null,
       required_capability: null,
       order: 130,
       children: [
-        { label: 'Hak Akses', icon: 'UserCog', path: '/management/roles', required_capability: 'superadmin.security.roles.view' },
         { label: 'Kelola Menu', icon: 'Sliders', path: '/management/menus', required_capability: 'core.menu.view.list' },
+        { label: 'Hak Akses & Role', icon: 'UserCog', path: '/management/roles', required_capability: 'superadmin.security.roles.view' },
+        { label: 'Kepatuhan Platform', icon: 'ShieldCheck', path: '/management/platform-compliance', required_capability: null },
+        { label: 'CMS Web Sekolah', icon: 'Globe', path: '/management/web-sekolah', required_capability: null },
+        { label: 'Components Demo', icon: 'LayoutGrid', path: '/components-demo', required_capability: null },
       ],
     }
   ];
