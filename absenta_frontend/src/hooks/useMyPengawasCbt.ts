@@ -42,16 +42,17 @@ export function useMyPengawasCbt(overrideGuruId?: string) {
       null);
 
   const { data: myPengawasCbtData, isLoading, refetch } = useQuery<CbtJadwalUjian[]>({
-    queryKey: ['my-pengawas-cbt-schedules', effectiveGuruId, effectiveTpId, effectiveSemId],
+    queryKey: ['my-pengawas-cbt-schedules', effectiveGuruId, effectiveTpId, effectiveSemId, activeEvent?.id],
     queryFn: async () => {
       if (!effectiveGuruId || isSiswa) return [];
-      // Prioritaskan pengawas_guru_id langsung di query backend + isolasi konteks akademik
+      // Prioritaskan pengawas_guru_id langsung di query backend + isolasi konteks akademik & event aktif
       const res = await cbtApi
         .getJadwalList({
           limit: 500,
           pengawas_guru_id: effectiveGuruId,
           ...(effectiveTpId ? { tahun_pelajaran_id: effectiveTpId } : {}),
           ...(effectiveSemId ? { semester_id: effectiveSemId } : {}),
+          ...(activeEvent?.id ? { event_id: activeEvent.id } : {}),
         })
         .catch(() => null);
       let list = res?.items || [];
@@ -64,6 +65,7 @@ export function useMyPengawasCbt(overrideGuruId?: string) {
             guru_id: effectiveGuruId,
             ...(effectiveTpId ? { tahun_pelajaran_id: effectiveTpId } : {}),
             ...(effectiveSemId ? { semester_id: effectiveSemId } : {}),
+            ...(activeEvent?.id ? { event_id: activeEvent.id } : {}),
           })
           .catch(() => null);
         list = fallbackRes?.items || [];
@@ -72,6 +74,12 @@ export function useMyPengawasCbt(overrideGuruId?: string) {
       return list.filter((item) => {
         const rawCfg = item.setting_keamanan;
         const cfg = typeof rawCfg === 'string' ? JSON.parse(rawCfg) : rawCfg;
+
+        // Isolasi Event Aktif: abaikan sesi dari event lama (mis. SIMULASI) jika event aktif sudah berganti
+        if (activeEvent?.id) {
+          const schedEventId = cfg?.event_id || (item as any).BankSoal?.event_id || null;
+          if (schedEventId !== activeEvent.id) return false;
+        }
 
         // ── Meja Pengawas murni untuk tugas pengawasan orkestrasi panitia ──
         // Sesi remedial & susulan mandiri guru mapel TIDAK dimasukkan ke Meja Pengawas

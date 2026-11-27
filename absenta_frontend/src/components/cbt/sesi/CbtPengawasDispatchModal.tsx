@@ -148,8 +148,8 @@ export const CbtPengawasDispatchModal: React.FC<CbtPengawasDispatchModalProps> =
                 >
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
                     <div className="space-y-1 min-w-0 flex-1">
-                      <div className="flex items-center justify-between sm:justify-start gap-1.5 flex-wrap">
-                        <div className="flex items-center gap-1.5 flex-wrap">
+                      <div className="flex items-center justify-between sm:justify-start gap-1.5 flex-wrap min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap min-w-0 max-w-full">
                           <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 max-w-full truncate">
                             {schedule.nama_sesi || `Sesi #${idx + 1}`}
                           </span>

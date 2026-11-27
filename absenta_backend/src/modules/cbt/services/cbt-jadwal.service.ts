@@ -116,6 +116,27 @@ export class CbtJadwalService {
           nama_sesi: { contains: '[REMEDIAL', mode: 'insensitive' },
         },
       });
+      if (query.include_all_events !== 'true') {
+        const activeEvent = !query.event_id ? await CbtSettingsService.getActiveEvent(tenantId) : null;
+        const targetEventId = query.event_id || activeEvent?.id;
+        if (targetEventId) {
+          andConditions.push({
+            OR: [
+              {
+                setting_keamanan: {
+                  path: ['event_id'],
+                  equals: targetEventId,
+                },
+              },
+              {
+                BankSoal: {
+                  event_id: targetEventId,
+                },
+              },
+            ],
+          });
+        }
+      }
       andConditions.push({
         OR: [
           {
