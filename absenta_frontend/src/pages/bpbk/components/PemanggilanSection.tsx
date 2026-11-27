@@ -22,6 +22,8 @@ import {
   FileText,
   History,
   MessageSquare,
+  MailOpen,
+  Clock,
 } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { formatDate } from '@/utils/layoutUtils';
@@ -246,19 +248,30 @@ export const PemanggilanSection: React.FC = React.memo(() => {
   const columns: Column[] = useMemo(() => [
     {
       key: 'tanggal_pemanggilan',
-      label: 'Tanggal Panggilan',
-      render: (value: string) => (
-        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-          {formatDate(value, { day: '2-digit', month: 'short', year: 'numeric' })}
-        </span>
-      )
+      label: 'Tanggal & Jadwal',
+      render: (value: string, item: PemanggilanOrangTua) => {
+        const waktu = (item as any).waktu_pertemuan as string | undefined;
+        const tempat = (item as any).tempat_pertemuan as string | undefined;
+        return (
+          <div className="space-y-0.5 whitespace-nowrap">
+            <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider block">
+              {formatDate(value, { day: '2-digit', month: 'short', year: 'numeric' })}
+            </span>
+            {(waktu || tempat) && (
+              <span className="text-[10px] font-medium text-slate-400 block">
+                {[waktu, tempat].filter(Boolean).join(' • ')}
+              </span>
+            )}
+          </div>
+        );
+      }
     },
     {
       key: 'siswa',
       label: 'Profil Siswa',
       render: (_, item: PemanggilanOrangTua) => (
         <div
-          className="cursor-pointer group"
+          className="cursor-pointer group min-w-[130px]"
           onClick={() => item.siswa_id && setHistorySiswaId(item.siswa_id)}
           title="Lihat Riwayat & Rekam Jejak BP/BK Siswa"
         >
@@ -272,8 +285,15 @@ export const PemanggilanSection: React.FC = React.memo(() => {
     {
       key: 'alasan',
       label: 'Alasan Pemanggilan',
-      render: (value: string) => (
-        <p className="text-xs font-medium text-slate-600 dark:text-slate-300 line-clamp-1 max-w-xs">{value}</p>
+      render: (value: string, item: PemanggilanOrangTua) => (
+        <div className="space-y-1 max-w-xs">
+          <p className="text-xs font-medium text-slate-700 dark:text-slate-300 line-clamp-2 leading-snug">{value}</p>
+          {Boolean((item as any).ortu_notified) && (
+            <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/70">
+              Notif App Ortu Aktif
+            </span>
+          )}
+        </div>
       )
     },
     {
@@ -282,7 +302,7 @@ export const PemanggilanSection: React.FC = React.memo(() => {
       render: (value: string) => (
         <Badge
           variant={value === 'HADIR' ? 'success' : value === 'TIDAK_HADIR' ? 'error' : 'warning'}
-          className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md"
+          className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md whitespace-nowrap"
         >
           {value}
         </Badge>
@@ -400,18 +420,97 @@ export const PemanggilanSection: React.FC = React.memo(() => {
       <PemanggilanCard
         key={item.id}
         item={item}
+        isSending={sendingId === item.id}
         onViewDetail={(i) => setHistorySiswaId(i.siswa_id)}
         onEdit={(i) => handleOpenEdit(i)}
         onDelete={(id) => setDeleteId(id)}
-        onPrint={(i) => handleOpenOutcomeModal(i)}
+        onSend={handleSendToParent}
+        onRecordOutcome={handleOpenOutcomeModal}
+        onReSummon={handleReSummon}
       />
     );
-  }, [handleOpenEdit, handleOpenOutcomeModal]);
+  }, [sendingId, handleOpenEdit, handleSendToParent, handleOpenOutcomeModal, handleReSummon]);
+
+  const analytics = useMemo(() => {
+    const baru = list.filter((i) => i.status === 'BARU').length;
+    const dikirim = list.filter((i) => i.status === 'DIKIRIM').length;
+    const hadir = list.filter((i) => i.status === 'HADIR').length;
+    return {
+      total: totalItems || list.length,
+      baru,
+      dikirim,
+      hadir,
+    };
+  }, [list, totalItems]);
 
   return (
-    <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white dark:bg-slate-900 p-6 rounded-2xl space-y-6">
-      {/* Top Header & Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+    <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-2xl space-y-5">
+      {/* Section Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">
+            Surat Pemanggilan Orang Tua / Wali
+          </h3>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+            Penerbitan surat panggilan resmi, notifikasi WA/App orang tua, dan berita acara pertemuan
+          </p>
+        </div>
+        <Button
+          variant="toolbarPrimary"
+          size="toolbar"
+          onClick={() => {
+            resetForm();
+            setModalOpen(true);
+          }}
+          className="flex items-center gap-1.5 font-bold rounded-xl shadow-md shrink-0 self-start md:self-auto"
+        >
+          <Plus size={14} />
+          Buat Panggilan
+        </Button>
+      </div>
+
+      {/* Analytics Summary Strip */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Total Surat</span>
+            <span className="text-xl font-black text-slate-800 dark:text-white font-mono">{analytics.total}</span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
+            <MailOpen size={15} />
+          </div>
+        </div>
+        <div className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Baru / Draft</span>
+            <span className="text-xl font-black text-slate-800 dark:text-white font-mono">{analytics.baru}</span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-slate-200/70 dark:bg-slate-800 text-slate-600 flex items-center justify-center">
+            <FileText size={15} />
+          </div>
+        </div>
+        <div className="p-3.5 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-900/40 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 block">Menunggu Hadir</span>
+            <span className="text-xl font-black text-amber-700 dark:text-amber-300 font-mono">{analytics.dikirim}</span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-600 flex items-center justify-center">
+            <Clock size={15} />
+          </div>
+        </div>
+        <div className="p-3.5 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/70 dark:border-emerald-900/40 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">Hadir / Selesai</span>
+            <span className="text-xl font-black text-emerald-700 dark:text-emerald-300 font-mono">{analytics.hadir}</span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 flex items-center justify-center">
+            <CheckCircle2 size={15} />
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div className="relative flex-1 min-w-0">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <Input
@@ -424,35 +523,21 @@ export const PemanggilanSection: React.FC = React.memo(() => {
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="w-40 min-w-0">
-            <SearchableSelect
-              id="bpbk-status-filter"
-              aria-label="Filter status pemanggilan"
-              value={statusFilter}
-              onValueChange={setStatusFilter}
-              options={[
-                { value: 'ALL', label: 'Semua Status' },
-                { value: 'BARU', label: 'Baru' },
-                { value: 'DIKIRIM', label: 'Dikirim / Menunggu' },
-                { value: 'HADIR', label: 'Hadir' },
-                { value: 'TIDAK_HADIR', label: 'Tidak Hadir' },
-              ]}
-              placeholder="Status"
-            />
-          </div>
-          <Button
-            variant="toolbarPrimary"
-            size="toolbar"
-            onClick={() => {
-              resetForm();
-              setModalOpen(true);
-            }}
-            className="flex items-center gap-1.5 font-bold rounded-xl shadow-md shrink-0"
-          >
-            <Plus size={14} />
-            Buat Panggilan
-          </Button>
+        <div className="w-full sm:w-48 min-w-0">
+          <SearchableSelect
+            id="bpbk-status-filter"
+            aria-label="Filter status pemanggilan"
+            value={statusFilter}
+            onValueChange={setStatusFilter}
+            options={[
+              { value: 'ALL', label: 'Semua Status' },
+              { value: 'BARU', label: 'Baru' },
+              { value: 'DIKIRIM', label: 'Dikirim / Menunggu' },
+              { value: 'HADIR', label: 'Hadir' },
+              { value: 'TIDAK_HADIR', label: 'Tidak Hadir' },
+            ]}
+            placeholder="Status"
+          />
         </div>
       </div>
 

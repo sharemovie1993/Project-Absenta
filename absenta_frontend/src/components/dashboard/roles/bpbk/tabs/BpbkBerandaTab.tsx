@@ -108,6 +108,7 @@ export const BpbkBerandaTab: React.FC<BpbkBerandaTabProps> = React.memo(({
         label: 'Kasus BK',
         icon: FileText,
         iconColorClass: 'text-indigo-600 dark:text-indigo-400',
+        badge: stats?.criticalStudents?.length ? stats.criticalStudents.length : null,
         onClick: () => onTabSelect('cases'),
       },
       {
@@ -115,6 +116,7 @@ export const BpbkBerandaTab: React.FC<BpbkBerandaTabProps> = React.memo(({
         label: 'Konseling',
         icon: HeartHandshake,
         iconColorClass: 'text-emerald-600 dark:text-emerald-400',
+        badge: stats?.activeCounselingCount ? stats.activeCounselingCount : null,
         onClick: () => onTabSelect('konseling'),
       },
       {
@@ -122,6 +124,7 @@ export const BpbkBerandaTab: React.FC<BpbkBerandaTabProps> = React.memo(({
         label: 'Panggilan Ortu',
         icon: MailOpen,
         iconColorClass: 'text-rose-600 dark:text-rose-400',
+        badge: stats?.pendingCallsCount ? stats.pendingCallsCount : null,
         onClick: () => onTabSelect('pemanggilan'),
       },
       {
@@ -129,6 +132,7 @@ export const BpbkBerandaTab: React.FC<BpbkBerandaTabProps> = React.memo(({
         label: 'Home Visit',
         icon: Home,
         iconColorClass: 'text-violet-600 dark:text-violet-400',
+        badge: stats?.monthHomeVisitsCount ? stats.monthHomeVisitsCount : null,
         onClick: () => onTabSelect('homevisit'),
       },
       {
@@ -136,6 +140,7 @@ export const BpbkBerandaTab: React.FC<BpbkBerandaTabProps> = React.memo(({
         label: 'Rujukan',
         icon: Share2,
         iconColorClass: 'text-blue-600 dark:text-blue-400',
+        badge: (stats as any)?.activeReferralsCount || null,
         onClick: () => onTabSelect('rujukan'),
       },
       {
@@ -143,6 +148,7 @@ export const BpbkBerandaTab: React.FC<BpbkBerandaTabProps> = React.memo(({
         label: 'Asesmen',
         icon: ClipboardList,
         iconColorClass: 'text-amber-600 dark:text-amber-400',
+        badge: (stats as any)?.pendingAssessmentsCount || null,
         onClick: () => onTabSelect('asesmen'),
       },
       {
@@ -153,7 +159,7 @@ export const BpbkBerandaTab: React.FC<BpbkBerandaTabProps> = React.memo(({
         onClick: () => onTabSelect('rekap'),
       },
     ],
-    [onTabSelect]
+    [onTabSelect, stats]
   );
 
   const criticalStudents = stats?.criticalStudents ?? [];
@@ -198,8 +204,60 @@ export const BpbkBerandaTab: React.FC<BpbkBerandaTabProps> = React.memo(({
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto -mx-4 -my-2 sm:mx-0 sm:my-0">
-            <table className="w-full text-left border-collapse">
+          <>
+            {/* Mobile EWS Card List */}
+            <div className="md:hidden space-y-2.5">
+              {criticalStudents.map((student) => (
+                <div
+                  key={student.id}
+                  className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200/70 dark:border-slate-800 space-y-2.5"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-bold text-slate-900 dark:text-white text-xs truncate">
+                        {student.nama_siswa}
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-semibold">
+                        {student.kelas} • NIS: {student.nis}
+                      </div>
+                    </div>
+                    <Badge
+                      variant={
+                        student.riskLevel === 'HIGH'
+                          ? 'error'
+                          : student.riskLevel === 'MEDIUM'
+                          ? 'warning'
+                          : 'success'
+                      }
+                      className="px-2 py-0.5 text-[9px] font-bold uppercase shrink-0"
+                    >
+                      {student.riskLevel} ({student.riskScore})
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-200/60 dark:border-slate-800">
+                    <div className="flex items-center gap-3 text-[11px] font-bold">
+                      <span className="text-rose-600">Pel: +{student.violations}</span>
+                      <span className="text-emerald-600">Pres: -{student.achievements}</span>
+                      <span className="text-slate-600 dark:text-slate-400">Alpa: {student.alpaCount}x</span>
+                    </div>
+                    {(onBimbingSiswa || onSelectSiswaDetail) && (
+                      <Button
+                        variant="toolbarPrimary"
+                        size="toolbar"
+                        onClick={() => (onBimbingSiswa ? onBimbingSiswa(student) : onSelectSiswaDetail?.(student.id))}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-[10px] h-8 px-3 rounded-lg font-semibold shrink-0"
+                      >
+                        Bimbing
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop EWS Table */}
+            <div className="hidden md:block overflow-x-auto -mx-4 -my-2 sm:mx-0 sm:my-0">
+              <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   <th className="py-2.5 px-3">Profil Siswa</th>
@@ -267,7 +325,8 @@ export const BpbkBerandaTab: React.FC<BpbkBerandaTabProps> = React.memo(({
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </HubCard>
 

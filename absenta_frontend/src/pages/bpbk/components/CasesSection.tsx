@@ -11,7 +11,7 @@ import { DebouncedSearchInput } from '../../../components/ui';
 import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
 import { useCapabilities } from '../../../hooks/useCapabilities';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, FolderOpen, Clock, CheckCircle2, ShieldAlert, RotateCcw } from 'lucide-react';
 
 // Extracted Components
 const CaseTable = lazy(() => import('./cases/CaseTable').then(m => ({ default: m.CaseTable })));
@@ -313,25 +313,103 @@ export const CasesSection: React.FC = React.memo(() => {
     setSortOrder(order);
   }, []);
 
+  const caseAnalytics = useMemo(() => {
+    const openOrProcess = data.filter((c: KasusBK) => c.status === 'TERBUKA' || c.status === 'PROSES').length;
+    const referral = data.filter((c: KasusBK) => c.status === 'RUJUKAN').length;
+    const selesai = data.filter((c: KasusBK) => c.status === 'SELESAI').length;
+    const highOrSensitive = data.filter((c: KasusBK) => c.prioritas === 'TINGGI' || c.visibility === 'SENSITIVE').length;
+    return {
+      total: totalItems || data.length,
+      openOrProcess,
+      referral,
+      selesai,
+      highOrSensitive,
+    };
+  }, [data, totalItems]);
+
+  const hasActiveFilters = Boolean(search || selectedKategori || selectedStatus || selectedPrioritas || selectedVisibility);
+
+  const handleResetFilters = useCallback(() => {
+    setSearch('');
+    setSelectedKategori('');
+    setSelectedStatus('');
+    setSelectedPrioritas('');
+    setSelectedVisibility('');
+    setPage(1);
+  }, []);
+
   return (
-    <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 p-6 rounded-2xl">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+    <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-2xl space-y-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">Pusat Manajemen Kasus BK (KasusBK)</h3>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Entitas induk yang memadukan catatan konseling, pemanggilan, visitasi, asesmen, dan rujukan</p>
         </div>
-        <Button
-          variant="toolbarPrimary"
-          size="toolbar"
-          onClick={() => { resetForm(); setModalOpen(true); }}
-        >
-          <Plus className="w-3.5 h-3.5 mr-1" />
-          Buka Kasus BK
-        </Button>
+        <div className="flex items-center gap-2 self-start md:self-auto">
+          {hasActiveFilters && (
+            <Button
+              variant="outline"
+              size="toolbar"
+              onClick={handleResetFilters}
+              className="text-xs font-semibold"
+            >
+              <RotateCcw className="w-3.5 h-3.5 mr-1" />
+              Reset Filter
+            </Button>
+          )}
+          <Button
+            variant="toolbarPrimary"
+            size="toolbar"
+            onClick={() => { resetForm(); setModalOpen(true); }}
+          >
+            <Plus className="w-3.5 h-3.5 mr-1" />
+            Buka Kasus BK
+          </Button>
+        </div>
+      </div>
+
+      {/* Case Analytics Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Total Kasus</span>
+            <span className="text-xl font-black text-slate-800 dark:text-white font-mono">{caseAnalytics.total}</span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
+            <FolderOpen size={15} />
+          </div>
+        </div>
+        <div className="p-3.5 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-900/40 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 block">Terbuka / Proses</span>
+            <span className="text-xl font-black text-amber-700 dark:text-amber-300 font-mono">{caseAnalytics.openOrProcess}</span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-600 flex items-center justify-center">
+            <Clock size={15} />
+          </div>
+        </div>
+        <div className="p-3.5 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/70 dark:border-emerald-900/40 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">Kasus Selesai</span>
+            <span className="text-xl font-black text-emerald-700 dark:text-emerald-300 font-mono">{caseAnalytics.selesai}</span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 flex items-center justify-center">
+            <CheckCircle2 size={15} />
+          </div>
+        </div>
+        <div className="p-3.5 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200/70 dark:border-rose-900/40 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 block">Prioritas / Sensitif</span>
+            <span className="text-xl font-black text-rose-700 dark:text-rose-300 font-mono">{caseAnalytics.highOrSensitive}</span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-rose-100 dark:bg-rose-900/40 text-rose-600 flex items-center justify-center">
+            <ShieldAlert size={15} />
+          </div>
+        </div>
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
         <div className="md:col-span-2">
           <DebouncedSearchInput
             placeholder="Cari siswa atau judul kasus..."

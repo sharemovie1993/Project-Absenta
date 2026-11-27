@@ -373,18 +373,26 @@ export const KonselingSection: React.FC = React.memo(() => {
       label: 'Tanggal',
       sortable: true,
       render: (value: string) => (
-        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-          {new Date(value).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+          {new Date(value).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
         </span>
       )
     },
     {
       key: 'siswa',
       label: 'Profil Siswa',
-      render: (_, item: unknown) => (
-        <div>
-          <div className="font-bold text-slate-800 dark:text-white text-xs">{item.Siswa?.nama_siswa}</div>
-          <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{item.Siswa?.Kelas?.nama_kelas || '-'}</div>
+      render: (_, item: any) => (
+        <div
+          className="cursor-pointer group min-w-[140px]"
+          onClick={() => item.siswa_id && setHistorySiswaId(item.siswa_id)}
+          title="Klik untuk melihat riwayat BP/BK siswa"
+        >
+          <div className="font-bold text-slate-800 dark:text-white text-xs group-hover:text-indigo-600 transition-colors">
+            {item.Siswa?.nama_siswa}
+          </div>
+          <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
+            {item.Siswa?.Kelas?.nama_kelas || '-'}
+          </div>
         </div>
       )
     },
@@ -392,7 +400,7 @@ export const KonselingSection: React.FC = React.memo(() => {
       key: 'tipe',
       label: 'Tipe',
       render: (value: string) => (
-        <Badge variant="outline" className="text-[9px] font-black uppercase">
+        <Badge variant="outline" className="text-[9px] font-black uppercase whitespace-nowrap">
           {value}
         </Badge>
       )
@@ -401,10 +409,10 @@ export const KonselingSection: React.FC = React.memo(() => {
       key: 'masalah',
       label: 'Ringkasan Kasus',
       render: (value: string, item: any) => (
-        <div className="space-y-0.5 max-w-xs">
-          <p className="text-xs font-medium text-slate-600 dark:text-slate-400 line-clamp-1">{value}</p>
+        <div className="space-y-1 max-w-xs min-w-[180px]">
+          <p className="text-xs font-medium text-slate-700 dark:text-slate-300 line-clamp-2 leading-snug">{value}</p>
           {item?.KasusBK?.judul && (
-            <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 truncate max-w-full">
+            <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60 truncate max-w-full">
               Kasus: {item.KasusBK.judul}
             </span>
           )}
@@ -415,7 +423,7 @@ export const KonselingSection: React.FC = React.memo(() => {
       key: 'status',
       label: 'Status',
       render: (value: string) => (
-        <Badge variant={value === 'SELESAI' ? 'success' : 'warning'} className="text-[9px] font-black uppercase">
+        <Badge variant={value === 'SELESAI' ? 'success' : 'warning'} className="text-[9px] font-black uppercase whitespace-nowrap">
           {value}
         </Badge>
       )
@@ -423,8 +431,8 @@ export const KonselingSection: React.FC = React.memo(() => {
     {
       key: 'petugas',
       label: 'Konselor/BK',
-      render: (_, item: unknown) => (
-        <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
+      render: (_, item: any) => (
+        <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 block max-w-[140px] truncate" title={item.Petugas?.full_name || 'Petugas BK'}>
           {item.Petugas?.full_name || 'Petugas BK'}
         </span>
       )
@@ -433,7 +441,7 @@ export const KonselingSection: React.FC = React.memo(() => {
       key: 'actions',
       label: 'Aksi',
       render: (_, item: any) => (
-        <div className="flex flex-wrap gap-1 justify-end items-center">
+        <div className="flex items-center gap-1 justify-end whitespace-nowrap">
           {showDeleted ? (
             can('bk.recyclebin.restore') && (
               <Button
@@ -454,56 +462,56 @@ export const KonselingSection: React.FC = React.memo(() => {
                     variant="ghost"
                     size="sm"
                     onClick={() => handleMarkComplete(item)}
-                    className="h-7 px-2 text-[10px] font-bold text-emerald-700 bg-emerald-50/80 hover:bg-emerald-100 rounded-lg"
+                    className="h-7 px-2 text-[10px] font-bold text-emerald-700 bg-emerald-50/90 hover:bg-emerald-100 rounded-lg"
                     title="Tandai Sesi Selesai"
                   >
                     <CheckCircle2 size={12} className="mr-1" /> Selesai
                   </Button>
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon"
                     onClick={() => handleFollowUp(item)}
-                    className="h-7 px-2 text-[10px] font-bold text-sky-700 bg-sky-50/80 hover:bg-sky-100 rounded-lg"
+                    className="w-7 h-7 text-sky-600 bg-sky-50/80 hover:bg-sky-100 rounded-lg"
                     title="Catat Sesi Lanjutan"
                   >
-                    <PlusCircle size={12} className="mr-1" /> Lanjut
+                    <PlusCircle size={13} />
                   </Button>
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon"
                     onClick={() => handleOpenPemanggilan(item)}
-                    className="h-7 px-2 text-[10px] font-bold text-amber-700 bg-amber-50/80 hover:bg-amber-100 rounded-lg"
+                    className="w-7 h-7 text-amber-600 bg-amber-50/80 hover:bg-amber-100 rounded-lg"
                     title="Buat Surat Panggilan Orang Tua"
                   >
-                    <MailOpen size={12} className="mr-1" /> Panggil Ortu
+                    <MailOpen size={13} />
                   </Button>
                   {!item.kasus_bk_id && (
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size="icon"
                       onClick={() => handleOpenEscalate(item)}
-                      className="h-7 px-2 text-[10px] font-bold text-purple-700 bg-purple-50/80 hover:bg-purple-100 rounded-lg"
+                      className="w-7 h-7 text-purple-600 bg-purple-50/80 hover:bg-purple-100 rounded-lg"
                       title="Eskalasi ke Kasus BK"
                     >
-                      <FolderPlus size={12} className="mr-1" /> Buat Kasus
+                      <FolderPlus size={13} />
                     </Button>
                   )}
                 </>
               )}
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
                 onClick={() => setHistorySiswaId(item.siswa_id)}
-                className="h-7 px-2 text-[10px] font-bold text-slate-700 bg-slate-100/80 hover:bg-slate-200 rounded-lg"
+                className="w-7 h-7 text-slate-600 bg-slate-100/80 hover:bg-slate-200 rounded-lg"
                 title="Lihat Riwayat & Kasus Siswa"
               >
-                <ExternalLink size={12} className="mr-1" /> Riwayat
+                <ExternalLink size={13} />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => handleEdit(item)}
-                className="w-7 h-7 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                className="w-7 h-7 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg"
                 title="Edit Catatan"
               >
                 <Edit2 size={13} />
@@ -512,7 +520,7 @@ export const KonselingSection: React.FC = React.memo(() => {
                 variant="ghost"
                 size="icon"
                 onClick={() => handleDelete(item.id)}
-                className="w-7 h-7 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                className="w-7 h-7 text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg"
                 title="Hapus Catatan"
               >
                 <Trash2 size={13} />
@@ -656,9 +664,21 @@ export const KonselingSection: React.FC = React.memo(() => {
     );
   };
 
+  const analytics = useMemo(() => {
+    const proses = data.filter((i: any) => i.status !== 'SELESAI').length;
+    const selesai = data.filter((i: any) => i.status === 'SELESAI').length;
+    const linkedCase = data.filter((i: any) => Boolean(i.kasus_bk_id)).length;
+    return {
+      total: totalItems || data.length,
+      proses,
+      selesai,
+      linkedCase,
+    };
+  }, [data, totalItems]);
+
   return (
-    <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 p-6 rounded-2xl">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+    <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-2xl space-y-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">Jurnal & Layanan Bimbingan Konseling (BK)</h3>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Catatan pendampingan psikososial, masalah pribadi, dan bimbingan karir siswa</p>
@@ -667,14 +687,55 @@ export const KonselingSection: React.FC = React.memo(() => {
           variant="toolbarPrimary"
           size="toolbar"
           onClick={() => { resetForm(); setModalOpen(true); }}
+          className="self-start md:self-auto"
         >
           <Plus className="w-3.5 h-3.5 mr-1" />
           Catat Konseling
         </Button>
       </div>
 
+      {/* Analytics Strip */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Total Sesi</span>
+            <span className="text-xl font-black text-slate-800 dark:text-white font-mono">{analytics.total}</span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
+            <MessageSquare size={15} />
+          </div>
+        </div>
+        <div className="p-3.5 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-900/40 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 block">Pendampingan</span>
+            <span className="text-xl font-black text-amber-700 dark:text-amber-300 font-mono">{analytics.proses}</span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-600 flex items-center justify-center">
+            <Clipboard size={15} />
+          </div>
+        </div>
+        <div className="p-3.5 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/70 dark:border-emerald-900/40 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">Selesai</span>
+            <span className="text-xl font-black text-emerald-700 dark:text-emerald-300 font-mono">{analytics.selesai}</span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 flex items-center justify-center">
+            <CheckCircle2 size={15} />
+          </div>
+        </div>
+        <div className="p-3.5 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/70 dark:border-indigo-900/40 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 block">Tertaut Kasus</span>
+            <span className="text-xl font-black text-indigo-700 dark:text-indigo-300 font-mono">{analytics.linkedCase}</span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 flex items-center justify-center">
+            <FolderPlus size={15} />
+          </div>
+        </div>
+      </div>
+
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div className="md:col-span-2">
           <DebouncedSearchInput
             aria-label="Cari siswa atau ringkasan kasus"

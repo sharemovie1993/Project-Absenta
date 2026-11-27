@@ -65,8 +65,8 @@ export const CaseTable: React.FC<CaseTableProps> = React.memo(({
       label: 'Tanggal',
       sortable: true,
       render: (value: string) => (
-        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-          {new Date(value).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+          {new Date(value).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
         </span>
       )
     },
@@ -81,7 +81,7 @@ export const CaseTable: React.FC<CaseTableProps> = React.memo(({
           kelas={item.Siswa?.Kelas?.nama_kelas}
           size="xs"
           nameClassName="font-bold text-xs"
-          showMeta={false}
+          showMeta={true}
         />
       )
     },
@@ -89,9 +89,12 @@ export const CaseTable: React.FC<CaseTableProps> = React.memo(({
       key: 'judul',
       label: 'Kasus BK',
       render: (_, item: KasusBK) => (
-        <div>
-          <div className="font-bold text-slate-800 dark:text-white text-xs line-clamp-1 max-w-[200px]">{item.judul}</div>
-          <Badge className={`text-[8px] font-black uppercase mt-1 px-1.5 border ${getKategoriColor(item.kategori)}`}>
+        <div className="space-y-1 max-w-[260px]">
+          <div className="font-bold text-slate-800 dark:text-white text-xs line-clamp-1">{item.judul}</div>
+          {item.keterangan && (
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">{item.keterangan}</p>
+          )}
+          <Badge className={`text-[8px] font-black uppercase px-1.5 border ${getKategoriColor(item.kategori)}`}>
             {item.kategori}
           </Badge>
         </div>
@@ -102,7 +105,7 @@ export const CaseTable: React.FC<CaseTableProps> = React.memo(({
       label: 'Prioritas',
       sortable: true,
       render: (value: string) => (
-        <Badge variant="outline" className={`text-[8px] font-black uppercase ${getPrioritasColor(value)}`}>
+        <Badge variant="outline" className={`text-[8px] font-black uppercase whitespace-nowrap ${getPrioritasColor(value)}`}>
           {value}
         </Badge>
       )
@@ -112,7 +115,7 @@ export const CaseTable: React.FC<CaseTableProps> = React.memo(({
       label: 'Status',
       sortable: true,
       render: (value: string) => (
-        <Badge variant="outline" className={`text-[8px] font-black uppercase ${getStatusColor(value)}`}>
+        <Badge variant="outline" className={`text-[8px] font-black uppercase whitespace-nowrap ${getStatusColor(value)}`}>
           {value}
         </Badge>
       )
@@ -121,7 +124,7 @@ export const CaseTable: React.FC<CaseTableProps> = React.memo(({
       key: 'visibility',
       label: 'Privasi',
       render: (value: string) => (
-        <Badge variant="outline" className={`text-[8px] font-black uppercase ${getVisibilityColor(value)}`}>
+        <Badge variant="outline" className={`text-[8px] font-black uppercase whitespace-nowrap ${getVisibilityColor(value)}`}>
           {value}
         </Badge>
       )
