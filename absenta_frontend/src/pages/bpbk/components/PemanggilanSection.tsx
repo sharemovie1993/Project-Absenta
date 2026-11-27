@@ -591,9 +591,19 @@ export const PemanggilanSection: React.FC = React.memo(() => {
             }}
             title={editingId ? 'Edit Surat Pemanggilan Orang Tua' : 'Buat Surat Pemanggilan Orang Tua'}
           >
-            <form onSubmit={handleCreateOrUpdate} className="space-y-4 p-2 text-xs">
+            <form onSubmit={handleCreateOrUpdate} className="space-y-4 p-1 text-xs">
+              <div className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-r from-amber-50 via-orange-50/70 to-rose-50 dark:from-amber-950/30 dark:to-rose-950/30 border border-amber-200/80 dark:border-amber-800/50">
+                <div className="w-9 h-9 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <MailOpen size={17} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-extrabold text-slate-800 dark:text-white">Pemanggilan Resmi Orang Tua / Wali</h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">Atur jadwal pertemuan, ruangan, dan notifikasi otomatis ke aplikasi orang tua.</p>
+                </div>
+              </div>
+
               <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Pilih Siswa</label>
+                <label className="block font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider text-[11px] mb-1.5">Pilih Siswa</label>
                 <Suspense fallback={<div className="h-10 bg-slate-100 rounded-xl" />}>
                   <SmartStudentPicker
                     value={formData.siswa_id}
@@ -603,69 +613,69 @@ export const PemanggilanSection: React.FC = React.memo(() => {
                 </Suspense>
               </div>
 
-              <div>
-                <label htmlFor="panggilan-alasan" className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Alasan Pemanggilan</label>
+              <div className="p-3.5 rounded-2xl bg-rose-50/40 dark:bg-rose-950/20 border border-rose-200/70 dark:border-rose-800/50 space-y-1.5">
+                <label htmlFor="panggilan-alasan" className="block font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wider text-[11px]">Alasan Pemanggilan</label>
                 <Input
                   id="panggilan-alasan"
                   aria-label="Alasan pemanggilan"
                   placeholder="Misal: Pembahasan absensi / konseling kasus..."
                   value={formData.alasan}
                   onChange={(e) => setFormData(prev => ({ ...prev, alasan: e.target.value }))}
-                  className="rounded-xl"
+                  className="rounded-xl bg-white dark:bg-slate-900 border-rose-200/80"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-2xl bg-sky-50/45 dark:bg-sky-950/20 border border-sky-200/70 dark:border-sky-800/50">
                 <div>
-                  <label htmlFor="panggilan-tgl" className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Tanggal Panggilan</label>
+                  <label htmlFor="panggilan-tgl" className="block font-bold text-sky-800 dark:text-sky-300 uppercase tracking-wider text-[11px] mb-1">Tanggal Panggilan</label>
                   <Input
                     id="panggilan-tgl"
                     aria-label="Tanggal pemanggilan"
                     type="date"
                     value={formData.tanggal_pemanggilan}
                     onChange={(e) => setFormData(prev => ({ ...prev, tanggal_pemanggilan: e.target.value }))}
-                    className="rounded-xl"
+                    className="rounded-xl bg-white dark:bg-slate-900 border-sky-200/80"
                     required
                   />
                 </div>
                 <div>
-                  <label htmlFor="panggilan-jam" className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Waktu Pertemuan</label>
+                  <label htmlFor="panggilan-jam" className="block font-bold text-sky-800 dark:text-sky-300 uppercase tracking-wider text-[11px] mb-1">Waktu Pertemuan</label>
                   <Input
                     id="panggilan-jam"
                     aria-label="Waktu pertemuan"
                     placeholder="09:00 WIB"
                     value={formData.jam_pemanggilan}
                     onChange={(e) => setFormData(prev => ({ ...prev, jam_pemanggilan: e.target.value }))}
-                    className="rounded-xl"
+                    className="rounded-xl bg-white dark:bg-slate-900 border-sky-200/80"
                   />
                 </div>
                 <div>
-                  <label htmlFor="panggilan-ruangan" className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Tempat / Ruangan</label>
+                  <label htmlFor="panggilan-ruangan" className="block font-bold text-sky-800 dark:text-sky-300 uppercase tracking-wider text-[11px] mb-1">Tempat / Ruangan</label>
                   <Input
                     id="panggilan-ruangan"
                     aria-label="Tempat pertemuan"
                     placeholder="Ruang BK"
                     value={formData.ruangan}
                     onChange={(e) => setFormData(prev => ({ ...prev, ruangan: e.target.value }))}
-                    className="rounded-xl"
+                    className="rounded-xl bg-white dark:bg-slate-900 border-sky-200/80"
                   />
                 </div>
               </div>
 
-              <label className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/70 cursor-pointer">
+              <label className="flex items-center gap-2.5 p-3 rounded-xl bg-amber-50/80 border border-amber-200/80 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={formData.ortu_notified}
                   onChange={(e) => setFormData(prev => ({ ...prev, ortu_notified: e.target.checked }))}
                   className="rounded border-amber-400 text-amber-600 focus:ring-amber-500"
                 />
-                <span className="text-[11px] font-semibold text-amber-900">
-                  Kirim notifikasi ke aplikasi orang tua
+                <span className="text-[11px] font-bold text-amber-900">
+                  Kirim notifikasi resmi ke aplikasi orang tua
                 </span>
               </label>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <Button
                   type="button"
                   variant="outline"
@@ -676,7 +686,7 @@ export const PemanggilanSection: React.FC = React.memo(() => {
                 >
                   Batal
                 </Button>
-                <Button type="submit" variant="primary">
+                <Button type="submit" variant="toolbarPrimary" className="bg-amber-600 hover:bg-amber-700 text-white px-5">
                   {editingId ? 'Simpan Perubahan' : 'Simpan Panggilan'}
                 </Button>
               </div>

@@ -578,14 +578,29 @@ export const HomeVisitSection: React.FC = React.memo(() => {
           size="lg"
         >
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-r from-violet-50 via-purple-50/70 to-blue-50 dark:from-violet-950/30 dark:to-blue-950/30 border border-violet-200/70 dark:border-violet-800/50">
+              <div className="w-9 h-9 rounded-xl bg-violet-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Home size={17} />
+              </div>
+              <div>
+                <h4 className="text-xs font-extrabold text-slate-800 dark:text-white">Dokumentasi Kunjungan Rumah</h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Catat latar belakang kunjungan, hasil kesepakatan orang tua, dan lampirkan foto.</p>
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Pilih Siswa</Label>
+              <Label className="text-xs font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">Pilih Siswa</Label>
               {selectedSiswa ? (
-                <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200/50 rounded-xl">
-                  <div>
-                    <div className="font-bold text-xs text-slate-800 dark:text-slate-200">{selectedSiswa.nama_siswa}</div>
-                    <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
-                      {selectedSiswa.Kelas?.nama_kelas || selectedSiswa.kelas_name || '-'} • NIS: {selectedSiswa.nis || '-'}
+                <div className="flex items-center justify-between p-3 bg-violet-50/70 dark:bg-violet-950/30 border border-violet-200/80 rounded-xl">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-violet-600 text-white font-black text-xs flex items-center justify-center shrink-0">
+                      {(selectedSiswa.nama_siswa || 'S').slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate">{selectedSiswa.nama_siswa}</div>
+                      <div className="text-[10px] text-violet-600 dark:text-violet-300 font-bold uppercase tracking-wider mt-0.5">
+                        {selectedSiswa.Kelas?.nama_kelas || selectedSiswa.kelas_name || '-'} • NIS: {selectedSiswa.nis || '-'}
+                      </div>
                     </div>
                   </div>
                   {!selectedId && (
@@ -596,7 +611,7 @@ export const HomeVisitSection: React.FC = React.memo(() => {
                         setSelectedSiswa(null);
                         setFormData(prev => ({ ...prev, siswa_id: '' }));
                       }}
-                      className="text-xs font-black text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 px-3 py-1.5 rounded-lg"
+                      className="text-xs font-black text-rose-600 hover:bg-rose-100/70 px-3 py-1.5 rounded-lg shrink-0"
                     >
                       UBAH SISWA
                     </Button>
@@ -617,49 +632,52 @@ export const HomeVisitSection: React.FC = React.memo(() => {
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="tanggal-kunjungan" className="text-xs font-bold uppercase tracking-wider text-slate-500">Tanggal Kunjungan</Label>
+            <div className="space-y-1.5 p-3.5 rounded-2xl bg-sky-50/45 dark:bg-sky-950/20 border border-sky-200/70">
+              <Label htmlFor="tanggal-kunjungan" className="text-[11px] font-bold uppercase tracking-wider text-sky-800 dark:text-sky-300">Tanggal Kunjungan</Label>
               <Input
                 id="tanggal-kunjungan"
                 type="date"
                 value={formData.tanggal}
                 onChange={(e) => setFormData(prev => ({ ...prev, tanggal: e.target.value }))}
-                className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
+                className="h-10 text-xs bg-white dark:bg-slate-900 border-sky-200/80 rounded-xl"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="alasan-kunjungan" className="text-xs font-bold uppercase tracking-wider text-slate-500">Alasan / Latar Belakang Kunjungan</Label>
+            <div className="space-y-1.5 p-3.5 rounded-2xl bg-amber-50/45 dark:bg-amber-950/20 border border-amber-200/70">
+              <Label htmlFor="alasan-kunjungan" className="text-[11px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">Alasan / Latar Belakang Kunjungan</Label>
               <textarea
                 id="alasan-kunjungan"
                 aria-label="Alasan / Latar Belakang Kunjungan"
                 value={formData.alasan}
                 onChange={(e) => setFormData(prev => ({ ...prev, alasan: e.target.value }))}
                 placeholder="Tulis latar belakang dilaksanakannya home visit (contoh: Siswa sering terlambat, bermasalah di kelas, dll)..."
-                className="w-full min-h-[80px] p-3 text-xs bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full min-h-[80px] p-3 text-xs bg-white dark:bg-slate-900 border border-amber-200/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400/40"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="hasil-kunjungan" className="text-xs font-bold uppercase tracking-wider text-slate-500">Hasil Kunjungan & Kesepakatan Bersama</Label>
+            <div className="space-y-1.5 p-3.5 rounded-2xl bg-emerald-50/45 dark:bg-emerald-950/20 border border-emerald-200/70">
+              <Label htmlFor="hasil-kunjungan" className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">Hasil Kunjungan & Kesepakatan Bersama</Label>
               <textarea
                 id="hasil-kunjungan"
                 aria-label="Hasil Kunjungan & Kesepakatan Bersama"
                 value={formData.hasil}
                 onChange={(e) => setFormData(prev => ({ ...prev, hasil: e.target.value }))}
                 placeholder="Tulis kondisi lingkungan rumah, tanggapan orang tua, serta komitmen kesepakatan bersama..."
-                className="w-full min-h-[100px] p-3 text-xs bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full min-h-[100px] p-3 text-xs bg-white dark:bg-slate-900 border border-emerald-200/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="scan-dokumen" className="text-xs font-bold uppercase tracking-wider text-slate-500">Unggah Foto Kunjungan / Laporan Scan Home Visit (Opsional)</Label>
+            <div className="space-y-1.5 p-3.5 rounded-2xl bg-blue-50/50 dark:bg-blue-950/20 border border-dashed border-blue-300 dark:border-blue-800">
+              <Label htmlFor="scan-dokumen" className="text-[11px] font-bold uppercase tracking-wider text-blue-800 dark:text-blue-300 flex items-center gap-1.5">
+                <Paperclip size={13} />
+                Unggah Foto Kunjungan / Laporan Scan Home Visit (Opsional)
+              </Label>
               <Input
                 id="scan-dokumen"
                 type="file"
                 accept="image/*,application/pdf"
                 onChange={(e) => setFormData(prev => ({ ...prev, file: e.target.files?.[0] || null }))}
-                className="text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
+                className="text-xs bg-white dark:bg-slate-900 border-blue-200/80 rounded-xl"
               />
             </div>
 

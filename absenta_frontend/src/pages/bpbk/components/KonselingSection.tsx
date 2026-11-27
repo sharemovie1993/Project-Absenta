@@ -853,14 +853,29 @@ export const KonselingSection: React.FC = React.memo(() => {
           size="lg"
         >
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50/60 to-indigo-50 dark:from-emerald-950/30 dark:to-indigo-950/30 border border-emerald-200/70 dark:border-emerald-800/50">
+              <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <MessageSquare size={17} />
+              </div>
+              <div>
+                <h4 className="text-xs font-extrabold text-slate-800 dark:text-white">Layanan Bimbingan & Konseling</h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Catat masalah, solusi pendampingan, dan tingkat kerahasiaan data siswa.</p>
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Pilih Siswa</Label>
+              <Label className="text-xs font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">Pilih Siswa</Label>
               {selectedSiswa ? (
-                <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200/50 rounded-xl">
-                  <div>
-                    <div className="font-bold text-xs text-slate-800 dark:text-slate-200">{selectedSiswa.nama_siswa}</div>
-                    <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
-                      {selectedSiswa.Kelas?.nama_kelas || selectedSiswa.kelas_name || '-'} • NIS: {selectedSiswa.nis || '-'}
+                <div className="flex items-center justify-between p-3 bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-800/60 rounded-xl">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-indigo-600 text-white font-black text-xs flex items-center justify-center shrink-0">
+                      {(selectedSiswa.nama_siswa || 'S').slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate">{selectedSiswa.nama_siswa}</div>
+                      <div className="text-[10px] text-indigo-600 dark:text-indigo-300 font-bold uppercase tracking-wider mt-0.5">
+                        {selectedSiswa.Kelas?.nama_kelas || selectedSiswa.kelas_name || '-'} • NIS: {selectedSiswa.nis || '-'}
+                      </div>
                     </div>
                   </div>
                   {!selectedId && (
@@ -871,7 +886,7 @@ export const KonselingSection: React.FC = React.memo(() => {
                         setSelectedSiswa(null);
                         setFormData(prev => ({ ...prev, siswa_id: '' }));
                       }}
-                      className="text-xs font-black text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 px-3 py-1.5 rounded-lg"
+                      className="text-xs font-black text-rose-600 hover:bg-rose-100/70 dark:hover:bg-rose-950/30 px-3 py-1.5 rounded-lg shrink-0"
                     >
                       UBAH SISWA
                     </Button>
@@ -892,19 +907,19 @@ export const KonselingSection: React.FC = React.memo(() => {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="tanggal-sesi" className="text-xs font-bold uppercase tracking-wider text-slate-500">Tanggal Sesi</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-sky-50/50 dark:bg-sky-950/20 border border-sky-200/70 dark:border-sky-800/50">
+              <div className="space-y-1.5">
+                <Label htmlFor="tanggal-sesi" className="text-[11px] font-bold uppercase tracking-wider text-sky-800 dark:text-sky-300">Tanggal Sesi</Label>
                 <Input
                   id="tanggal-sesi"
                   type="date"
                   value={formData.tanggal}
                   onChange={(e) => setFormData(prev => ({ ...prev, tanggal: e.target.value }))}
-                  className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
+                  className="h-10 text-xs bg-white dark:bg-slate-900 border-sky-200/80 dark:border-slate-800 rounded-xl"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="tipe-sesi" className="text-xs font-bold uppercase tracking-wider text-slate-500">Tipe Sesi</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="tipe-sesi" className="text-[11px] font-bold uppercase tracking-wider text-sky-800 dark:text-sky-300">Tipe Sesi</Label>
                 <SearchableSelect
                   id="tipe-sesi"
                   options={[
@@ -914,65 +929,66 @@ export const KonselingSection: React.FC = React.memo(() => {
                   ]}
                   value={formData.tipe}
                   onValueChange={(val) => setFormData(prev => ({ ...prev, tipe: val }))}
-                  className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
+                  className="h-10 text-xs bg-white dark:bg-slate-900 border-sky-200/80 dark:border-slate-800 rounded-xl"
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="kasus-masalah" className="text-xs font-bold uppercase tracking-wider text-slate-500">Kasus / Masalah yang Dihadapi</Label>
+            <div className="space-y-1.5 p-3.5 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/50">
+              <Label htmlFor="kasus-masalah" className="text-[11px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">Kasus / Masalah yang Dihadapi</Label>
               <textarea
                 id="kasus-masalah"
                 aria-label="Kasus / Masalah yang Dihadapi"
                 value={formData.masalah}
                 onChange={(e) => setFormData(prev => ({ ...prev, masalah: e.target.value }))}
                 placeholder="Tulis ringkasan masalah atau keluhan siswa..."
-                className="w-full min-h-[80px] p-3 text-xs bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full min-h-[80px] p-3 text-xs bg-white dark:bg-slate-900 border border-amber-200/80 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400/40"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="solusi-hasil" className="text-xs font-bold uppercase tracking-wider text-slate-500">Solusi / Rekomendasi Hasil Konseling</Label>
+            <div className="space-y-1.5 p-3.5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/50">
+              <Label htmlFor="solusi-hasil" className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">Solusi / Rekomendasi Hasil Konseling</Label>
               <textarea
                 id="solusi-hasil"
                 aria-label="Solusi / Rekomendasi Hasil Konseling"
                 value={formData.solusi}
                 onChange={(e) => setFormData(prev => ({ ...prev, solusi: e.target.value }))}
                 placeholder="Tulis hasil bimbingan, komitmen siswa, atau rencana tindak lanjut..."
-                className="w-full min-h-[80px] p-3 text-xs bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full min-h-[80px] p-3 text-xs bg-white dark:bg-slate-900 border border-emerald-200/80 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="status-pendampingan" className="text-xs font-bold uppercase tracking-wider text-slate-500">Status Pendampingan</Label>
-              <SearchableSelect
-                id="status-pendampingan"
-                options={[
-                  { value: 'PROSES', label: 'Pendampingan Berjalan (PROSES)' },
-                  { value: 'SELESAI', label: 'Selesai (Kasus Tuntas)' }
-                ]}
-                value={formData.status}
-                onValueChange={(val) => setFormData(prev => ({ ...prev, status: val }))}
-                className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="hubungkan-kasus" className="text-xs font-bold uppercase tracking-wider text-slate-500">Hubungkan dengan Kasus BK</Label>
+            <div className="space-y-3 p-3.5 rounded-2xl bg-slate-50/90 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
+              <div className="space-y-1.5">
+                <Label htmlFor="status-pendampingan" className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Status Pendampingan</Label>
                 <SearchableSelect
-                  id="hubungkan-kasus"
+                  id="status-pendampingan"
                   options={[
-                    { value: '', label: '-- Tidak Dihubungkan --' },
-                    ...cases?.map(c => ({ value: c.id, label: `${c.judul} (${c.kategori})` }))
+                    { value: 'PROSES', label: 'Pendampingan Berjalan (PROSES)' },
+                    { value: 'SELESAI', label: 'Selesai (Kasus Tuntas)' }
                   ]}
-                  value={formData.kasus_bk_id || ''}
-                  onValueChange={(val) => setFormData(prev => ({ ...prev, kasus_bk_id: val || '' }))}
-                  className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
+                  value={formData.status}
+                  onValueChange={(val) => setFormData(prev => ({ ...prev, status: val }))}
+                  className="h-10 text-xs bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 rounded-xl"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="level-visibilitas" className="text-xs font-bold uppercase tracking-wider text-slate-500">Level Visibilitas</Label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="hubungkan-kasus" className="text-[11px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">Hubungkan dengan Kasus BK</Label>
+                  <SearchableSelect
+                    id="hubungkan-kasus"
+                    options={[
+                      { value: '', label: '-- Tidak Dihubungkan --' },
+                      ...cases?.map(c => ({ value: c.id, label: `${c.judul} (${c.kategori})` }))
+                    ]}
+                    value={formData.kasus_bk_id || ''}
+                    onValueChange={(val) => setFormData(prev => ({ ...prev, kasus_bk_id: val || '' }))}
+                    className="h-10 text-xs bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 rounded-xl"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="level-visibilitas" className="text-[11px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">Level Visibilitas</Label>
                 <SearchableSelect
                   id="level-visibilitas"
                   options={[
@@ -982,8 +998,9 @@ export const KonselingSection: React.FC = React.memo(() => {
                   ]}
                   value={formData.visibility || 'SENSITIVE'}
                   onValueChange={(val) => setFormData(prev => ({ ...prev, visibility: val }))}
-                  className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
+                  className="h-10 text-xs bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 rounded-xl"
                 />
+                </div>
               </div>
             </div>
 
