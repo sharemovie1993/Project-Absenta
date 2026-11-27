@@ -64,7 +64,6 @@ const UsersPage = lazy(() => import('./pages/users/UsersPage'));
 const TenantsPage = lazy(() => import('./pages/tenants/TenantsPage'));
 const TenantDetailPage = lazy(() => import('./pages/superadmin/TenantDetailPage'));
 const InfrastructureDashboard = lazy(() => import('./pages/superadmin/infra/InfrastructureDashboard'));
-const InfraControlCenterPage = lazy(() => import('./pages/superadmin/infra/InfraControlCenterPage'));
 const PlatformIntelligencePage = lazy(() => import('./pages/superadmin/PlatformIntelligencePage'));
 const RevenueIntelligencePage = lazy(() => import('./pages/superadmin/intelligence/RevenueIntelligencePage'));
 const UpgradeIntelligencePage = lazy(() => import('./pages/superadmin/intelligence/UpgradeIntelligencePage'));
@@ -1384,11 +1383,6 @@ function App() {
                             ]}
                           >
                             <InfrastructureDashboard />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/superadmin/infra/jobs" element={
-                          <ProtectedRoute requiredCapability="superadmin.infra.monitoring.view">
-                            <InfraControlCenterPage />
                           </ProtectedRoute>
                         } />
                         <Route path="/superadmin/infra/monitoring" element={<Navigate to="/superadmin/infra" replace />} />

@@ -336,7 +336,6 @@ async function start() {
 
       await trackService('Billing Worker', 'worker', async () => { await import('./workers/billing.worker'); });
       await trackService('Analytics Worker', 'worker', async () => { await import('./workers/analytics.worker'); });
-      await trackService('Infra Worker', 'worker', async () => { await import('./workers/infra.worker'); });
       await trackService('Maintenance Worker', 'worker', async () => { await import('./workers/maintenance.worker'); });
     };
 
@@ -365,7 +364,6 @@ async function start() {
           registerService('Schedulers', 'scheduler', 'online');
           registerService('Billing Worker', 'worker', 'online');
           registerService('Analytics Worker', 'worker', 'online');
-          registerService('Infra Worker', 'worker', 'online');
           registerService('Maintenance Worker', 'worker', 'online');
         }
 

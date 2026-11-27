@@ -132,7 +132,6 @@ async function startWorker(): Promise<void> {
     // Hulu ke Hilir: Luruskan kabel untuk background workers utama di process dedicated worker
     await import('./workers/billing.worker');
     await import('./workers/analytics.worker');
-    await import('./workers/infra.worker');
     await import('./workers/maintenance.worker');
   }
 }
