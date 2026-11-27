@@ -923,7 +923,7 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
 
   const mainBody = (
     <>
-      <Card className="rounded-2xl border-none shadow-sm overflow-hidden mb-6">
+      <Card noPadding className="rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden bg-white dark:bg-slate-900 mb-6">
         {isMobile ? (
           <div className="p-4 space-y-4">
             {/* Mobile Filter & Action Header */}

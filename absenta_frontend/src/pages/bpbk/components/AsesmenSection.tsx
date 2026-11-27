@@ -378,8 +378,8 @@ export const AsesmenSection: React.FC = React.memo(() => {
   };
 
   return (
-    <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 p-6 rounded-2xl">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">Layanan Asesmen Psikologis & Angket BK</h3>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Penyimpanan hasil tes sosiometri, kuesioner gaya belajar, dan hasil tes kepribadian siswa</p>
@@ -454,8 +454,9 @@ export const AsesmenSection: React.FC = React.memo(() => {
         />
       </div>
 
-      {/* Panel Pencarian & Penyaringan */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      {/* Panel Pencarian & Penyaringan + Table Card */}
+      <Card noPadding className="rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden bg-white dark:bg-slate-900">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-3">
         <div>
           <DebouncedSearchInput
             placeholder="Cari nama siswa atau NIS..."
@@ -538,6 +539,7 @@ export const AsesmenSection: React.FC = React.memo(() => {
           }}
         />
       )}
+      </Card>
 
       {/* Dynamic modals rendered with lazy/Suspense wrapper */}
       <Suspense fallback={null}>
@@ -645,6 +647,6 @@ export const AsesmenSection: React.FC = React.memo(() => {
           </div>
         </Modal>
       </Suspense>
-    </Card>
+    </div>
   );
 });

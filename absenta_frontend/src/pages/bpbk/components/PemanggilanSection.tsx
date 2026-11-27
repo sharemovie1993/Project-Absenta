@@ -444,7 +444,7 @@ export const PemanggilanSection: React.FC = React.memo(() => {
   }, [list, totalItems]);
 
   return (
-    <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-2xl space-y-5">
+    <div className="space-y-4">
       {/* Section Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -509,40 +509,41 @@ export const PemanggilanSection: React.FC = React.memo(() => {
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <div className="relative flex-1 min-w-0">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <Input
-            id="bpbk-pemanggilan-search"
-            aria-label="Cari nama siswa atau alasan panggilan"
-            placeholder="Cari nama siswa atau alasan..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 text-xs w-full rounded-xl"
-          />
-        </div>
+      {/* Filter & Table Card */}
+      <Card noPadding className="rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden bg-white dark:bg-slate-900">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="relative flex-1 min-w-0">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Input
+              id="bpbk-pemanggilan-search"
+              aria-label="Cari nama siswa atau alasan panggilan"
+              placeholder="Cari nama siswa atau alasan..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10 text-xs w-full rounded-xl"
+            />
+          </div>
 
-        <div className="w-full sm:w-48 min-w-0">
-          <SearchableSelect
-            id="bpbk-status-filter"
-            aria-label="Filter status pemanggilan"
-            value={statusFilter}
-            onValueChange={setStatusFilter}
-            options={[
-              { value: 'ALL', label: 'Semua Status' },
-              { value: 'BARU', label: 'Baru' },
-              { value: 'DIKIRIM', label: 'Dikirim / Menunggu' },
-              { value: 'HADIR', label: 'Hadir' },
-              { value: 'TIDAK_HADIR', label: 'Tidak Hadir' },
-            ]}
-            placeholder="Status"
-          />
+          <div className="w-full sm:w-48 min-w-0">
+            <SearchableSelect
+              id="bpbk-status-filter"
+              aria-label="Filter status pemanggilan"
+              value={statusFilter}
+              onValueChange={setStatusFilter}
+              options={[
+                { value: 'ALL', label: 'Semua Status' },
+                { value: 'BARU', label: 'Baru' },
+                { value: 'DIKIRIM', label: 'Dikirim / Menunggu' },
+                { value: 'HADIR', label: 'Hadir' },
+                { value: 'TIDAK_HADIR', label: 'Tidak Hadir' },
+              ]}
+              placeholder="Status"
+            />
+          </div>
         </div>
-      </div>
 
       {/* Table Data Master / Mobile Cards */}
-      <div className="overflow-hidden rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+      <div>
         {isMobile ? (
           <div className="p-2 space-y-4">
             <MobileAcademicList
@@ -579,6 +580,7 @@ export const PemanggilanSection: React.FC = React.memo(() => {
           />
         )}
       </div>
+      </Card>
 
       {/* Create / Edit Modal */}
       <Suspense fallback={null}>
@@ -785,6 +787,6 @@ export const PemanggilanSection: React.FC = React.memo(() => {
           />
         )}
       </Suspense>
-    </Card>
+    </div>
   );
 });

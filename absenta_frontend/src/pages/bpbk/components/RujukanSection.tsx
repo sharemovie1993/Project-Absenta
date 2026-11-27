@@ -282,8 +282,8 @@ export const RujukanSection: React.FC = React.memo(() => {
   };
 
   return (
-    <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 p-6 rounded-2xl">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">Disposisi Rujukan Kasus Siswa (Referral)</h3>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Penanganan kasus khusus yang didelegasikan ke psikolog klinis, rumah sakit, kepala sekolah, atau komite sekolah</p>
@@ -299,6 +299,7 @@ export const RujukanSection: React.FC = React.memo(() => {
       </div>
 
       {/* Table / Mobile Cards */}
+      <Card noPadding className="rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden bg-white dark:bg-slate-900">
       {loading && data.length === 0 ? (
         <div className="py-20 flex flex-col items-center justify-center">
           <Loader className="mb-4" />
@@ -346,6 +347,7 @@ export const RujukanSection: React.FC = React.memo(() => {
           }}
         />
       )}
+      </Card>
 
       {/* Form Modal */}
       <Suspense fallback={null}>
@@ -470,7 +472,7 @@ export const RujukanSection: React.FC = React.memo(() => {
           </form>
         </Modal>
       </Suspense>
-    </Card>
+    </div>
   );
 });
 

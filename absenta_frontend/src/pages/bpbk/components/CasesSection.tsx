@@ -339,7 +339,7 @@ export const CasesSection: React.FC = React.memo(() => {
   }, []);
 
   return (
-    <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-2xl space-y-5">
+    <div className="space-y-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">Pusat Manajemen Kasus BK (KasusBK)</h3>
@@ -408,8 +408,10 @@ export const CasesSection: React.FC = React.memo(() => {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+      {/* Filters & Table Card */}
+      <Card noPadding className="rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden bg-white dark:bg-slate-900">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
         <div className="md:col-span-2">
           <DebouncedSearchInput
             placeholder="Cari siswa atau judul kasus..."
@@ -467,7 +469,7 @@ export const CasesSection: React.FC = React.memo(() => {
       </div>
 
       {can('bk.recyclebin.view') && (
-        <div className="flex justify-between items-center mb-4 mt-2 px-1">
+        <div className="flex justify-between items-center mt-3">
           <label htmlFor="show-deleted-checkbox" className="flex items-center gap-2 text-xs font-semibold text-slate-650 dark:text-slate-300 cursor-pointer">
             <input
               id="show-deleted-checkbox"
@@ -483,6 +485,7 @@ export const CasesSection: React.FC = React.memo(() => {
           </label>
         </div>
       )}
+      </div>
 
       {/* Table */}
       {loading && data.length === 0 ? (
@@ -517,6 +520,7 @@ export const CasesSection: React.FC = React.memo(() => {
           getVisibilityColor={getVisibilityColor}
         />
       )}
+      </Card>
 
       {/* Modal Form */}
       <Suspense fallback={null}>
@@ -576,6 +580,6 @@ export const CasesSection: React.FC = React.memo(() => {
           </form>
         </Modal>
       </Suspense>
-    </Card>
+    </div>
   );
 });

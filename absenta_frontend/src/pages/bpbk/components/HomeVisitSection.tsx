@@ -460,7 +460,7 @@ export const HomeVisitSection: React.FC = React.memo(() => {
   };
 
   return (
-    <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-2xl space-y-5">
+    <div className="space-y-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">Dokumentasi Kunjungan Rumah (Home Visit)</h3>
@@ -508,17 +508,20 @@ export const HomeVisitSection: React.FC = React.memo(() => {
         </div>
       </div>
 
-      {/* Search Toolbar */}
-      <div className="max-w-md">
-        <DebouncedSearchInput
-          placeholder="Cari nama siswa, alasan, atau hasil kunjungan..."
-          value={search}
-          onChange={setSearch}
-          isLoading={loading}
-          className="w-full"
-          inputClassName="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
-        />
-      </div>
+      {/* Search & Table Card */}
+      <Card noPadding className="rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden bg-white dark:bg-slate-900">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="max-w-md">
+            <DebouncedSearchInput
+              placeholder="Cari nama siswa, alasan, atau hasil kunjungan..."
+              value={search}
+              onChange={setSearch}
+              isLoading={loading}
+              className="w-full"
+              inputClassName="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
+            />
+          </div>
+        </div>
 
       {/* Table / Mobile Cards */}
       {loading && data.length === 0 ? (
@@ -568,6 +571,7 @@ export const HomeVisitSection: React.FC = React.memo(() => {
           }}
         />
       )}
+      </Card>
 
       {/* Form Modal */}
       <Suspense fallback={null}>
@@ -835,7 +839,7 @@ export const HomeVisitSection: React.FC = React.memo(() => {
           </Modal>
         )}
       </Suspense>
-    </Card>
+    </div>
   );
 });
 
