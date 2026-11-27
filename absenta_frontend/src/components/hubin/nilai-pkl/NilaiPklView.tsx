@@ -18,6 +18,8 @@ import {
   RawPklItem, 
   calculateNilaiAkhirPkl,
   calculateNilaiSidangFromAspects,
+  evaluateDudiCompleteness,
+  evaluateSidangCompleteness,
   HubinAssessmentSettings
 } from './types';
 
@@ -438,13 +440,17 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
   const kpiStats = useMemo(() => {
     const list = displayedScores || [];
     const total = list.length;
-    const dudiLengkap = list.filter(s => s.hard_kompetensi_teknis !== null && s.hard_kompetensi_teknis !== undefined).length;
-    const sidangLengkap = list.filter(s => s.nilai_sidang !== null && s.nilai_sidang !== undefined).length;
-    const tuntas = list.filter(s => s.nilai_akhir_pkl !== null && s.nilai_akhir_pkl !== undefined && Number(s.nilai_akhir_pkl) > 0).length;
+    const dudiLengkap = list.filter((s) => evaluateDudiCompleteness(s).isComplete).length;
+    const sidangLengkap = list.filter((s) => evaluateSidangCompleteness(s).isComplete).length;
+    const tuntas = list.filter((s) => {
+      const dudiOk = evaluateDudiCompleteness(s).isComplete;
+      const sidangOk = !isCompositeMode || evaluateSidangCompleteness(s).isComplete;
+      return dudiOk && sidangOk && s.nilai_akhir_pkl !== null && s.nilai_akhir_pkl !== undefined && Number(s.nilai_akhir_pkl) > 0;
+    }).length;
     const belumLengkap = Math.max(0, total - tuntas);
 
     return { total, dudiLengkap, sidangLengkap, tuntas, belumLengkap };
-  }, [displayedScores]);
+  }, [displayedScores, isCompositeMode]);
 
   const allScopedCount = useMemo(() => {
     if (guidanceScope === 'MY_GUIDANCE' && activeGuruId) {

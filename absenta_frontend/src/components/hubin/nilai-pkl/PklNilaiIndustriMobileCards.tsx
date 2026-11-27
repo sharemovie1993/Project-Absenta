@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ScoreRow } from './types';
+import { ScoreRow, evaluateDudiCompleteness } from './types';
 import { 
   ChevronDown, 
   ChevronUp, 
@@ -176,19 +176,10 @@ export const PklNilaiIndustriMobileCards: React.FC<PklNilaiIndustriMobileCardsPr
           const isAktif = score.status === 'AKTIF' || !score.status;
           const isSelesai = score.status === 'SELESAI';
 
-          // Hitung kelengkapan 8 aspek nilai
-          const aspects = [
-            score.hard_kompetensi_teknis,
-            score.hard_sop_k3lh,
-            score.hard_alur_bisnis,
-            score.soft_kedisiplinan,
-            score.soft_kerajinan_inisiatif,
-            score.soft_kerjasama,
-            score.soft_kejujuran,
-            score.soft_tanggung_jawab,
-          ];
-          const filledCount = aspects.filter((v) => v !== null && v !== undefined && v !== '').length;
-          const isComplete = filledCount === 8;
+          // Hitung kelengkapan 8 aspek nilai + Nama Pimpinan + Nama Instruktur
+          const dudiCheck = evaluateDudiCompleteness(score);
+          const filledCount = dudiCheck.filledScoresCount;
+          const isComplete = dudiCheck.isComplete;
 
           return (
             <div
@@ -238,19 +229,23 @@ export const PklNilaiIndustriMobileCards: React.FC<PklNilaiIndustriMobileCardsPr
                     </div>
 
                     {/* Baris 3: Status Kelengkapan Nilai */}
-                    <div className="flex items-center gap-2 pt-0.5">
+                    <div className="flex items-center gap-2 pt-0.5 flex-wrap">
                       <span
                         className={cn(
                           'text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1',
                           isComplete
                             ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
-                            : filledCount > 0
+                            : dudiCheck.isPartial
                             ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
                             : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
                         )}
                       >
                         {isComplete ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
-                        <span>{filledCount}/8 Aspek Terisi</span>
+                        <span>
+                          {isComplete
+                            ? '8/8 Aspek & DUDI Lengkap'
+                            : `${filledCount}/8 Aspek${!dudiCheck.hasPimpinan || !dudiCheck.hasInstruktur ? ' (Identitas DUDI belum lengkap)' : ''}`}
+                        </span>
                       </span>
 
                       {hasLaporan && (

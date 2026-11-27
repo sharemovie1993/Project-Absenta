@@ -246,10 +246,19 @@ export class DashboardRoleStatsService {
           siswa_id: true,
           status: true,
           tanggal_selesai: true,
+          instruktur_nama: true,
+          penanggung_jawab_nama: true,
           nilai_akhir_pkl: true,
           nilai_json: true,
           nomor_sertifikat: true,
-          hard_kompetensi_teknis: true
+          hard_kompetensi_teknis: true,
+          hard_sop_k3lh: true,
+          hard_alur_bisnis: true,
+          soft_kedisiplinan: true,
+          soft_kerajinan_inisiatif: true,
+          soft_kerjasama: true,
+          soft_kejujuran: true,
+          soft_tanggung_jawab: true,
         }
       }),
       prisma.hubinTefaOrder.count({ where: { ...baseWhere, deleted_at: null } }),
@@ -359,10 +368,20 @@ export class DashboardRoleStatsService {
           activeSiswaIds.add(p.siswa_id);
         }
       }
-      const dudiAvg = (p.nilai_json as any)?.dudi_avg;
-      const isGraded = (p.nilai_akhir_pkl !== null && p.nilai_akhir_pkl !== undefined) ||
-                       (dudiAvg !== null && dudiAvg !== undefined) ||
-                       (p.hard_kompetensi_teknis !== null && p.hard_kompetensi_teknis !== undefined);
+      const isPositiveNum = (v: unknown) => v !== null && v !== undefined && v !== '' && !Number.isNaN(Number(v)) && Number(v) > 0;
+      const dudiAspects = [
+        p.hard_kompetensi_teknis,
+        p.hard_sop_k3lh,
+        p.hard_alur_bisnis,
+        p.soft_kedisiplinan,
+        p.soft_kerajinan_inisiatif,
+        p.soft_kerjasama,
+        p.soft_kejujuran,
+        p.soft_tanggung_jawab,
+      ];
+      const hasPimpinan = typeof p.penanggung_jawab_nama === 'string' && p.penanggung_jawab_nama.trim().length > 0;
+      const hasInstruktur = typeof p.instruktur_nama === 'string' && p.instruktur_nama.trim().length > 0;
+      const isGraded = dudiAspects.every(isPositiveNum) && hasPimpinan && hasInstruktur;
       const hasCert = Boolean(p.nomor_sertifikat && p.nomor_sertifikat.trim() !== '');
       const curr = gradingPerSiswa.get(p.siswa_id) || { sudahDinilai: false, sertifikat: false };
       gradingPerSiswa.set(p.siswa_id, {

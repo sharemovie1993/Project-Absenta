@@ -21,7 +21,7 @@ import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Button, Input, SearchableSelect } from '@/components/ui';
 import { HubCard } from '@/components/ui/hub';
-import { ScoreRow } from './types';
+import { ScoreRow, evaluateSidangCompleteness } from './types';
 import { PklSidangCetakModal, PklDocType } from './PklSidangCetakModal';
 import { useJurusanOptions } from '@/hooks/useJurusanOptions';
 import { useAuthStore } from '@/store/authStore';
@@ -221,6 +221,7 @@ export const PklMonitoringSidangTab: React.FC<PklMonitoringSidangTabProps> = Rea
       totalSiswa: number;
       sudahDinilai: number;
       belumDinilai: number;
+      scoredCount: number;
       sudahTtd: number;
       totalNilai: number;
     }>();
@@ -236,6 +237,7 @@ export const PklMonitoringSidangTab: React.FC<PklMonitoringSidangTabProps> = Rea
           totalSiswa: 0,
           sudahDinilai: 0,
           belumDinilai: 0,
+          scoredCount: 0,
           sudahTtd: 0,
           totalNilai: 0,
         };
@@ -244,10 +246,14 @@ export const PklMonitoringSidangTab: React.FC<PklMonitoringSidangTabProps> = Rea
 
       existing.totalSiswa += 1;
 
-      const hasScore = s.nilai_sidang !== null && s.nilai_sidang !== undefined && s.nilai_sidang !== '';
-      if (hasScore) {
+      // Wajib mengecek keterisian seluruh 4 komponen nilai sidang (Laporan, Materi, Komunikasi, Sikap)
+      const sidangCheck = evaluateSidangCompleteness(s);
+      if (sidangCheck.computedScore !== null) {
+        existing.scoredCount += 1;
+        existing.totalNilai += sidangCheck.computedScore;
+      }
+      if (sidangCheck.isComplete) {
         existing.sudahDinilai += 1;
-        existing.totalNilai += Number(s.nilai_sidang) || 0;
       } else {
         existing.belumDinilai += 1;
       }
@@ -259,7 +265,7 @@ export const PklMonitoringSidangTab: React.FC<PklMonitoringSidangTabProps> = Rea
 
     return Array.from(map.values()).map((p) => {
       const persentase = p.totalSiswa > 0 ? Math.round((p.sudahDinilai / p.totalSiswa) * 100) : 0;
-      const avgNilai = p.sudahDinilai > 0 ? (p.totalNilai / p.sudahDinilai).toFixed(1) : '-';
+      const avgNilai = p.scoredCount > 0 ? (p.totalNilai / p.scoredCount).toFixed(1) : '-';
       return {
         ...p,
         persentase,
@@ -340,16 +346,19 @@ export const PklMonitoringSidangTab: React.FC<PklMonitoringSidangTabProps> = Rea
     const senderName = user?.full_name || 'Ketua Program Keahlian';
     const deptName = activeJurusanNama || 'Kejuruan';
 
-    // Cari siswa uji sidang dari penguji ini yang belum dinilai (adaptif)
+    // Cari siswa uji sidang dari penguji ini yang belum lengkap 4 komponen nilai sidang
     const unassessedStudents = jurusanFilteredScores.filter((s) => {
       const nama = s.penguji_nama ? s.penguji_nama.trim() : 'Belum Diploting';
       if (nama !== penguji.nama) return false;
-      const hasScore = s.nilai_sidang !== null && s.nilai_sidang !== undefined && s.nilai_sidang !== '';
-      return !hasScore;
+      return !evaluateSidangCompleteness(s).isComplete;
     });
 
     const studentListFormatted = unassessedStudents
-      .map((s, idx) => `  ${idx + 1}. *${s.nama_siswa}* (${s.nama_kelas || '-'} • ${s.mitra_nama || '-'})`)
+      .map((s, idx) => {
+        const check = evaluateSidangCompleteness(s);
+        const missingNote = check.missingItems.length > 0 ? ` — _Kurang: ${check.missingItems.join(', ')}_` : '';
+        return `  ${idx + 1}. *${s.nama_siswa}* (${s.nama_kelas || '-'} • ${s.mitra_nama || '-'})${missingNote}`;
+      })
       .join('\n');
 
     const studentListSection = studentListFormatted
@@ -469,10 +478,10 @@ Terima kasih.
         return false;
       }
 
-      // Filter Status Nilai & Presensi
-      const hasScore = s.nilai_sidang !== null && s.nilai_sidang !== undefined && s.nilai_sidang !== '';
-      if (statusFilter === 'LENGKAP' && !hasScore) return false;
-      if (statusFilter === 'BELUM' && hasScore) return false;
+      // Filter Status Nilai & Presensi (Wajib Lengkap 4 Komponen Nilai Sidang)
+      const sidangCheck = evaluateSidangCompleteness(s);
+      if (statusFilter === 'LENGKAP' && !sidangCheck.isComplete) return false;
+      if (statusFilter === 'BELUM' && sidangCheck.isComplete) return false;
       if (statusFilter === 'TTD_SUDAH' && !s.ttd_siswa) return false;
 
       // Filter Search
@@ -497,15 +506,19 @@ Terima kasih.
     const total = list.length;
     let lengkap = 0;
     let belum = 0;
+    let scoredCount = 0;
     let sudahTtd = 0;
     let totalScore = 0;
 
     for (let i = 0; i < list.length; i++) {
       const s = list[i];
-      const hasScore = s.nilai_sidang !== null && s.nilai_sidang !== undefined && s.nilai_sidang !== '';
-      if (hasScore) {
+      const sidangCheck = evaluateSidangCompleteness(s);
+      if (sidangCheck.computedScore !== null) {
+        scoredCount += 1;
+        totalScore += sidangCheck.computedScore;
+      }
+      if (sidangCheck.isComplete) {
         lengkap += 1;
-        totalScore += Number(s.nilai_sidang) || 0;
       } else {
         belum += 1;
       }
@@ -514,7 +527,7 @@ Terima kasih.
     }
 
     const persentase = total > 0 ? Math.round((lengkap / total) * 100) : 0;
-    const avgScore = lengkap > 0 ? (totalScore / lengkap).toFixed(1) : '-';
+    const avgScore = scoredCount > 0 ? (totalScore / scoredCount).toFixed(1) : '-';
     const ttdPersentase = total > 0 ? Math.round((sudahTtd / total) * 100) : 0;
 
     return {
@@ -1007,8 +1020,9 @@ Terima kasih.
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {paginatedScores.map((score, idx) => {
                   const globalIdx = (currentPage - 1) * itemsPerPage + idx + 1;
-                  const hasScore = score.nilai_sidang !== null && score.nilai_sidang !== undefined && score.nilai_sidang !== '';
-                  const numScore = Number(score.nilai_sidang) || 0;
+                  const sidangCheck = evaluateSidangCompleteness(score);
+                  const isFullyComplete = sidangCheck.isComplete;
+                  const numScore = sidangCheck.computedScore ?? 0;
                   const isPassed = numScore >= 70;
 
                   return (
@@ -1047,12 +1061,12 @@ Terima kasih.
                           <div className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[140px]" title={score.penguji_nama}>
                             {score.penguji_nama || <span className="text-amber-500 italic">Belum Diploting</span>}
                           </div>
-                          {score.penguji_nama && !hasScore && (
+                          {score.penguji_nama && !isFullyComplete && (
                             <button
                               type="button"
                               onClick={() => handleColekSingleStudentSidang(score)}
                               className="p-1 rounded-md text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 shrink-0 transition-colors cursor-pointer"
-                              title={`Colek Penguji (${score.penguji_nama}) via WhatsApp untuk ${score.nama_siswa}`}
+                              title={`Colek Penguji (${score.penguji_nama}) via WhatsApp untuk melengkapi ${sidangCheck.missingItems.join(', ')}`}
                             >
                               <MessageCircle size={13} />
                             </button>
@@ -1062,26 +1076,26 @@ Terima kasih.
 
                       {/* 4 Aspek Nilai */}
                       <td className="py-2 px-2 text-center font-mono text-slate-600 dark:text-slate-300">
-                        {score.sidang_portofolio ?? '-'}
+                        {score.sidang_portofolio && Number(score.sidang_portofolio) > 0 ? score.sidang_portofolio : '-'}
                       </td>
                       <td className="py-2 px-2 text-center font-mono text-slate-600 dark:text-slate-300">
-                        {score.sidang_materi ?? '-'}
+                        {score.sidang_materi && Number(score.sidang_materi) > 0 ? score.sidang_materi : '-'}
                       </td>
                       <td className="py-2 px-2 text-center font-mono text-slate-600 dark:text-slate-300">
-                        {score.sidang_komunikasi ?? '-'}
+                        {score.sidang_komunikasi && Number(score.sidang_komunikasi) > 0 ? score.sidang_komunikasi : '-'}
                       </td>
                       <td className="py-2 px-2 text-center font-mono text-slate-600 dark:text-slate-300">
-                        {score.sidang_sikap ?? '-'}
+                        {score.sidang_sikap && Number(score.sidang_sikap) > 0 ? score.sidang_sikap : '-'}
                       </td>
 
                       {/* Nilai Akhir Sidang */}
                       <td className="py-2 px-2 text-center font-bold font-mono text-xs bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-300">
-                        {hasScore ? numScore : '-'}
+                        {sidangCheck.computedScore !== null ? sidangCheck.computedScore : '-'}
                       </td>
 
                       {/* Status Kelulusan */}
                       <td className="py-2 px-3 text-center">
-                        {hasScore ? (
+                        {isFullyComplete ? (
                           <span className={cn(
                             "px-2 py-0.5 rounded-full text-[10px] font-bold inline-block",
                             isPassed
@@ -1089,6 +1103,13 @@ Terima kasih.
                               : "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300"
                           )}>
                             {isPassed ? 'Lulus' : 'Revisi'}
+                          </span>
+                        ) : sidangCheck.isPartial ? (
+                          <span
+                            className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 inline-block"
+                            title={`Belum lengkap: ${sidangCheck.missingItems.join(', ')}`}
+                          >
+                            Belum Lengkap ({sidangCheck.filledAspectsCount}/4)
                           </span>
                         ) : (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-750 text-slate-500 inline-block">

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScoreRow } from './types';
+import { ScoreRow, evaluateDudiCompleteness, evaluateSidangCompleteness } from './types';
 import { PengujiCombobox, GuruItem } from './PengujiCombobox';
 import {
   ChevronDown,
@@ -231,24 +231,13 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
           const isAktif = score.status === 'AKTIF' || !score.status;
           const isSelesai = score.status === 'SELESAI';
 
-          // Hitung Nilai Rata-rata DUDI
-          const dudiScores = [
-            score.hard_kompetensi_teknis,
-            score.hard_sop_k3lh,
-            score.hard_alur_bisnis,
-            score.soft_kedisiplinan,
-            score.soft_kerajinan_inisiatif,
-            score.soft_kerjasama,
-            score.soft_kejujuran,
-            score.soft_tanggung_jawab,
-          ].filter((g): g is number => typeof g === 'number' && g !== null);
-          const dudiAvg = dudiScores.length > 0
-            ? (dudiScores.reduce((a, b) => a + b, 0) / dudiScores.length).toFixed(1)
-            : null;
+          // Hitung Nilai Rata-rata DUDI & Kelengkapan Sidang (4 Aspek)
+          const dudiCheck = evaluateDudiCompleteness(score);
+          const dudiAvg = dudiCheck.avgScore !== null ? dudiCheck.avgScore.toFixed(1) : null;
 
-          // Status kelulusan sidang
-          const hasExamined = score.nilai_sidang !== null && score.nilai_sidang !== undefined && score.nilai_sidang !== '';
-          const isLulus = hasExamined && Number(score.nilai_sidang) >= 70;
+          const sidangCheck = evaluateSidangCompleteness(score);
+          const hasExamined = sidangCheck.isComplete;
+          const isLulus = hasExamined && (sidangCheck.computedScore ?? 0) >= 70;
 
           return (
             <div
@@ -325,9 +314,11 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
                         'text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border',
                         hasExamined
                           ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200/60 dark:border-purple-900/40'
+                          : sidangCheck.isPartial
+                          ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200/60 dark:border-amber-900/40'
                           : 'bg-slate-50 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700'
                       )}>
-                        Sidang: {score.nilai_sidang ?? '-'}
+                        Sidang: {sidangCheck.computedScore ?? '-'} ({sidangCheck.filledAspectsCount}/4)
                       </span>
 
                       {/* Nilai Akhir */}

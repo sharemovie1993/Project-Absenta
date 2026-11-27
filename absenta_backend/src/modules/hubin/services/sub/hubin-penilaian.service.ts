@@ -603,6 +603,9 @@ export class HubinPenilaianService extends HubinCommonHelper {
       const softKejujuran = item.soft_kejujuran !== undefined ? item.soft_kejujuran : pklRec.soft_kejujuran;
       const softTanggungJawab = item.soft_tanggung_jawab !== undefined ? item.soft_tanggung_jawab : pklRec.soft_tanggung_jawab;
 
+      const resolvedInstrukturNama = item.instruktur_nama !== undefined ? item.instruktur_nama : pklRec.instruktur_nama;
+      const resolvedPimpinanNama = item.penanggung_jawab_nama !== undefined ? item.penanggung_jawab_nama : pklRec.penanggung_jawab_nama;
+
       const dudiGradeList = [
         hardTeknis,
         hardSop,
@@ -612,13 +615,20 @@ export class HubinPenilaianService extends HubinCommonHelper {
         softKerjasama,
         softKejujuran,
         softTanggungJawab,
-      ].filter((v): v is number => v !== null && v !== undefined && !isNaN(v));
+      ].filter((v): v is number => v !== null && v !== undefined && !isNaN(Number(v)) && Number(v) > 0);
 
       const prevNilaiJson = (pklRec.nilai_json as Record<string, any>) || {};
 
+      // Hanya simpan rata-rata DUDI jika memang ada komponen nilai DUDI yang terisi (jangan mewarisi dudi_avg basi saat 8 aspek kosong!)
       const dudiAvg = dudiGradeList.length > 0
-        ? Number((dudiGradeList.reduce((acc, curr) => acc + curr, 0) / dudiGradeList.length).toFixed(2))
-        : (prevNilaiJson.dudi_avg ?? null);
+        ? Number((dudiGradeList.reduce((acc, curr) => acc + Number(curr), 0) / dudiGradeList.length).toFixed(2))
+        : null;
+
+      const isDudiAll8Filled = dudiGradeList.length === 8;
+      const hasPimpinanAndInstruktur =
+        typeof resolvedPimpinanNama === 'string' && resolvedPimpinanNama.trim().length > 0 &&
+        typeof resolvedInstrukturNama === 'string' && resolvedInstrukturNama.trim().length > 0;
+      const isDudiFullyComplete = isDudiAll8Filled && hasPimpinanAndInstruktur;
 
       // 2. Resolve Laporan, Sidang, and Penguji from payload or existing nilai_json
 
@@ -642,30 +652,27 @@ export class HubinPenilaianService extends HubinCommonHelper {
         ? item.sidang_sikap
         : (prevNilaiJson.sidang_sikap ?? null);
 
-      // Hitung nilai sidang dari 4 aspek jika tidak disediakan eksplisit
-      let computedNilaiSidang = item.nilai_sidang !== undefined 
-        ? item.nilai_sidang 
-        : (prevNilaiJson.nilai_sidang ?? null);
-
       const aspekList = [sidangMateri, sidangKomunikasi, sidangPortofolio, sidangSikap]
-        .filter((v): v is number => v !== null && v !== undefined && !isNaN(v));
+        .filter((v): v is number => v !== null && v !== undefined && !isNaN(Number(v)) && Number(v) > 0);
 
+      // Hitung nilai sidang HANYA dari 4 aspek sidang yang terisi (jangan menyimpan nilai_sidang tanpa aspek!)
+      let computedNilaiSidang: number | null = null;
       if (aspekList.length > 0) {
         let tScore = 0;
         let tWeight = 0;
-        if (sidangMateri !== null && sidangMateri !== undefined && !isNaN(sidangMateri)) {
+        if (sidangMateri !== null && sidangMateri !== undefined && !isNaN(Number(sidangMateri)) && Number(sidangMateri) > 0) {
           tScore += Number(sidangMateri) * 40;
           tWeight += 40;
         }
-        if (sidangKomunikasi !== null && sidangKomunikasi !== undefined && !isNaN(sidangKomunikasi)) {
+        if (sidangKomunikasi !== null && sidangKomunikasi !== undefined && !isNaN(Number(sidangKomunikasi)) && Number(sidangKomunikasi) > 0) {
           tScore += Number(sidangKomunikasi) * 25;
           tWeight += 25;
         }
-        if (sidangPortofolio !== null && sidangPortofolio !== undefined && !isNaN(sidangPortofolio)) {
+        if (sidangPortofolio !== null && sidangPortofolio !== undefined && !isNaN(Number(sidangPortofolio)) && Number(sidangPortofolio) > 0) {
           tScore += Number(sidangPortofolio) * 20;
           tWeight += 20;
         }
-        if (sidangSikap !== null && sidangSikap !== undefined && !isNaN(sidangSikap)) {
+        if (sidangSikap !== null && sidangSikap !== undefined && !isNaN(Number(sidangSikap)) && Number(sidangSikap) > 0) {
           tScore += Number(sidangSikap) * 15;
           tWeight += 15;
         }
@@ -674,6 +681,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
         }
       }
 
+      const isSidangAll4Filled = aspekList.length === 4;
       const nilaiSidang = computedNilaiSidang;
 
       const pengujiNama = item.penguji_nama !== undefined 
@@ -770,11 +778,19 @@ export class HubinPenilaianService extends HubinCommonHelper {
       }
 
       // 4. Update SiswaPkl record (including nilai_json)
+      // Status SELESAI hanya diberikan jika seluruh 8 aspek nilai DUDI + Nama Pimpinan + Nama Instruktur terisi lengkap
+      // (dan jika mode penilaian memakai Sidang, seluruh 4 aspek nilai Sidang juga sudah lengkap)
+      const isEligibleForSelesai =
+        isDudiFullyComplete &&
+        (assessmentMode === 'DUDI_ONLY' || isSidangAll4Filled) &&
+        nilaiAkhir !== null &&
+        predikat !== null;
+
       operations.push(
         prisma.siswaPkl.update({
           where: { id: item.siswa_pkl_id },
           data: {
-            status: nilaiAkhir !== null && predikat !== null ? 'SELESAI' : 'AKTIF',
+            status: isEligibleForSelesai ? 'SELESAI' : 'AKTIF',
             instruktur_nama: item.instruktur_nama !== undefined ? item.instruktur_nama : undefined,
             penanggung_jawab_nama: item.penanggung_jawab_nama !== undefined ? item.penanggung_jawab_nama : undefined,
             alamat_dudi: item.alamat_dudi !== undefined ? item.alamat_dudi : undefined,
@@ -1452,9 +1468,17 @@ export class HubinPenilaianService extends HubinCommonHelper {
         id: true,
         mitra_id: true,
         pembimbing_id: true,
+        instruktur_nama: true,
+        penanggung_jawab_nama: true,
         nilai_akhir_pkl: true,
         hard_kompetensi_teknis: true,
+        hard_sop_k3lh: true,
+        hard_alur_bisnis: true,
         soft_kedisiplinan: true,
+        soft_kerajinan_inisiatif: true,
+        soft_kerjasama: true,
+        soft_kejujuran: true,
+        soft_tanggung_jawab: true,
         nilai_json: true,
         Mitra: { select: { id: true, nama: true, alamat: true, bidang: true } },
         Siswa: {
@@ -1486,12 +1510,24 @@ export class HubinPenilaianService extends HubinCommonHelper {
     let belumDiplotPenguji = 0;
     const unassessedPembimbingSet = new Set<string>();
 
+    const isPositiveNum = (v: unknown) => v !== null && v !== undefined && v !== '' && !Number.isNaN(Number(v)) && Number(v) > 0;
+
     for (const p of siswaPklList) {
-      // Nilai DUDI / Pembimbing PKL
-      const isAssessed =
-        p.nilai_akhir_pkl !== null && p.nilai_akhir_pkl !== undefined ||
-        (p.hard_kompetensi_teknis !== null && p.hard_kompetensi_teknis !== undefined &&
-         p.soft_kedisiplinan !== null && p.soft_kedisiplinan !== undefined);
+      // Nilai DUDI / Pembimbing PKL: Wajib lengkap 8 aspek nilai + Nama Pimpinan DUDI + Nama Instruktur
+      const dudiAspects = [
+        p.hard_kompetensi_teknis,
+        p.hard_sop_k3lh,
+        p.hard_alur_bisnis,
+        p.soft_kedisiplinan,
+        p.soft_kerajinan_inisiatif,
+        p.soft_kerjasama,
+        p.soft_kejujuran,
+        p.soft_tanggung_jawab,
+      ];
+      const all8DudiFilled = dudiAspects.every(isPositiveNum);
+      const hasPimpinan = typeof p.penanggung_jawab_nama === 'string' && p.penanggung_jawab_nama.trim().length > 0;
+      const hasInstruktur = typeof p.instruktur_nama === 'string' && p.instruktur_nama.trim().length > 0;
+      const isAssessed = all8DudiFilled && hasPimpinan && hasInstruktur;
 
       if (isAssessed) {
         sudahDinilaiDudi++;
@@ -1502,9 +1538,15 @@ export class HubinPenilaianService extends HubinCommonHelper {
         }
       }
 
-      // Nilai Sidang / Laporan
-      const sidangVal = (p.nilai_json as any)?.nilai_sidang;
-      if (sidangVal !== null && sidangVal !== undefined) {
+      // Nilai Sidang / Laporan: Wajib lengkap 4 aspek nilai sidang (portofolio, materi, komunikasi, sikap)
+      const nJson = (p.nilai_json as any) || {};
+      const sidangAspects = [
+        nJson.sidang_portofolio,
+        nJson.sidang_materi,
+        nJson.sidang_komunikasi,
+        nJson.sidang_sikap,
+      ];
+      if (sidangAspects.every(isPositiveNum)) {
         sudahSidang++;
       } else {
         belumSidang++;

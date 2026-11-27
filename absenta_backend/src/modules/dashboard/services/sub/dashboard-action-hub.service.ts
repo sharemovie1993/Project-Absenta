@@ -598,22 +598,44 @@ export class DashboardActionHubService {
         where: {
           tenant_id: tenantId,
           pembimbing_id: guruId,
-          status: 'AKTIF',
+          status: { in: ['AKTIF', 'SELESAI'] },
           ...tpFilter,
         },
         select: {
           id: true,
+          instruktur_nama: true,
+          penanggung_jawab_nama: true,
           nilai_akhir_pkl: true,
           hard_kompetensi_teknis: true,
+          hard_sop_k3lh: true,
+          hard_alur_bisnis: true,
           soft_kedisiplinan: true,
+          soft_kerajinan_inisiatif: true,
+          soft_kerjasama: true,
+          soft_kejujuran: true,
+          soft_tanggung_jawab: true,
         },
       });
 
+      const isPositiveScore = (v: unknown) => v !== null && v !== undefined && v !== '' && !Number.isNaN(Number(v)) && Number(v) > 0;
+
       if (bimbinganStudents.length > 0) {
         const totalBimbingan = bimbinganStudents.length;
-        const assessedBimbingan = bimbinganStudents.filter(
-          s => s.nilai_akhir_pkl !== null || (s.hard_kompetensi_teknis !== null && s.soft_kedisiplinan !== null)
-        ).length;
+        const assessedBimbingan = bimbinganStudents.filter((s) => {
+          const all8Scores = [
+            s.hard_kompetensi_teknis,
+            s.hard_sop_k3lh,
+            s.hard_alur_bisnis,
+            s.soft_kedisiplinan,
+            s.soft_kerajinan_inisiatif,
+            s.soft_kerjasama,
+            s.soft_kejujuran,
+            s.soft_tanggung_jawab,
+          ].every(isPositiveScore);
+          const hasPimpinan = typeof s.penanggung_jawab_nama === 'string' && s.penanggung_jawab_nama.trim().length > 0;
+          const hasInstruktur = typeof s.instruktur_nama === 'string' && s.instruktur_nama.trim().length > 0;
+          return all8Scores && hasPimpinan && hasInstruktur;
+        }).length;
         const unassessedBimbingan = totalBimbingan - assessedBimbingan;
 
         items.push({
@@ -648,7 +670,7 @@ export class DashboardActionHubService {
       const sidangStudents = await prisma.siswaPkl.findMany({
         where: {
           tenant_id: tenantId,
-          status: 'AKTIF',
+          status: { in: ['AKTIF', 'SELESAI'] },
           nilai_json: {
             path: ['penguji_id'],
             equals: guruId,
@@ -663,9 +685,14 @@ export class DashboardActionHubService {
 
       if (sidangStudents.length > 0) {
         const totalSidang = sidangStudents.length;
-        const assessedSidang = sidangStudents.filter(s => {
-          const nJson = s.nilai_json as any;
-          return nJson?.nilai_sidang !== null && nJson?.nilai_sidang !== undefined && nJson?.nilai_sidang !== '';
+        const assessedSidang = sidangStudents.filter((s) => {
+          const nJson = (s.nilai_json as any) || {};
+          return [
+            nJson.sidang_portofolio,
+            nJson.sidang_materi,
+            nJson.sidang_komunikasi,
+            nJson.sidang_sikap,
+          ].every(isPositiveScore);
         }).length;
         const unassessedSidang = totalSidang - assessedSidang;
 

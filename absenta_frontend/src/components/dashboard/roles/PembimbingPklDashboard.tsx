@@ -25,6 +25,7 @@ const PklMonitoringTab = lazy(() => import('./pembimbing-pkl/tabs/PklMonitoringT
 const PklPenilaianTab = lazy(() => import('./pembimbing-pkl/tabs/PklPenilaianTab').then(m => ({ default: m.PklPenilaianTab })));
 const PklRekapTab = lazy(() => import('./pembimbing-pkl/tabs/PklRekapTab').then(m => ({ default: m.PklRekapTab })));
 import { extractLogbooksFromPenempatan, rejectLogbookAction, mapSiswaBimbingan } from './pembimbing-pkl/logbookUtils';
+import { evaluateDudiCompleteness } from '@/components/hubin/nilai-pkl/types';
 import { 
   UniversalMobileSubtabSidebar, 
   useMobileSubtabSidebar,
@@ -210,15 +211,8 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
 
     const realLogbooks = extractLogbooksFromPenempatan(rawList);
 
-    // Hitung siswa yang belum dinilai (PR Utama Penilaian PKL)
-    const belumDinilaiCount = rawList.filter((p: any) => {
-      const n =
-        p.nilai_akhir_pkl ??
-        p.hard_kompetensi_teknis ??
-        p.nilai_json?.nilai_akhir ??
-        p.nilai_json?.nilai_akhir_pkl;
-      return n === null || n === undefined || n === '' || Number(n) === 0;
-    }).length;
+    // Hitung siswa yang belum dinilai lengkap (8 aspek DUDI + Nama Pimpinan + Nama Instruktur)
+    const belumDinilaiCount = rawList.filter((p: any) => !evaluateDudiCompleteness(p).isComplete).length;
     const sudahDinilaiCount = rawList.length - belumDinilaiCount;
 
     // Hitung siswa yang belum pernah dikunjungi (PR Supervisi DU/DI)

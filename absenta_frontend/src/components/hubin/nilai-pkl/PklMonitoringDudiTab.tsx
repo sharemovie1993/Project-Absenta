@@ -28,7 +28,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Button, Input, SearchableSelect } from '@/components/ui';
 import { HubCard } from '@/components/ui/hub';
-import { ScoreRow } from './types';
+import { ScoreRow, evaluateDudiCompleteness } from './types';
 import { PklDudiCetakModal, PklDudiDocType } from './PklDudiCetakModal';
 import { useJurusanOptions } from '@/hooks/useJurusanOptions';
 import { useAuthStore } from '@/store/authStore';
@@ -86,7 +86,7 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
   // Mode Koreksi: Khusus Kaprog (Waka Hubin dilarang)
   const isEligibleForKoreksi = Boolean(propCanUseModeKoreksi ?? (isKaprog && !isHubin));
   const [isModeKoreksi, setIsModeKoreksi] = useState<boolean>(false);
-  const [editDrafts, setEditDrafts] = useState<Record<string, Record<string, number | null>>>({});
+  const [editDrafts, setEditDrafts] = useState<Record<string, Record<string, number | string | null>>>({});
   const [isSavingKoreksi, setIsSavingKoreksi] = useState<boolean>(false);
 
   const unsavedCount = Object.keys(editDrafts).length;
@@ -239,6 +239,7 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
       totalSiswa: number;
       sudahDinilai: number;
       belumDinilai: number;
+      scoredCount: number;
       totalNilai: number;
     }>();
 
@@ -253,6 +254,7 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
           totalSiswa: 0,
           sudahDinilai: 0,
           belumDinilai: 0,
+          scoredCount: 0,
           totalNilai: 0,
         };
         map.set(nama, existing);
@@ -260,18 +262,14 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
 
       existing.totalSiswa += 1;
 
-      // Status penilaian DUDI dihitung dari nilai_akhir_pkl atau aspek teknis
-      const hasDudiScore = (s.nilai_akhir_pkl !== null && s.nilai_akhir_pkl !== undefined) ||
-        (s.hard_kompetensi_teknis !== null && s.hard_kompetensi_teknis !== undefined);
-      if (hasDudiScore) {
+      // Status penilaian DUDI wajib memeriksa kelengkapan 8 komponen nilai + Nama Pimpinan + Nama Instruktur
+      const dudiCheck = evaluateDudiCompleteness(s);
+      if (dudiCheck.avgScore !== null) {
+        existing.scoredCount += 1;
+        existing.totalNilai += dudiCheck.avgScore;
+      }
+      if (dudiCheck.isComplete) {
         existing.sudahDinilai += 1;
-        const aspects = [
-          s.hard_kompetensi_teknis, s.hard_sop_k3lh, s.hard_alur_bisnis,
-          s.soft_kedisiplinan, s.soft_kerajinan_inisiatif, s.soft_kerjasama,
-          s.soft_kejujuran, s.soft_tanggung_jawab
-        ].filter((v): v is number => typeof v === 'number' && v !== null);
-        const studentAvg = aspects.length > 0 ? (aspects.reduce((a, b) => a + b, 0) / aspects.length) : 0;
-        existing.totalNilai += studentAvg;
       } else {
         existing.belumDinilai += 1;
       }
@@ -279,7 +277,7 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
 
     return Array.from(map.values()).map((p) => {
       const persentase = p.totalSiswa > 0 ? Math.round((p.sudahDinilai / p.totalSiswa) * 100) : 0;
-      const avgNilai = p.sudahDinilai > 0 ? (p.totalNilai / p.sudahDinilai).toFixed(1) : '-';
+      const avgNilai = p.scoredCount > 0 ? (p.totalNilai / p.scoredCount).toFixed(1) : '-';
       return {
         ...p,
         persentase,
@@ -360,17 +358,19 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
     const senderName = user?.full_name || 'Ketua Program Keahlian';
     const deptName = activeJurusanNama || 'Kejuruan';
 
-    // Cari siswa bimbingan dari pembimbing ini yang belum selesai dinilai (adaptif)
+    // Cari siswa bimbingan dari pembimbing ini yang belum selesai dinilai lengkap (8 aspek + pimpinan + instruktur)
     const unassessedStudents = jurusanFilteredScores.filter((s) => {
       const nama = s.pembimbing_nama ? s.pembimbing_nama.trim() : 'Belum Diploting';
       if (nama !== pembimbing.nama) return false;
-      const isAssessed = (s.nilai_akhir_pkl !== null && s.nilai_akhir_pkl !== undefined) ||
-        (s.hard_kompetensi_teknis !== null && s.hard_kompetensi_teknis !== undefined);
-      return !isAssessed;
+      return !evaluateDudiCompleteness(s).isComplete;
     });
 
     const studentListFormatted = unassessedStudents
-      .map((s, idx) => `  ${idx + 1}. *${s.nama_siswa}* (${s.nama_kelas || '-'} • ${s.mitra_nama || '-'})`)
+      .map((s, idx) => {
+        const check = evaluateDudiCompleteness(s);
+        const missingNote = check.missingItems.length > 0 ? ` — _Kurang: ${check.missingItems.join(', ')}_` : '';
+        return `  ${idx + 1}. *${s.nama_siswa}* (${s.nama_kelas || '-'} • ${s.mitra_nama || '-'})${missingNote}`;
+      })
       .join('\n');
 
     const studentListSection = studentListFormatted
@@ -447,15 +447,19 @@ Terima kasih atas dedikasi dan kerjasamanya.
     const phone = (score.pembimbing_id ? guruPhoneMap.get(score.pembimbing_id) : undefined) || guruPhoneMap.get(pembimbingNama.trim().toLowerCase()) || '';
     const senderName = user?.full_name || 'Ketua Program Keahlian';
     const deptName = activeJurusanNama || score.nama_jurusan || 'Kejuruan';
+    const dudiCheck = evaluateDudiCompleteness(score);
+    const missingLine = dudiCheck.missingItems.length > 0
+      ? `\n• *Komponen Belum Lengkap*: ${dudiCheck.missingItems.join(', ')}`
+      : '';
 
     const message = `Yth. Bapak/Ibu *${pembimbingNama}*,
 
-Mengingatkan penginputan *Nilai Sidang & Capaian PKL* untuk siswa:
+Mengingatkan penginputan *Nilai & Identitas DUDI PKL* untuk siswa:
 • *Nama*: ${score.nama_siswa} (NIS: ${score.nis || '-'})
 • *Kelas*: ${score.nama_kelas || '-'}
-• *Mitra DUDI*: ${score.mitra_nama || '-'}
+• *Mitra DUDI*: ${score.mitra_nama || '-'}${missingLine}
 
-Nilai untuk siswa tersebut saat ini belum terinput di sistem Absenta. Mohon kesediaannya untuk mengisi nilai pada menu Meja Bimbingan PKL:
+Data penilaian untuk siswa tersebut saat ini belum lengkap di sistem Absenta. Mohon kesediaannya untuk melengkapi seluruh 8 aspek nilai DUDI beserta Nama Pimpinan & Nama Instruktur pada menu Meja Bimbingan PKL:
 ${window.location.origin}/dashboard?tab=pembimbing_pkl
 
 Terima kasih.
@@ -488,10 +492,10 @@ Terima kasih.
         return false;
       }
 
-      // Filter Status Nilai DUDI
-      const hasDudiScore = s.hard_kompetensi_teknis !== null && s.hard_kompetensi_teknis !== undefined;
-      if (statusFilter === 'SUDAH' && !hasDudiScore) return false;
-      if (statusFilter === 'BELUM' && hasDudiScore) return false;
+      // Filter Status Nilai DUDI (Wajib Lengkap 8 Komponen Nilai + Pimpinan + Instruktur)
+      const dudiCheck = evaluateDudiCompleteness(s);
+      if (statusFilter === 'SUDAH' && !dudiCheck.isComplete) return false;
+      if (statusFilter === 'BELUM' && dudiCheck.isComplete) return false;
 
       // Filter Search
       if (q) {
@@ -500,7 +504,9 @@ Terima kasih.
         const matchKelas = s.nama_kelas?.toLowerCase().includes(q);
         const matchMitra = s.mitra_nama?.toLowerCase().includes(q);
         const matchPembimbing = s.pembimbing_nama?.toLowerCase().includes(q);
-        if (!matchNama && !matchNis && !matchKelas && !matchMitra && !matchPembimbing) return false;
+        const matchPimpinan = s.penanggung_jawab_nama?.toLowerCase().includes(q);
+        const matchInstruktur = s.instruktur_nama?.toLowerCase().includes(q);
+        if (!matchNama && !matchNis && !matchKelas && !matchMitra && !matchPembimbing && !matchPimpinan && !matchInstruktur) return false;
       }
 
       return true;
@@ -515,32 +521,30 @@ Terima kasih.
     const total = list.length;
     let lengkap = 0;
     let belum = 0;
+    let scoredCount = 0;
     let totalScore = 0;
     let siapCetak = 0;
 
     for (let i = 0; i < list.length; i++) {
       const s = list[i];
-      const hasDudiScore = s.hard_kompetensi_teknis !== null && s.hard_kompetensi_teknis !== undefined;
-      if (hasDudiScore) {
+      const dudiCheck = evaluateDudiCompleteness(s);
+      if (dudiCheck.avgScore !== null) {
+        scoredCount += 1;
+        totalScore += dudiCheck.avgScore;
+      }
+      if (dudiCheck.isComplete) {
         lengkap += 1;
-        const aspects = [
-          s.hard_kompetensi_teknis, s.hard_sop_k3lh, s.hard_alur_bisnis,
-          s.soft_kedisiplinan, s.soft_kerajinan_inisiatif, s.soft_kerjasama,
-          s.soft_kejujuran, s.soft_tanggung_jawab
-        ].filter((v): v is number => typeof v === 'number' && v !== null);
-        const studentAvg = aspects.length > 0 ? (aspects.reduce((a, b) => a + b, 0) / aspects.length) : 0;
-        totalScore += studentAvg;
       } else {
         belum += 1;
       }
 
-      if (s.nilai_akhir_pkl !== null && s.nilai_akhir_pkl !== undefined && Number(s.nilai_akhir_pkl) > 0) {
+      if (dudiCheck.isComplete && s.nilai_akhir_pkl !== null && s.nilai_akhir_pkl !== undefined && Number(s.nilai_akhir_pkl) > 0) {
         siapCetak += 1;
       }
     }
 
     const persentase = total > 0 ? Math.round((lengkap / total) * 100) : 0;
-    const avgScore = lengkap > 0 ? (totalScore / lengkap).toFixed(1) : '-';
+    const avgScore = scoredCount > 0 ? (totalScore / scoredCount).toFixed(1) : '-';
     const siapCetakPersen = total > 0 ? Math.round((siapCetak / total) * 100) : 0;
 
     return {
@@ -575,6 +579,20 @@ Terima kasih.
   // ───────────────────────────────────────────────────────────────────────────
   const handleScoreAspectChange = useCallback((siswaPklId: string, field: string, rawVal: string) => {
     if (!isEligibleForKoreksi || !isModeKoreksi) return;
+
+    if (field === 'penanggung_jawab_nama' || field === 'instruktur_nama') {
+      setEditDrafts((prev) => {
+        const currentStudentDraft = prev[siswaPklId] || {};
+        return {
+          ...prev,
+          [siswaPklId]: {
+            ...currentStudentDraft,
+            [field]: rawVal,
+          },
+        };
+      });
+      return;
+    }
 
     let val: number | null = null;
     if (rawVal !== '' && rawVal !== null && rawVal !== undefined) {
@@ -1156,9 +1174,11 @@ Terima kasih.
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold">
                   <th className="py-2.5 px-3 w-10 text-center">No</th>
-                  <th className="py-2.5 px-3 min-w-[180px]">Siswa &amp; Kelas</th>
-                  <th className="py-2.5 px-3 min-w-[150px]">Mitra DU/DI</th>
-                  <th className="py-2.5 px-3 min-w-[150px]">Guru Pembimbing</th>
+                  <th className="py-2.5 px-3 min-w-[175px]">Siswa &amp; Kelas</th>
+                  <th className="py-2.5 px-3 min-w-[145px]">Mitra DU/DI</th>
+                  <th className="py-2.5 px-3 min-w-[140px]" title="Nama Pemilik / Pimpinan DUDI">Pimpinan DUDI</th>
+                  <th className="py-2.5 px-3 min-w-[140px]" title="Nama Instruktur Lapangan DUDI">Instruktur</th>
+                  <th className="py-2.5 px-3 min-w-[145px]">Guru Pembimbing</th>
                   <th className="py-2.5 px-2 text-center w-12" title="Kompetensi Teknis">Teknis</th>
                   <th className="py-2.5 px-2 text-center w-12" title="SOP & K3LH">K3LH</th>
                   <th className="py-2.5 px-2 text-center w-12" title="Alur Bisnis">Bisnis</th>
@@ -1168,23 +1188,19 @@ Terima kasih.
                   <th className="py-2.5 px-2 text-center w-12" title="Kejujuran">Jujur</th>
                   <th className="py-2.5 px-2 text-center w-12" title="Tanggung Jawab">T.Jwb</th>
                   <th className="py-2.5 px-2 text-center w-16 bg-emerald-50/50 dark:bg-emerald-950/20">Rata2 DUDI</th>
-                  <th className="py-2.5 px-3 text-center w-24">Status</th>
+                  <th className="py-2.5 px-3 text-center w-28">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {paginatedScores.map((score, idx) => {
                   const globalIdx = (currentPage - 1) * itemsPerPage + idx + 1;
                   const draft = editDrafts[score.siswa_pkl_id];
-                  const mergedScore = draft ? { ...score, ...draft } : score;
+                  const mergedScore = (draft ? { ...score, ...draft } : score) as ScoreRow;
                   const isRowEdited = Boolean(draft && Object.keys(draft).length > 0);
 
-                  const aspects = [
-                    mergedScore.hard_kompetensi_teknis, mergedScore.hard_sop_k3lh, mergedScore.hard_alur_bisnis,
-                    mergedScore.soft_kedisiplinan, mergedScore.soft_kerajinan_inisiatif, mergedScore.soft_kerjasama,
-                    mergedScore.soft_kejujuran, mergedScore.soft_tanggung_jawab
-                  ].filter((v): v is number => typeof v === 'number' && v !== null);
-                  const studentAvg = aspects.length > 0 ? (aspects.reduce((a, b) => a + b, 0) / aspects.length).toFixed(1) : '-';
-                  const hasDudiScore = (mergedScore.nilai_akhir_pkl !== null && mergedScore.nilai_akhir_pkl !== undefined) || aspects.length > 0;
+                  const dudiCheck = evaluateDudiCompleteness(mergedScore);
+                  const studentAvg = dudiCheck.avgScore !== null ? dudiCheck.avgScore.toFixed(1) : '-';
+                  const isFullyComplete = dudiCheck.isComplete;
 
                   const aspectColumns: Array<{ key: keyof ScoreRow; title: string }> = [
                     { key: 'hard_kompetensi_teknis', title: 'Kompetensi Teknis' },
@@ -1230,23 +1246,65 @@ Terima kasih.
 
                       {/* Mitra DUDI */}
                       <td className="py-2 px-3">
-                        <div className="text-slate-800 dark:text-slate-200 font-semibold truncate max-w-[160px]" title={score.mitra_nama}>
+                        <div className="text-slate-800 dark:text-slate-200 font-semibold truncate max-w-[155px]" title={score.mitra_nama}>
                           {score.mitra_nama || '-'}
                         </div>
+                      </td>
+
+                      {/* Nama Pimpinan DUDI */}
+                      <td className="py-2 px-3">
+                        {isModeKoreksi && isEligibleForKoreksi ? (
+                          <input
+                            type="text"
+                            value={mergedScore.penanggung_jawab_nama || ''}
+                            onChange={(e) => handleScoreAspectChange(score.siswa_pkl_id, 'penanggung_jawab_nama', e.target.value)}
+                            placeholder="Nama Pimpinan..."
+                            className="w-full h-7 px-2 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                          />
+                        ) : dudiCheck.hasPimpinan ? (
+                          <div className="text-slate-700 dark:text-slate-300 font-medium truncate max-w-[140px]" title={mergedScore.penanggung_jawab_nama}>
+                            {mergedScore.penanggung_jawab_nama}
+                          </div>
+                        ) : (
+                          <span className="text-[10px] font-bold text-rose-500 dark:text-rose-400 italic">
+                            Belum diisi
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Nama Instruktur Lapangan */}
+                      <td className="py-2 px-3">
+                        {isModeKoreksi && isEligibleForKoreksi ? (
+                          <input
+                            type="text"
+                            value={mergedScore.instruktur_nama || ''}
+                            onChange={(e) => handleScoreAspectChange(score.siswa_pkl_id, 'instruktur_nama', e.target.value)}
+                            placeholder="Nama Instruktur..."
+                            className="w-full h-7 px-2 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                          />
+                        ) : dudiCheck.hasInstruktur ? (
+                          <div className="text-slate-700 dark:text-slate-300 font-medium truncate max-w-[140px]" title={mergedScore.instruktur_nama}>
+                            {mergedScore.instruktur_nama}
+                          </div>
+                        ) : (
+                          <span className="text-[10px] font-bold text-rose-500 dark:text-rose-400 italic">
+                            Belum diisi
+                          </span>
+                        )}
                       </td>
 
                       {/* Pembimbing */}
                       <td className="py-2 px-3">
                         <div className="flex items-center justify-between gap-1.5">
-                          <div className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[140px]" title={score.pembimbing_nama}>
+                          <div className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[135px]" title={score.pembimbing_nama}>
                             {score.pembimbing_nama || <span className="text-amber-500 italic">Belum Diploting</span>}
                           </div>
-                          {score.pembimbing_nama && !hasDudiScore && (
+                          {score.pembimbing_nama && !isFullyComplete && (
                             <button
                               type="button"
                               onClick={() => handleColekSingleStudent(score)}
                               className="p-1 rounded-md text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 shrink-0 transition-colors cursor-pointer"
-                              title={`Colek Pembimbing (${score.pembimbing_nama}) via WhatsApp untuk ${score.nama_siswa}`}
+                              title={`Colek Pembimbing (${score.pembimbing_nama}) via WhatsApp untuk melengkapi ${dudiCheck.missingItems.join(', ')}`}
                             >
                               <MessageCircle size={13} />
                             </button>
@@ -1305,14 +1363,37 @@ Terima kasih.
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
                             Terkoreksi
                           </span>
+                        ) : isFullyComplete ? (
+                          <span
+                            className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 inline-block"
+                            title="Seluruh 8 komponen nilai DUDI, Nama Pimpinan, dan Nama Instruktur telah lengkap"
+                          >
+                            Sudah Dinilai
+                          </span>
+                        ) : dudiCheck.isPartial ? (
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span
+                              className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 inline-block"
+                              title={`Belum lengkap: ${dudiCheck.missingItems.join(', ')}`}
+                            >
+                              Belum Lengkap ({dudiCheck.filledScoresCount}/8)
+                            </span>
+                            {(!dudiCheck.hasPimpinan || !dudiCheck.hasInstruktur) && (
+                              <span className="text-[9px] font-semibold text-rose-500 dark:text-rose-400 leading-tight">
+                                {!dudiCheck.hasPimpinan && !dudiCheck.hasInstruktur
+                                  ? 'Pimpinan & Instruktur kosong'
+                                  : !dudiCheck.hasPimpinan
+                                  ? 'Pimpinan kosong'
+                                  : 'Instruktur kosong'}
+                              </span>
+                            )}
+                          </div>
                         ) : (
-                          <span className={cn(
-                            "px-2 py-0.5 rounded-full text-[10px] font-bold",
-                            hasDudiScore
-                              ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
-                              : "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300"
-                          )}>
-                            {hasDudiScore ? 'Sudah Dinilai' : 'Belum Dinilai'}
+                          <span
+                            className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 inline-block"
+                            title={`Belum diisi: ${dudiCheck.missingItems.join(', ')}`}
+                          >
+                            Belum Dinilai
                           </span>
                         )}
                       </td>

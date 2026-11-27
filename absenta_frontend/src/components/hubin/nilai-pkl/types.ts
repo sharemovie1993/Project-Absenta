@@ -157,56 +157,173 @@ export interface DeskripsiTpItem {
   Jurusan?: { id: string; nama: string; singkatan: string };
 }
 
+export function isValidScoreNumber(v: unknown): v is number {
+  return typeof v === 'number' && v !== null && !Number.isNaN(v) && v > 0;
+}
+
+export interface DudiCompletenessResult {
+  /** Seluruh 8 komponen nilai DUDI + Nama Pimpinan DUDI + Nama Instruktur Lapangan telah diisi lengkap */
+  isComplete: boolean;
+  /** Sebagian komponen nilai atau identitas DUDI sudah diisi tetapi belum semuanya lengkap */
+  isPartial: boolean;
+  /** Seluruh 8 aspek nilai DUDI (3 Hard Skill + 5 Soft Skill) terisi (> 0) */
+  all8ScoresFilled: boolean;
+  /** Jumlah aspek nilai DUDI yang sudah diisi (0 - 8) */
+  filledScoresCount: number;
+  /** Nama Pimpinan / Penanggung Jawab DUDI sudah diisi */
+  hasPimpinan: boolean;
+  /** Nama Instruktur Lapangan sudah diisi */
+  hasInstruktur: boolean;
+  /** Rata-rata dari komponen nilai DUDI yang sudah diisi */
+  avgScore: number | null;
+  /** Daftar komponen yang masih kosong */
+  missingItems: string[];
+}
+
+export function evaluateDudiCompleteness(target: {
+  hard_kompetensi_teknis?: number | null;
+  hard_sop_k3lh?: number | null;
+  hard_alur_bisnis?: number | null;
+  soft_kedisiplinan?: number | null;
+  soft_kerajinan_inisiatif?: number | null;
+  soft_kerjasama?: number | null;
+  soft_kejujuran?: number | null;
+  soft_tanggung_jawab?: number | null;
+  penanggung_jawab_nama?: string | null;
+  instruktur_nama?: string | null;
+}): DudiCompletenessResult {
+  const scoreEntries: Array<{ label: string; val: unknown }> = [
+    { label: 'Teknis', val: target.hard_kompetensi_teknis },
+    { label: 'K3LH', val: target.hard_sop_k3lh },
+    { label: 'Bisnis', val: target.hard_alur_bisnis },
+    { label: 'Disiplin', val: target.soft_kedisiplinan },
+    { label: 'Inisiatif', val: target.soft_kerajinan_inisiatif },
+    { label: 'Kerjasama', val: target.soft_kerjasama },
+    { label: 'Kejujuran', val: target.soft_kejujuran },
+    { label: 'T.Jawab', val: target.soft_tanggung_jawab },
+  ];
+
+  const validScores: number[] = [];
+  const missingScoreLabels: string[] = [];
+
+  for (const item of scoreEntries) {
+    const num = typeof item.val === 'string' && item.val.trim() !== '' ? Number(item.val) : item.val;
+    if (isValidScoreNumber(num)) {
+      validScores.push(num);
+    } else {
+      missingScoreLabels.push(item.label);
+    }
+  }
+
+  const filledScoresCount = validScores.length;
+  const all8ScoresFilled = filledScoresCount === 8;
+  const hasPimpinan = typeof target.penanggung_jawab_nama === 'string' && target.penanggung_jawab_nama.trim().length > 0;
+  const hasInstruktur = typeof target.instruktur_nama === 'string' && target.instruktur_nama.trim().length > 0;
+
+  const missingItems: string[] = [];
+  if (!hasPimpinan) missingItems.push('Nama Pimpinan DUDI');
+  if (!hasInstruktur) missingItems.push('Nama Instruktur');
+  if (!all8ScoresFilled) {
+    if (filledScoresCount === 0) {
+      missingItems.push('8 Komponen Nilai DUDI');
+    } else {
+      missingItems.push(`${8 - filledScoresCount} Komponen Nilai (${missingScoreLabels.join(', ')})`);
+    }
+  }
+
+  const isComplete = all8ScoresFilled && hasPimpinan && hasInstruktur;
+  const isPartial = !isComplete && (filledScoresCount > 0 || hasPimpinan || hasInstruktur);
+  const avgScore =
+    filledScoresCount > 0
+      ? Number((validScores.reduce((a, b) => a + b, 0) / filledScoresCount).toFixed(1))
+      : null;
+
+  return {
+    isComplete,
+    isPartial,
+    all8ScoresFilled,
+    filledScoresCount,
+    hasPimpinan,
+    hasInstruktur,
+    avgScore,
+    missingItems,
+  };
+}
+
+export interface SidangCompletenessResult {
+  /** Seluruh 4 komponen nilai Sidang (Laporan/Portofolio, Materi, Komunikasi, Sikap) telah diisi lengkap */
+  isComplete: boolean;
+  /** Sebagian komponen nilai Sidang sudah diisi tetapi belum lengkap 4 aspek */
+  isPartial: boolean;
+  /** Jumlah aspek nilai Sidang yang sudah diisi (0 - 4) */
+  filledAspectsCount: number;
+  /** Nilai akhir sidang terbobot dari komponen yang valid */
+  computedScore: number | null;
+  /** Daftar aspek sidang yang masih kosong */
+  missingItems: string[];
+}
+
+export function evaluateSidangCompleteness(target: {
+  sidang_materi?: number | null;
+  sidang_komunikasi?: number | null;
+  sidang_portofolio?: number | null;
+  sidang_sikap?: number | null;
+  nilai_sidang?: number | null;
+}): SidangCompletenessResult {
+  const aspectEntries: Array<{ label: string; val: unknown; weight: number }> = [
+    { label: 'Laporan/Portofolio', val: target.sidang_portofolio, weight: 20 },
+    { label: 'Penguasaan Materi', val: target.sidang_materi, weight: 40 },
+    { label: 'Tanya Jawab/Komunikasi', val: target.sidang_komunikasi, weight: 25 },
+    { label: 'Sikap & Etika', val: target.sidang_sikap, weight: 15 },
+  ];
+
+  let filledAspectsCount = 0;
+  let totalWeighted = 0;
+  let totalWeight = 0;
+  const missingItems: string[] = [];
+
+  for (const item of aspectEntries) {
+    const num = typeof item.val === 'string' && item.val.trim() !== '' ? Number(item.val) : item.val;
+    if (isValidScoreNumber(num)) {
+      filledAspectsCount += 1;
+      totalWeighted += num * item.weight;
+      totalWeight += item.weight;
+    } else {
+      missingItems.push(item.label);
+    }
+  }
+
+  const isComplete = filledAspectsCount === 4;
+  const isPartial = !isComplete && filledAspectsCount > 0;
+  const computedScore =
+    totalWeight > 0 ? Math.round((totalWeighted / totalWeight) * 10) / 10 : null;
+
+  return {
+    isComplete,
+    isPartial,
+    filledAspectsCount,
+    computedScore,
+    missingItems,
+  };
+}
+
 export function calculateNilaiSidangFromAspects(target: {
   sidang_materi?: number | null;
   sidang_komunikasi?: number | null;
   sidang_portofolio?: number | null;
   sidang_sikap?: number | null;
 }): number | null {
-  const { sidang_materi, sidang_komunikasi, sidang_portofolio, sidang_sikap } = target;
-  const list = [sidang_materi, sidang_komunikasi, sidang_portofolio, sidang_sikap];
-  const filled = list.filter((v): v is number => typeof v === 'number' && v !== null && !isNaN(v));
-  if (filled.length === 0) return null;
-
-  let totalScore = 0;
-  let totalWeight = 0;
-  if (sidang_materi !== null && sidang_materi !== undefined && !isNaN(sidang_materi)) {
-    totalScore += Number(sidang_materi) * 40;
-    totalWeight += 40;
-  }
-  if (sidang_komunikasi !== null && sidang_komunikasi !== undefined && !isNaN(sidang_komunikasi)) {
-    totalScore += Number(sidang_komunikasi) * 25;
-    totalWeight += 25;
-  }
-  if (sidang_portofolio !== null && sidang_portofolio !== undefined && !isNaN(sidang_portofolio)) {
-    totalScore += Number(sidang_portofolio) * 20;
-    totalWeight += 20;
-  }
-  if (sidang_sikap !== null && sidang_sikap !== undefined && !isNaN(sidang_sikap)) {
-    totalScore += Number(sidang_sikap) * 15;
-    totalWeight += 15;
-  }
-  return totalWeight > 0 ? Math.round((totalScore / totalWeight) * 10) / 10 : null;
+  return evaluateSidangCompleteness(target).computedScore;
 }
 
 export function calculateNilaiAkhirPkl(
   target: Partial<ScoreRow>,
   settings?: HubinAssessmentSettings
 ): { nilai_akhir_pkl: number | null; predikat_pkl: string } {
-  const dudiGradeList = [
-    target.hard_kompetensi_teknis,
-    target.hard_sop_k3lh,
-    target.hard_alur_bisnis,
-    target.soft_kedisiplinan,
-    target.soft_kerajinan_inisiatif,
-    target.soft_kerjasama,
-    target.soft_kejujuran,
-    target.soft_tanggung_jawab,
-  ].filter((g): g is number => typeof g === 'number' && g !== null);
-
-  const dudiAvg = dudiGradeList.length > 0
-    ? dudiGradeList.reduce((a, b) => a + b, 0) / dudiGradeList.length
-    : null;
+  const dudiEval = evaluateDudiCompleteness(target);
+  const dudiAvg = dudiEval.avgScore;
+  const sidangEval = evaluateSidangCompleteness(target);
+  const sidangScore = sidangEval.computedScore;
 
   const mode = settings?.assessmentMode || 'DUDI_ONLY';
   const isComposite = mode === 'COMPOSITE';
@@ -224,12 +341,12 @@ export function calculateNilaiAkhirPkl(
       totalScore += dudiAvg * wDudi;
       totalWeight += wDudi;
     }
-    if (target.nilai_laporan !== null && target.nilai_laporan !== undefined) {
+    if (isValidScoreNumber(target.nilai_laporan)) {
       totalScore += Number(target.nilai_laporan) * wLaporan;
       totalWeight += wLaporan;
     }
-    if (target.nilai_sidang !== null && target.nilai_sidang !== undefined) {
-      totalScore += Number(target.nilai_sidang) * wSidang;
+    if (sidangScore !== null) {
+      totalScore += sidangScore * wSidang;
       totalWeight += wSidang;
     }
     nilai_akhir = totalWeight > 0 ? Math.round((totalScore / totalWeight) * 10) / 10 : null;
@@ -240,8 +357,8 @@ export function calculateNilaiAkhirPkl(
       totalScore += dudiAvg * wDudi;
       totalWeight += wDudi;
     }
-    if (target.nilai_sidang !== null && target.nilai_sidang !== undefined) {
-      totalScore += Number(target.nilai_sidang) * wSidang;
+    if (sidangScore !== null) {
+      totalScore += sidangScore * wSidang;
       totalWeight += wSidang;
     }
     nilai_akhir = totalWeight > 0 ? Math.round((totalScore / totalWeight) * 10) / 10 : null;

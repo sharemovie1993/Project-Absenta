@@ -98,8 +98,10 @@ export function useMyPengujiSidang() {
   const pengujiSidangUnexaminedCount = useMemo(() => {
     if (!mySidangData) return 0;
     return mySidangData.filter((item: any) => {
-      const n = item.nilai_json?.nilai_sidang;
-      return n === null || n === undefined || n === '' || Number(n) === 0;
+      const nj = item.nilai_json || {};
+      const aspects = [nj.sidang_portofolio, nj.sidang_materi, nj.sidang_komunikasi, nj.sidang_sikap];
+      const all4Filled = aspects.every((v) => v !== null && v !== undefined && v !== '' && !Number.isNaN(Number(v)) && Number(v) > 0);
+      return !all4Filled;
     }).length;
   }, [mySidangData]);
 
