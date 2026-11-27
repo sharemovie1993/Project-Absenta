@@ -925,12 +925,15 @@ export class DashboardActionHubService {
             });
           }
 
-          // ── KANAL 3 KAJUR: Monitoring & Ingatkan Pembimbing PKL (Input Nilai PKL) ──
+          // ── KANAL 3 KAJUR: Monitoring & Ingatkan Pembimbing PKL (Input Nilai DUDI + Identitas Pimpinan/Instruktur) ──
           const penilaianStatus = (pklSummary as any)?.penilaianStatus || {
             totalSiswaPkl: 0,
             sudahDinilaiDudi: 0,
             belumDinilaiDudi: 0,
             unassessedPembimbingCount: 0,
+            unassessedPengujiCount: 0,
+            sudahSidang: 0,
+            belumSidang: 0,
           };
 
           const totalSiswaNilai = penilaianStatus.totalSiswaPkl || 0;
@@ -946,14 +949,14 @@ export class DashboardActionHubService {
               urgency: 'CRITICAL',
               title: `Monitoring Nilai Pembimbing PKL — ${jurusanLabel}`,
               subtitle: unassessedPembimbing > 0
-                ? `Anda seorang Kajur. Ada ${belumDinilai} dari ${totalSiswaNilai} siswa PKL yang belum dinilai oleh ${unassessedPembimbing} Guru Pembimbing PKL. Segera ingatkan pembimbing!`
-                : `Anda seorang Kajur. Ada ${belumDinilai} dari ${totalSiswaNilai} siswa PKL yang belum diinput nilainya oleh Pembimbing PKL.`,
-              badgeText: `${belumDinilai} Belum Dinilai`,
+                ? `Anda seorang Kajur. Ada ${belumDinilai} dari ${totalSiswaNilai} siswa PKL yang belum lengkap 8 komponen nilai DUDI & identitas Pimpinan/Instruktur oleh ${unassessedPembimbing} Guru Pembimbing PKL. Segera ingatkan pembimbing!`
+                : `Anda seorang Kajur. Ada ${belumDinilai} dari ${totalSiswaNilai} siswa PKL yang belum lengkap 8 komponen nilai DUDI & identitas Pimpinan/Instruktur.`,
+              badgeText: `${belumDinilai} Belum Lengkap`,
               progress: {
                 current: sudahDinilai,
                 total: totalSiswaNilai,
                 percent: percentNilai,
-                label: `${sudahDinilai}/${totalSiswaNilai} Dinilai`,
+                label: `${sudahDinilai}/${totalSiswaNilai} Lengkap`,
                 variant: 'rose',
               },
               action: {
@@ -972,19 +975,79 @@ export class DashboardActionHubService {
               division: 'HUBIN',
               urgency: 'INFO',
               title: `Monitoring Nilai Pembimbing PKL — ${jurusanLabel}`,
-              subtitle: `Anda seorang Kajur. Seluruh siswa PKL (${totalSiswaNilai} siswa) telah selesai dinilai oleh Pembimbing PKL.`,
+              subtitle: `Anda seorang Kajur. Seluruh siswa PKL (${totalSiswaNilai} siswa) telah lengkap 8 komponen nilai DUDI & identitas Pimpinan/Instruktur.`,
               badgeText: 'Lengkap',
               progress: {
                 current: totalSiswaNilai,
                 total: totalSiswaNilai,
                 percent: 100,
-                label: `${totalSiswaNilai}/${totalSiswaNilai} Dinilai`,
+                label: `${totalSiswaNilai}/${totalSiswaNilai} Lengkap`,
                 variant: 'emerald',
               },
               action: {
                 label: 'Lihat Nilai PKL ➔',
                 type: 'NAVIGATE',
                 target: `/dashboard?tab=kaprog&subtab=nilai_pkl&jurusan_id=${jurusan.id}`,
+              },
+              sourceModule: {
+                table: 'SiswaPkl',
+                entityId: jurusan.id,
+              },
+            });
+          }
+
+          // ── KANAL 4 KAJUR: Monitoring & Ingatkan Penguji Sidang PKL (Input 4 Komponen Nilai Sidang) ──
+          const sudahSidang = penilaianStatus.sudahSidang || 0;
+          const belumSidang = penilaianStatus.belumSidang || 0;
+          const unassessedPenguji = penilaianStatus.unassessedPengujiCount || 0;
+          const percentSidang = totalSiswaNilai > 0 ? Math.round((sudahSidang / totalSiswaNilai) * 100) : 100;
+
+          if (belumSidang > 0) {
+            items.push({
+              id: `kaprog_reminder_penguji_${jurusan.id}`,
+              division: 'HUBIN',
+              urgency: 'CRITICAL',
+              title: `Monitoring Nilai Sidang PKL — ${jurusanLabel}`,
+              subtitle: unassessedPenguji > 0
+                ? `Anda seorang Kajur. Ada ${belumSidang} dari ${totalSiswaNilai} siswa PKL yang belum lengkap 4 komponen nilai Sidang oleh ${unassessedPenguji} Guru Penguji Sidang. Segera ingatkan penguji!`
+                : `Anda seorang Kajur. Ada ${belumSidang} dari ${totalSiswaNilai} siswa PKL yang belum lengkap 4 komponen nilai Sidang PKL.`,
+              badgeText: `${belumSidang} Belum Sidang`,
+              progress: {
+                current: sudahSidang,
+                total: totalSiswaNilai,
+                percent: percentSidang,
+                label: `${sudahSidang}/${totalSiswaNilai} Teruji`,
+                variant: 'rose',
+              },
+              action: {
+                label: 'Ingatkan Penguji ➔',
+                type: 'NAVIGATE',
+                target: `/dashboard?tab=kaprog&subtab=sidang_pkl&jurusan_id=${jurusan.id}`,
+              },
+              sourceModule: {
+                table: 'SiswaPkl',
+                entityId: jurusan.id,
+              },
+            });
+          } else if (totalSiswaNilai > 0 && belumSidang === 0) {
+            items.push({
+              id: `kaprog_reminder_penguji_${jurusan.id}`,
+              division: 'HUBIN',
+              urgency: 'INFO',
+              title: `Monitoring Nilai Sidang PKL — ${jurusanLabel}`,
+              subtitle: `Anda seorang Kajur. Seluruh siswa PKL (${totalSiswaNilai} siswa) telah lengkap 4 komponen nilai Sidang PKL.`,
+              badgeText: 'Lengkap',
+              progress: {
+                current: totalSiswaNilai,
+                total: totalSiswaNilai,
+                percent: 100,
+                label: `${totalSiswaNilai}/${totalSiswaNilai} Teruji`,
+                variant: 'emerald',
+              },
+              action: {
+                label: 'Lihat Nilai Sidang ➔',
+                type: 'NAVIGATE',
+                target: `/dashboard?tab=kaprog&subtab=sidang_pkl&jurusan_id=${jurusan.id}`,
               },
               sourceModule: {
                 table: 'SiswaPkl',

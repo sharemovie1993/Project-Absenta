@@ -1509,6 +1509,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
     let sudahDiplotPenguji = 0;
     let belumDiplotPenguji = 0;
     const unassessedPembimbingSet = new Set<string>();
+    const unassessedPengujiSet = new Set<string>();
 
     const isPositiveNum = (v: unknown) => v !== null && v !== undefined && v !== '' && !Number.isNaN(Number(v)) && Number(v) > 0;
 
@@ -1550,6 +1551,10 @@ export class HubinPenilaianService extends HubinCommonHelper {
         sudahSidang++;
       } else {
         belumSidang++;
+        const pKey = nJson.penguji_id || nJson.penguji_nama;
+        if (pKey) {
+          unassessedPengujiSet.add(String(pKey));
+        }
       }
 
       // Ploting Guru Penguji Sidang
@@ -1700,6 +1705,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
         sudahDinilaiDudi,
         belumDinilaiDudi,
         unassessedPembimbingCount: unassessedPembimbingSet.size,
+        unassessedPengujiCount: unassessedPengujiSet.size,
         sudahSidang,
         belumSidang
       },
