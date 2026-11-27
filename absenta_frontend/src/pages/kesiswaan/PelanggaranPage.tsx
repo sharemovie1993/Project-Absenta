@@ -205,6 +205,10 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
   const canCounsel = isBpbk || isAdmin || can('bk.konseling.create') || can('bk.counselings.create');
 
   const [counselingTarget, setCounselingTarget] = useState<Pelanggaran | null>(null);
+  const [counselingPendingIds, setCounselingPendingIds] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<'records' | 'aggregated'>(() =>
+    isBpbk && !isKesiswaan ? 'aggregated' : 'records'
+  );
   const [counselingTipe, setCounselingTipe] = useState<'INDIVIDU' | 'KELOMPOK' | 'KARIR'>('INDIVIDU');
   const [counselingMasalah, setCounselingMasalah] = useState('');
   const [counselingSolusi, setCounselingSolusi] = useState('');
@@ -215,8 +219,8 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
   // ── useQuery: Fetch pelanggaran list ─────────────────────────────────────
   const queryParams = useMemo(() => {
     const params: Record<string, unknown> = {
-      page: currentPage,
-      limit: itemsPerPage,
+      page: viewMode === 'aggregated' ? 1 : currentPage,
+      limit: viewMode === 'aggregated' ? 500 : itemsPerPage,
       search: debouncedSearch,
       elevated_context: 'true',
       tahun_pelajaran_id: selectedTahunPelajaranId || undefined,
@@ -226,7 +230,7 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
       params.kelas_id = effectiveWaliKelasId;
     }
     return params;
-  }, [currentPage, itemsPerPage, debouncedSearch, isWaliKelas, effectiveWaliKelasId, selectedTahunPelajaranId, selectedSemesterId]);
+  }, [viewMode, currentPage, itemsPerPage, debouncedSearch, isWaliKelas, effectiveWaliKelasId, selectedTahunPelajaranId, selectedSemesterId]);
 
   const { data: pelanggaranRes, isLoading: loading, refetch } = useQuery({
     queryKey: kesiswaanQueryKeys.pelanggaranList(queryParams),
@@ -335,6 +339,7 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
 
   const handleOpenBimbing = useCallback((item: Pelanggaran) => {
     setCounselingTarget(item);
+    setCounselingPendingIds(item.status !== 'SELESAI' ? [item.id] : []);
     setCounselingTipe('INDIVIDU');
     setCounselingMasalah(
       `Pembinaan pelanggaran: ${item.jenis_pelanggaran} (+${item.poin} poin)${item.keterangan ? ` — ${item.keterangan}` : ''}`
@@ -342,6 +347,85 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
     setCounselingSolusi('');
     setCounselingStatus('PROSES');
     setAutoAdvanceStatus(item.status === 'BARU' || item.status === 'PERLU_PEMBINAAN');
+  }, []);
+
+  const aggregatedStudents = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        id: string;
+        siswa_id: string;
+        Siswa: Pelanggaran['Siswa'];
+        totalIncidents: number;
+        totalPoints: number;
+        pendingCount: number;
+        processCount: number;
+        pendingIds: string[];
+        categoryCounts: Map<string, number>;
+        latestItem: Pelanggaran;
+      }
+    >();
+
+    for (const item of data as Pelanggaran[]) {
+      const sid = item.siswa_id;
+      if (!sid) continue;
+      let entry = map.get(sid);
+      if (!entry) {
+        entry = {
+          id: sid,
+          siswa_id: sid,
+          Siswa: item.Siswa,
+          totalIncidents: 0,
+          totalPoints: 0,
+          pendingCount: 0,
+          processCount: 0,
+          pendingIds: [],
+          categoryCounts: new Map(),
+          latestItem: item,
+        };
+        map.set(sid, entry);
+      }
+      entry.totalIncidents += 1;
+      entry.totalPoints += Number(item.poin || 0);
+      if (item.status === 'BARU' || item.status === 'PERLU_PEMBINAAN') {
+        entry.pendingCount += 1;
+        entry.pendingIds.push(item.id);
+      } else if (item.status === 'PROSES') {
+        entry.processCount += 1;
+        entry.pendingIds.push(item.id);
+      }
+      const cat = item.jenis_pelanggaran || 'Lainnya';
+      entry.categoryCounts.set(cat, (entry.categoryCounts.get(cat) || 0) + 1);
+      if (new Date(item.tanggal).getTime() > new Date(entry.latestItem.tanggal).getTime()) {
+        entry.latestItem = item;
+      }
+    }
+
+    return Array.from(map.values())
+      .map((e) => ({
+        ...e,
+        topCategories: Array.from(e.categoryCounts.entries()).map(([name, cnt]) =>
+          cnt > 1 ? `${name} (${cnt}x)` : name
+        ),
+      }))
+      .sort((a, b) => b.totalPoints - a.totalPoints || b.totalIncidents - a.totalIncidents);
+  }, [data]);
+
+  const handleOpenBimbingAggregated = useCallback((row: (typeof aggregatedStudents)[number]) => {
+    setCounselingTarget({
+      ...row.latestItem,
+      poin: row.totalPoints,
+      jenis_pelanggaran: row.topCategories.join(', '),
+      keterangan: `Akumulasi ${row.totalIncidents} kejadian pelanggaran`,
+    });
+    setCounselingPendingIds(row.pendingIds);
+    setCounselingTipe('INDIVIDU');
+    setCounselingMasalah(
+      `Pembinaan akumulasi ${row.totalIncidents} pelanggaran (+${row.totalPoints} poin): ${row.topCategories.join(', ')}`
+    );
+    setCounselingSolusi('');
+    setCounselingStatus('PROSES');
+    setAutoAdvanceStatus(row.pendingCount > 0 || row.processCount > 0);
   }, []);
 
   const handleSubmitBimbing = useCallback(async (e: React.FormEvent) => {
@@ -362,10 +446,13 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
         status: counselingStatus,
         visibility: 'LIMITED',
       });
-      if (autoAdvanceStatus && counselingTarget.status !== 'SELESAI') {
-        await kesiswaanApi.updatePelanggaran(counselingTarget.id, {
-          status: counselingStatus === 'SELESAI' ? 'SELESAI' : 'PROSES',
-        });
+      if (autoAdvanceStatus && counselingPendingIds.length > 0) {
+        const nextStatus = counselingStatus === 'SELESAI' ? 'SELESAI' : 'PROSES';
+        await Promise.all(
+          counselingPendingIds.map((pid) =>
+            kesiswaanApi.updatePelanggaran(pid, { status: nextStatus })
+          )
+        );
       }
       await Promise.all([
         invalidateAllPelanggaranCaches(),
@@ -382,7 +469,7 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
     } finally {
       setSavingCounseling(false);
     }
-  }, [counselingTarget, counselingTipe, counselingMasalah, counselingSolusi, counselingStatus, autoAdvanceStatus, invalidateAllPelanggaranCaches, queryClient, refetch]);
+  }, [counselingTarget, counselingPendingIds, counselingTipe, counselingMasalah, counselingSolusi, counselingStatus, autoAdvanceStatus, invalidateAllPelanggaranCaches, queryClient, refetch]);
 
   const statusConfig: Record<string, StatusConfig> = useMemo(() => ({
     'BARU': {
@@ -612,6 +699,75 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
     }
   ], [getStatusDisplay, canCounsel, canDeleteViolation, handleOpenBimbing, handleEdit, handleDelete]);
 
+  const aggregatedColumns: Column[] = useMemo(() => [
+    {
+      key: 'siswa',
+      label: 'Profil Siswa',
+      render: (_: unknown, row: (typeof aggregatedStudents)[number]) => (
+        <SiswaIdentityCell
+          student={row.Siswa}
+          showNis={false}
+          avatarSize="sm"
+          nameClassName="font-bold text-slate-800 dark:text-slate-100 text-xs"
+          subtitleClassName="text-[10px] font-bold text-slate-400 uppercase tracking-wider"
+        />
+      )
+    },
+    {
+      key: 'topCategories',
+      label: 'Ringkasan Pelanggaran',
+      render: (_: unknown, row: (typeof aggregatedStudents)[number]) => (
+        <span className="text-xs font-medium text-slate-700 dark:text-slate-300 line-clamp-2 max-w-xs">
+          {row.topCategories.join(', ')}
+        </span>
+      )
+    },
+    {
+      key: 'totalIncidents',
+      label: 'Frekuensi',
+      render: (_: unknown, row: (typeof aggregatedStudents)[number]) => (
+        <Badge variant="outline" className="text-[10px] font-black">
+          {row.totalIncidents}x Kejadian
+        </Badge>
+      )
+    },
+    {
+      key: 'totalPoints',
+      label: 'Total Bobot',
+      render: (_: unknown, row: (typeof aggregatedStudents)[number]) => (
+        <span className="font-black text-rose-600 dark:text-rose-400 text-xs">+{row.totalPoints}</span>
+      )
+    },
+    {
+      key: 'status',
+      label: 'Tahapan Pembinaan',
+      render: (_: unknown, row: (typeof aggregatedStudents)[number]) => {
+        if (row.pendingCount > 0) return getStatusDisplay('BARU');
+        if (row.processCount > 0) return getStatusDisplay('PROSES');
+        return getStatusDisplay('SELESAI');
+      }
+    },
+    {
+      key: 'actions',
+      label: 'Tindakan',
+      render: (_: unknown, row: (typeof aggregatedStudents)[number]) => (
+        <div className="flex gap-1 justify-end">
+          {canCounsel && (
+            <Button
+              variant="toolbarPrimary"
+              size="toolbar"
+              onClick={() => handleOpenBimbingAggregated(row)}
+              className="bg-emerald-600 hover:bg-emerald-700 text-[10px] h-7 px-2.5 rounded-lg font-bold"
+            >
+              <HeartHandshake size={12} className="mr-1" />
+              Bimbing
+            </Button>
+          )}
+        </div>
+      )
+    }
+  ], [getStatusDisplay, canCounsel, handleOpenBimbingAggregated]);
+
   const pageStats = useMemo(() => {
     const total = data?.length || 0;
     const today = data?.filter(d => {
@@ -723,6 +879,31 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
           </button>
         )}
       </div>
+      <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold shadow-xs">
+        <button
+          type="button"
+          onClick={() => { setViewMode('aggregated'); setCurrentPage(1); }}
+          className={`px-2.5 py-1 rounded-lg transition-all text-[11px] font-bold cursor-pointer ${
+            viewMode === 'aggregated'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          Rekap Per Siswa
+        </button>
+        <button
+          type="button"
+          onClick={() => { setViewMode('records'); setCurrentPage(1); }}
+          className={`px-2.5 py-1 rounded-lg transition-all text-[11px] font-bold cursor-pointer ${
+            viewMode === 'records'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          Log Kejadian
+        </button>
+      </div>
+
       <Button
         variant="toolbarPrimary"
         size="toolbar"
@@ -732,7 +913,7 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
         Tambah Catatan
       </Button>
     </div>
-  ), [isDualRoleUser, isWaliKelas, waliKelasNama, handleContextSwitch, selectedTahunPelajaranId, selectedSemesterId, searchTerm, resetForm]);
+  ), [isDualRoleUser, isWaliKelas, waliKelasNama, handleContextSwitch, selectedTahunPelajaranId, selectedSemesterId, searchTerm, resetForm, viewMode]);
 
   const breadcrumbs = useMemo(() => [
     { label: 'Dashboard', path: '/dashboard' },
@@ -751,12 +932,12 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
             </div>
 
             <MobileAcademicList
-              title="Catatan Perkembangan & Pelanggaran"
-              data={data}
+              title={viewMode === 'aggregated' ? 'Rekap Pelanggaran Per Siswa' : 'Catatan Perkembangan & Pelanggaran'}
+              data={viewMode === 'aggregated' ? aggregatedStudents : data}
               loading={loading}
-              totalItems={totalItems}
+              totalItems={viewMode === 'aggregated' ? aggregatedStudents.length : totalItems}
               emptyMessage="Belum ada data perkembangan tercatat"
-              pagination={{
+              pagination={viewMode === 'aggregated' ? undefined : {
                 currentPage,
                 totalPages,
                 totalItems,
@@ -767,17 +948,33 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
                   setCurrentPage(1);
                 }
               }}
-              renderCard={renderMobileCard}
+              renderCard={viewMode === 'aggregated' ? (row: (typeof aggregatedStudents)[number]) => (
+                <div key={row.id} className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <SiswaIdentityCell student={row.Siswa} showNis={false} avatarSize="sm" nameClassName="font-bold text-slate-800 dark:text-slate-100 text-xs" subtitleClassName="text-[10px] font-bold text-slate-400 uppercase" />
+                    <span className="font-black text-rose-600 text-xs shrink-0">+{row.totalPoints} ({row.totalIncidents}x)</span>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">{row.topCategories.join(', ')}</p>
+                  <div className="flex items-center justify-between pt-1">
+                    {row.pendingCount > 0 ? getStatusDisplay('BARU') : row.processCount > 0 ? getStatusDisplay('PROSES') : getStatusDisplay('SELESAI')}
+                    {canCounsel && (
+                      <Button variant="toolbarPrimary" size="toolbar" onClick={() => handleOpenBimbingAggregated(row)} className="bg-emerald-600 hover:bg-emerald-700 text-xs h-8 px-3 rounded-lg font-bold">
+                        <HeartHandshake size={13} className="mr-1" /> Bimbing
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ) : renderMobileCard}
             />
           </div>
         ) : (
           <Table
-            columns={columns}
-            data={data}
+            columns={viewMode === 'aggregated' ? aggregatedColumns : columns}
+            data={viewMode === 'aggregated' ? aggregatedStudents : data}
             loading={loading}
             emptyMessage="Belum ada data perkembangan tercatat"
             toolbarLeft={toolbar}
-            pagination={{
+            pagination={viewMode === 'aggregated' ? undefined : {
               currentPage,
               totalPages,
               totalItems,
