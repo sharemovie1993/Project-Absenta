@@ -218,6 +218,15 @@ export class HubinPenilaianController {
     }
   }
 
+  async getKaprogDirectory(request: AuthenticatedRequest, reply: any) {
+    try {
+      const data = await this.hubinService.getKaprogDirectory(request.tenantId!);
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
   async getSertifikatPklData(request: AuthenticatedRequest, reply: any) {
     try {
       const { id } = request.params;

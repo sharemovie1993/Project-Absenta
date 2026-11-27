@@ -30,6 +30,7 @@ import { useAuthStore } from '@/store/authStore';
 import { UniversalSendWaModal } from '@/components/ui/UniversalSendWaModal';
 import { PersonPhoto } from '@/components/ui/PersonPhoto';
 import { getWaDocumentRecipients } from '@/api/whatsapp.api';
+import { hubinApi } from '@/api/hubin.api';
 import { cn } from '@/lib/utils';
 
 export interface PklMonitoringSidangTabProps {
@@ -316,6 +317,104 @@ export const PklMonitoringSidangTab: React.FC<PklMonitoringSidangTabProps> = Rea
     staleTime: 10 * 60 * 1000,
   });
 
+  const canMonitorKaprogPloting = Boolean(isHubin || canManageAll);
+
+  const { data: kaprogDirectory = [] } = useQuery<Array<{
+    jurusan_id: string;
+    jurusan_nama: string;
+    jurusan_singkatan?: string | null;
+    kaprog_user_id?: string | null;
+    kaprog_guru_id?: string | null;
+    kaprog_nama: string;
+    kaprog_foto?: string | null;
+    kaprog_phone?: string | null;
+  }>>({
+    queryKey: ['hubin-kaprog-directory'],
+    queryFn: async () => {
+      const res = await hubinApi.getKaprogDirectory().catch(() => null);
+      return Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+    },
+    enabled: canMonitorKaprogPloting,
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const kaprogPlotingSummaryList = useMemo(() => {
+    if (!canMonitorKaprogPloting) return [];
+
+    const kaprogByJurusanId = new Map<string, (typeof kaprogDirectory)[number]>();
+    for (const k of kaprogDirectory) {
+      if (k.jurusan_id && !kaprogByJurusanId.has(k.jurusan_id)) {
+        kaprogByJurusanId.set(k.jurusan_id, k);
+      }
+    }
+
+    const map = new Map<string, {
+      jurusanId: string;
+      jurusanNama: string;
+      jurusanSingkatan: string;
+      totalSiswa: number;
+      sudahDiplot: number;
+      belumDiplot: number;
+      kaprogNama: string;
+      kaprogFoto: string | null;
+      kaprogPhone: string;
+      kaprogGuruId: string | null;
+    }>();
+
+    for (const s of scores) {
+      if (isPklRowExempted(s).exempted) continue;
+
+      let jId = s.jurusan_id || '';
+      let jNama = s.nama_jurusan || '';
+      let jSingkatan = s.singkatan_jurusan || '';
+
+      if (!jId && rawJurusanList.length > 0) {
+        const matchedJ = rawJurusanList.find((j) =>
+          (jNama && (j.nama || '').toLowerCase() === jNama.toLowerCase()) ||
+          (jSingkatan && (j.singkatan || j.kode || '').toLowerCase() === jSingkatan.toLowerCase())
+        );
+        if (matchedJ) {
+          jId = matchedJ.id;
+          jNama = matchedJ.nama || jNama;
+          jSingkatan = matchedJ.singkatan || matchedJ.kode || jSingkatan;
+        }
+      }
+
+      const key = jId || jSingkatan || jNama || 'UMUM';
+      let item = map.get(key);
+      if (!item) {
+        const kap = jId ? kaprogByJurusanId.get(jId) : undefined;
+        item = {
+          jurusanId: jId,
+          jurusanNama: kap?.jurusan_nama || jNama || 'Jurusan',
+          jurusanSingkatan: kap?.jurusan_singkatan || jSingkatan || jNama || 'Jurusan',
+          totalSiswa: 0,
+          sudahDiplot: 0,
+          belumDiplot: 0,
+          kaprogNama: kap?.kaprog_nama || 'Kaprog Belum Diploting',
+          kaprogFoto: kap?.kaprog_foto || null,
+          kaprogPhone: kap?.kaprog_phone ? kap.kaprog_phone.replace(/\D/g, '') : '',
+          kaprogGuruId: kap?.kaprog_guru_id || null,
+        };
+        map.set(key, item);
+      }
+
+      item.totalSiswa += 1;
+      if (s.penguji_nama && s.penguji_nama.trim().length > 0) {
+        item.sudahDiplot += 1;
+      } else {
+        item.belumDiplot += 1;
+      }
+    }
+
+    return Array.from(map.values())
+      .map((item) => ({
+        ...item,
+        persentase: item.totalSiswa > 0 ? Math.round((item.sudahDiplot / item.totalSiswa) * 100) : 100,
+      }))
+      .sort((a, b) => b.belumDiplot - a.belumDiplot || a.jurusanSingkatan.localeCompare(b.jurusanSingkatan));
+  }, [canMonitorKaprogPloting, scores, kaprogDirectory, rawJurusanList]);
+
   const guruPhoneMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const g of guruRecipients) {
@@ -442,6 +541,73 @@ Terima kasih atas dedikasi dan kerjasamanya.
       defaultRecipientLabel: 'Grup WhatsApp Guru Penguji',
     });
   }, [pengujiSummaryList, user, activeJurusanNama, selectedTpNama, selectedSemesterNama]);
+
+  // Handler: Colek Kaprog yang belum menyelesaikan ploting penguji sidang di jurusannya (Khusus Hubin)
+  const handleColekKaprogPloting = useCallback((kapItem: (typeof kaprogPlotingSummaryList)[number]) => {
+    const rawPhone = kapItem.kaprogPhone ||
+      (kapItem.kaprogGuruId ? guruPhoneMap.get(kapItem.kaprogGuruId) : undefined) ||
+      guruPhoneMap.get(kapItem.kaprogNama.trim().toLowerCase()) || '';
+    const senderName = user?.full_name || 'Staf Hubin / Wakasek Hubin';
+
+    const message = `Yth. Bapak/Ibu *${kapItem.kaprogNama}* (Kaprog *${kapItem.jurusanSingkatan}*),
+
+Mengingatkan perihal *Ploting Guru Penguji Sidang PKL* Jurusan *${kapItem.jurusanNama}*.
+Saat ini tercatat masih ada *${kapItem.belumDiplot} dari ${kapItem.totalSiswa} siswa PKL* yang belum diploting Guru Penguji Sidangnya (${kapItem.sudahDiplot}/${kapItem.totalSiswa} terploting).
+
+Mohon kesediaan Bapak/Ibu untuk segera melengkapi ploting penguji melalui Dashboard Kaprog pada aplikasi Absenta:
+${window.location.origin}/dashboard?tab=kaprog&subtab=ploting_penguji
+
+Terima kasih atas perhatian dan kerjasamanya.
+— _Bidang Hubungan Industri (${senderName})_`;
+
+    setWaModalConfig({
+      isOpen: true,
+      title: `Colek Kaprog ${kapItem.jurusanSingkatan}: ${kapItem.kaprogNama}`,
+      subtitle: `Ingatkan ploting penguji sidang (${kapItem.belumDiplot} siswa belum diplot)`,
+      defaultMessage: message,
+      defaultRecipientType: rawPhone ? 'GURU' : 'MANUAL',
+      defaultRecipientTarget: rawPhone,
+      defaultRecipientLabel: kapItem.kaprogNama,
+    });
+  }, [guruPhoneMap, user]);
+
+  // Handler: Colek Semua Kaprog yang belum selesai ploting via Grup WA
+  const handleColekSemuaKaprogGrup = useCallback(() => {
+    const pendingJurusans = kaprogPlotingSummaryList.filter((k) => k.belumDiplot > 0);
+    if (pendingJurusans.length === 0) {
+      toast.success('Seluruh jurusan telah menuntaskan ploting penguji sidang PKL.');
+      return;
+    }
+
+    const senderName = user?.full_name || 'Staf Hubin / Wakasek Hubin';
+    const listText = pendingJurusans
+      .map((k, idx) => `${idx + 1}. *${k.jurusanSingkatan}* — ${k.kaprogNama} (*${k.belumDiplot}* dari ${k.totalSiswa} siswa belum diplot)`)
+      .join('\n');
+
+    const message = `📢 *PENGINGAT PLOTING PENGUJI SIDANG PKL (KAPROG)*
+Tahun Pelajaran: *${selectedTpNama || '-'}* (${selectedSemesterNama || '-'})
+
+Yth. Bapak/Ibu Ketua Program Keahlian,
+Mohon untuk segera menuntaskan ploting Guru Penguji Sidang PKL pada jurusan berikut:
+
+${listText}
+
+Silakan akses menu Ploting Penguji melalui Dashboard Kaprog:
+${window.location.origin}/dashboard?tab=kaprog&subtab=ploting_penguji
+
+Terima kasih atas kerjasamanya.
+— _Bidang Hubungan Industri (${senderName})_`;
+
+    setWaModalConfig({
+      isOpen: true,
+      title: 'Colek Semua Kaprog Belum Ploting (Grup WA)',
+      subtitle: `Kirim rekap ${pendingJurusans.length} jurusan yang belum tuntas ploting penguji ke Grup WA`,
+      defaultMessage: message,
+      defaultRecipientType: 'GROUP',
+      defaultRecipientTarget: '',
+      defaultRecipientLabel: 'Grup WhatsApp Kaprog / Hubin',
+    });
+  }, [kaprogPlotingSummaryList, user, selectedTpNama, selectedSemesterNama]);
 
   // Handler: Colek Penguji untuk Siswa Tertentu
   const handleColekSingleStudentSidang = useCallback((score: ScoreRow) => {
@@ -701,6 +867,137 @@ Terima kasih.
           </div>
         </div>
       </HubCard>
+
+      {/* ── Matriks Progres Ploting Penguji per Jurusan / Kaprog (Khusus Hubin) ── */}
+      {canMonitorKaprogPloting && kaprogPlotingSummaryList.length > 0 && (
+        <HubCard
+          title={
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 w-full">
+              <div className="flex items-center gap-2">
+                <UserCheck size={15} className="text-amber-600 dark:text-amber-400" />
+                <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100">
+                  Progres Ploting Penguji Sidang per Jurusan ({kaprogPlotingSummaryList.length})
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {kaprogPlotingSummaryList.some((k) => k.belumDiplot > 0) ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleColekSemuaKaprogGrup}
+                    className="h-7 px-2.5 text-[11px] font-bold gap-1.5 border-amber-300 text-amber-800 bg-amber-50/70 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 shadow-2xs cursor-pointer"
+                    title="Colek seluruh Kaprog yang belum menyelesaikan ploting penguji sidang via Grup WhatsApp"
+                  >
+                    <MessageSquare size={13} className="text-amber-600 dark:text-amber-400" />
+                    <span>Colek Semua Kaprog (Grup WA)</span>
+                  </Button>
+                ) : (
+                  <div className="h-7 px-2.5 text-[11px] font-bold gap-1.5 rounded-lg border border-emerald-300/80 bg-emerald-100/50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 flex items-center select-none">
+                    <CheckCircle2 size={13} className="text-emerald-600 dark:text-emerald-400" />
+                    <span>Semua Jurusan Terploting ✓</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          }
+          noPadding
+        >
+          <div className="p-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+              {kaprogPlotingSummaryList.map((kapItem) => {
+                const isSelectedJur = kapItem.jurusanId && selectedJurusan === kapItem.jurusanId;
+                const isDone = kapItem.belumDiplot === 0;
+                return (
+                  <div
+                    key={kapItem.jurusanId || kapItem.jurusanSingkatan}
+                    onClick={() => {
+                      if (kapItem.jurusanId) {
+                        setSelectedJurusan(isSelectedJur ? 'ALL' : kapItem.jurusanId);
+                        setSelectedPenguji('ALL');
+                      }
+                    }}
+                    className={cn(
+                      "p-2.5 rounded-xl border transition-all cursor-pointer select-none",
+                      isSelectedJur
+                        ? "bg-amber-50/80 dark:bg-amber-950/40 border-amber-500 ring-2 ring-amber-500/20"
+                        : "bg-white dark:bg-slate-800/80 border-slate-200/90 dark:border-slate-700/80 hover:border-amber-300 hover:bg-slate-50/50"
+                    )}
+                    title={`Klik untuk memfilter data sidang jurusan ${kapItem.jurusanNama}`}
+                  >
+                    <div className="flex items-start justify-between gap-1.5">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <PersonPhoto
+                          name={kapItem.kaprogNama}
+                          foto={kapItem.kaprogFoto}
+                          variant="circle"
+                          size="sm"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1">
+                            <span className="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-[9.5px] font-black shrink-0">
+                              {kapItem.jurusanSingkatan}
+                            </span>
+                            <span className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
+                              {kapItem.kaprogNama}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            {kapItem.sudahDiplot} dari {kapItem.totalSiswa} siswa diploting
+                          </div>
+                        </div>
+                      </div>
+                      <span className={cn(
+                        "px-1.5 py-0.5 rounded-full text-[9px] font-bold shrink-0",
+                        isDone
+                          ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
+                          : "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300"
+                      )}>
+                        {kapItem.persentase}%
+                      </span>
+                    </div>
+
+                    <div className="w-full bg-slate-100 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden mt-1.5">
+                      <div
+                        className={cn(
+                          "h-full transition-all duration-300",
+                          isDone ? "bg-emerald-500" : "bg-amber-500"
+                        )}
+                        style={{ width: `${kapItem.persentase}%` }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 mt-1.5 pt-1 border-t border-slate-100 dark:border-slate-750">
+                      <span>
+                        Belum Diplot: <strong className={isDone ? "text-emerald-600" : "text-rose-600 dark:text-rose-400"}>{kapItem.belumDiplot}</strong>
+                      </span>
+                      {!isDone ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleColekKaprogPloting(kapItem);
+                          }}
+                          className="px-1.5 py-0.5 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800 text-[9.5px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                          title={`Colek WA Kaprog ${kapItem.kaprogNama} untuk ploting ${kapItem.belumDiplot} siswa`}
+                        >
+                          <MessageCircle size={10} className="text-amber-600 dark:text-amber-400" />
+                          <span>Colek Kaprog ({kapItem.belumDiplot})</span>
+                        </button>
+                      ) : (
+                        <span className="px-1.5 py-0.5 rounded-md bg-emerald-100/70 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-700 text-[9px] font-bold flex items-center gap-1">
+                          <CheckCircle2 size={10} className="text-emerald-600 dark:text-emerald-400" />
+                          <span>Lengkap ✓</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </HubCard>
+      )}
 
       {/* ── Matriks Penguji Bersih (Klik Kartu Untuk Filter Penguji) ── */}
       <HubCard

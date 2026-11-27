@@ -303,6 +303,7 @@ export const hubinApi = {
   deleteSettingDeskripsiPkl: (id: string) => requestWithFallback<any>('delete', `/hubin/deskripsi-tp/${id}`),
   deleteDeskripsiTp: (id: string) => requestWithFallback<any>('delete', `/hubin/deskripsi-tp/${id}`),
   getKaprogSummary: (params?: { jurusan_id?: string; tahun_pelajaran_id?: string; semester_id?: string }) => requestWithFallback<any>('get', '/hubin/kaprog/summary', { params }),
+  getKaprogDirectory: () => requestWithFallback<any>('get', '/hubin/kaprog/directory'),
   getSertifikatPklData: (id: string) => requestWithFallback<any>('get', `/hubin/sertifikat/${id}`),
 
   // Absensi

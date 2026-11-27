@@ -1853,6 +1853,54 @@ export class HubinPenilaianService extends HubinCommonHelper {
     return { ...updated, pkl_sanggah: nextSanggah };
   }
 
+  async getKaprogDirectory(tenantId: string) {
+    const now = new Date();
+    const assignments = await prisma.organizationalAssignment.findMany({
+      where: {
+        tenant_id: tenantId,
+        is_active: true,
+        AND: [
+          { OR: [{ start_date: null }, { start_date: { lte: now } }] },
+          { OR: [{ end_date: null }, { end_date: { gte: now } }] },
+        ],
+        Position: {
+          OR: [
+            { code: 'KAPROG' },
+            { code: { contains: 'KAPROG', mode: 'insensitive' } },
+            { code: { contains: 'KAJUR', mode: 'insensitive' } },
+            { name: { contains: 'Ketua Jurusan', mode: 'insensitive' } },
+            { name: { contains: 'Kepala Program', mode: 'insensitive' } },
+          ],
+        },
+      },
+      include: {
+        Unit: { select: { id: true, nama: true, singkatan: true } },
+        User: {
+          select: {
+            id: true,
+            full_name: true,
+            phone: true,
+            foto_profil: true,
+            Guru: { select: { id: true, nama_guru: true, no_hp: true, foto: true } },
+          },
+        },
+      },
+    });
+
+    return assignments
+      .filter((oa) => Boolean(oa.Unit?.id))
+      .map((oa) => ({
+        jurusan_id: oa.Unit!.id,
+        jurusan_nama: oa.Unit!.nama,
+        jurusan_singkatan: oa.Unit!.singkatan,
+        kaprog_user_id: oa.User?.id || null,
+        kaprog_guru_id: oa.User?.Guru?.id || null,
+        kaprog_nama: oa.User?.Guru?.nama_guru || oa.User?.full_name || 'Kaprog',
+        kaprog_foto: oa.User?.Guru?.foto || oa.User?.foto_profil || null,
+        kaprog_phone: oa.User?.Guru?.no_hp || oa.User?.phone || null,
+      }));
+  }
+
   async getSertifikatPklData(tenantId: string, siswaPklId: string) {
     const pkl = await prisma.siswaPkl.findFirst({
       where: { id: siswaPklId, tenant_id: tenantId },

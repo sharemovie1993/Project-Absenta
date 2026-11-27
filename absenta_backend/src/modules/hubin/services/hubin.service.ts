@@ -95,6 +95,7 @@ export class HubinService {
   async rolloverSettingDeskripsiPkl(...args: any[]) { return (this.penilaian as any).rolloverSettingDeskripsiPkl(...args); }
   async getKaprogPklSummary(...args: any[]) { return (this.penilaian as any).getKaprogPklSummary(...args); }
   async getKaprogSummary(...args: any[]) { return (this.penilaian as any).getKaprogPklSummary(...args); }
+  async getKaprogDirectory(...args: any[]) { return (this.penilaian as any).getKaprogDirectory(...args); }
   async getSertifikatPklData(...args: any[]) { return (this.penilaian as any).getSertifikatPklData(...args); }
   async submitPklSanggah(...args: any[]) { return (this.penilaian as any).submitPklSanggah(...args); }
   async reviewPklSanggah(...args: any[]) { return (this.penilaian as any).reviewPklSanggah(...args); }
