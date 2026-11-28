@@ -23,12 +23,16 @@ export const periodeOperasionalKbmController = {
     try {
       const tenantId = request.tenantId || request.dataScope?.tenantId || request.user?.tenantId;
       const { tahun_pelajaran_id, tipe, aktif } = request.query || {};
-      const data = await periodeOperasionalKbmService.getAll(tenantId, {
+      const result = await periodeOperasionalKbmService.getAll(tenantId, {
         tahun_pelajaran_id,
         tipe,
         aktifOnly: aktif === 'true',
       });
-      return reply.status(200).send({ success: true, data });
+      return reply.status(200).send({
+        success: true,
+        data: result.items,
+        cbt_synced_events: result.cbt_synced_events,
+      });
     } catch (error: any) {
       appLogger.error({ err: error }, 'Error fetching periode operasional KBM');
       return reply.status(500).send({ success: false, message: error.message });

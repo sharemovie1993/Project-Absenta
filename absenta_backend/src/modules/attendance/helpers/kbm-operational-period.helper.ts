@@ -11,6 +11,7 @@ export interface ActivePeriodeKbmRule {
   tanggal_selesai: Date;
   target_semua_kelas: boolean;
   target_kelas_ids: string[];
+  source?: 'PERIODE_MANUAL' | 'CBT_EVENT';
 }
 
 export interface KbmScheduleCandidate {
@@ -25,6 +26,29 @@ export interface KbmSuspensionCheckResult {
   tipe?: string;
   periodeNama?: string;
   reason?: string;
+}
+
+/**
+ * Ekstrak seluruh tanggal ujian ('YYYY-MM-DD') dari CbtEvent (`days_config` atau `matrix_draft.days`).
+ */
+export function extractCbtEventExamDates(evt: {
+  days_config?: any;
+  matrix_draft?: any;
+}): string[] {
+  const dateSet = new Set<string>();
+  const rawDays = Array.isArray(evt?.days_config) && evt.days_config.length > 0
+    ? evt.days_config
+    : Array.isArray(evt?.matrix_draft?.days)
+    ? evt.matrix_draft.days
+    : [];
+
+  for (const d of rawDays) {
+    const rawTgl = d?.tanggal || d?.date;
+    if (typeof rawTgl === 'string' && /^\d{4}-\d{2}-\d{2}/.test(rawTgl.trim())) {
+      dateSet.add(rawTgl.trim().slice(0, 10));
+    }
+  }
+  return Array.from(dateSet).sort();
 }
 
 /**
@@ -65,7 +89,6 @@ export function classifyMapelKelompok(
     g.includes('normatif') ||
     g.includes('adaptif')
   ) {
-    // Namun cek jika default DB 'UMUM' ternyata nama mapelnya jelas kejuruan/produktif
     if (
       g === 'umum' &&
       (n.includes('konsentrasi keahlian') ||
@@ -83,7 +106,6 @@ export function classifyMapelKelompok(
     return 'UMUM';
   }
 
-  // Fallback dari nama mapel jika kelompok kosong
   if (
     n.includes('konsentrasi') ||
     n.includes('dasar-dasar') ||
@@ -118,14 +140,15 @@ const NOOP_CONTEXT: KbmOperationalFilterContext = {
 };
 
 /**
- * Single Source of Truth (SSOT) penyaring jadwal KBM berdasarkan Periode Operasional KBM aktif
- * pada tanggal tertentu (`YYYY-MM-DD`).
+ * Single Source of Truth (SSOT) penyaring jadwal KBM berdasarkan:
+ * - Tabel `PeriodeOperasionalKbm` (PKL, KBM_BLOK, NON_KBM)
+ * - Tabel `CbtEvent` aktif (`is_active = true`, `tipe_pelaksanaan !== 'MANDIRI'`, `suspend_kbm_during_exam !== false`)
+ *   khusus tepat pada tanggal pelaksanaan ujian (`days_config`), mencakup `target_tingkat` + `non_kbm_extra_tingkat`.
  *
- * Urutan Prioritas (sesuai standar SMK):
+ * Urutan Prioritas:
  * 1. `PKL` — prioritas tertinggi: menangguhkan seluruh KBM pada rombel target selama periode PKL.
- * 2. `NON_KBM` — menangguhkan seluruh KBM reguler pada rombel target (mis. P5 / Ujian / UKK).
- * 3. `KBM_BLOK` — hanya mengaktifkan kelompok mapel yang sedang mendapat giliran blok (`PRODUKTIF` / `UMUM`),
- *    dan menangguhkan kelompok mapel di luar blok aktif pada rombel target.
+ * 2. `NON_KBM` (termasuk Auto-Sync Event CBT pada tanggal hari ujian) — menangguhkan KBM reguler rombel target.
+ * 3. `KBM_BLOK` — hanya mengaktifkan kelompok mapel yang sedang mendapat giliran blok (`PRODUKTIF` / `UMUM`).
  */
 export async function resolveKbmOperationalFilter(
   tenantId: string,
@@ -138,25 +161,46 @@ export async function resolveKbmOperationalFilter(
   if (isNaN(dateUtc.getTime())) return NOOP_CONTEXT;
 
   let rawRules: any[] = [];
+  let activeCbtEvents: any[] = [];
   try {
-    rawRules = await (prisma as any).periodeOperasionalKbm.findMany({
-      where: {
-        tenant_id: tenantId,
-        aktif: true,
-        tanggal_mulai: { lte: dateUtc },
-        tanggal_selesai: { gte: dateUtc },
-      },
-      orderBy: { created_at: 'desc' },
-    });
+    [rawRules, activeCbtEvents] = await Promise.all([
+      (prisma as any).periodeOperasionalKbm.findMany({
+        where: {
+          tenant_id: tenantId,
+          aktif: true,
+          tanggal_mulai: { lte: dateUtc },
+          tanggal_selesai: { gte: dateUtc },
+        },
+        orderBy: { created_at: 'desc' },
+      }),
+      prisma.cbtEvent
+        .findMany({
+          where: {
+            tenant_id: tenantId,
+            is_active: true,
+          },
+        })
+        .catch(() => []),
+    ]);
   } catch {
     return NOOP_CONTEXT;
   }
 
-  if (!rawRules || rawRules.length === 0) {
+  // Filter Event CBT aktif yang hari ujiannya jatuh tepat pada `cleanDate`
+  // (otomatis berakhir begitu tanggal terakhir days_config terlewati!)
+  const matchingCbtEventsToday = (activeCbtEvents || []).filter((evt: any) => {
+    const tipePelaksanaan = String(evt.tipe_pelaksanaan || 'MASSAL').toUpperCase();
+    if (tipePelaksanaan === 'MANDIRI') return false;
+    if (evt.suspend_kbm_during_exam === false) return false;
+    const examDates = extractCbtEventExamDates(evt);
+    return examDates.includes(cleanDate);
+  });
+
+  if ((!rawRules || rawRules.length === 0) && matchingCbtEventsToday.length === 0) {
     return NOOP_CONTEXT;
   }
 
-  const rules: ActivePeriodeKbmRule[] = rawRules.map((r: any) => ({
+  const rules: ActivePeriodeKbmRule[] = (rawRules || []).map((r: any) => ({
     id: r.id,
     nama: r.nama,
     tipe: String(r.tipe || '').toUpperCase(),
@@ -165,30 +209,38 @@ export async function resolveKbmOperationalFilter(
     tanggal_selesai: r.tanggal_selesai,
     target_semua_kelas: Boolean(r.target_semua_kelas),
     target_kelas_ids: Array.isArray(r.target_kelas_ids) ? r.target_kelas_ids : [],
+    source: 'PERIODE_MANUAL',
   }));
 
   const hasBlokRule = rules.some((r) => r.tipe === 'KBM_BLOK');
+  const needsKelasLookup = hasBlokRule || matchingCbtEventsToday.length > 0;
 
-  // Preload metadata Mapel & StrukturKurikulum hanya jika ada rule KBM_BLOK aktif hari ini
   const mapelMetaMap = new Map<string, { nama_mapel: string; kelompok_mapel: string | null }>();
-  const strukturKelompokMap = new Map<string, string>(); // key: `${mapelId}_${tingkat}` atau `${mapelId}`
+  const strukturKelompokMap = new Map<string, string>();
   const kelasTingkatMap = new Map<string, number>();
+  let tenantKelasList: Array<{ id: string; tingkat: number }> = [];
 
-  if (hasBlokRule) {
+  if (needsKelasLookup) {
     const [mapels, strukturs, kelasList] = await Promise.all([
-      prisma.mapel.findMany({
-        where: { tenant_id: tenantId },
-        select: { id: true, nama_mapel: true, kelompok_mapel: true },
-      }),
-      prisma.strukturKurikulum.findMany({
-        where: { tenant_id: tenantId, is_active: true },
-        select: { mapel_id: true, tingkat: true, kelompok: true },
-      }),
+      hasBlokRule
+        ? prisma.mapel.findMany({
+            where: { tenant_id: tenantId },
+            select: { id: true, nama_mapel: true, kelompok_mapel: true },
+          })
+        : Promise.resolve([]),
+      hasBlokRule
+        ? prisma.strukturKurikulum.findMany({
+            where: { tenant_id: tenantId, is_active: true },
+            select: { mapel_id: true, tingkat: true, kelompok: true },
+          })
+        : Promise.resolve([]),
       prisma.kelas.findMany({
         where: { tenant_id: tenantId },
         select: { id: true, tingkat: true },
       }),
     ]);
+
+    tenantKelasList = kelasList;
 
     for (const m of mapels) {
       mapelMetaMap.set(m.id, { nama_mapel: m.nama_mapel, kelompok_mapel: m.kelompok_mapel });
@@ -208,13 +260,42 @@ export async function resolveKbmOperationalFilter(
     }
   }
 
+  // Konversi Event CBT yang jatuh hari ini menjadi aturan NON_KBM (mencakup target_tingkat + non_kbm_extra_tingkat)
+  for (const evt of matchingCbtEventsToday) {
+    const targetTingkats: number[] = Array.isArray(evt.target_tingkat)
+      ? evt.target_tingkat.map(Number).filter(Number.isFinite)
+      : [10, 11, 12];
+    const extraTingkats: number[] = Array.isArray(evt.non_kbm_extra_tingkat)
+      ? evt.non_kbm_extra_tingkat.map(Number).filter(Number.isFinite)
+      : [];
+    const suspendedTingkatSet = new Set<number>([...targetTingkats, ...extraTingkats]);
+
+    const affectedKelasIds = tenantKelasList
+      .filter((k) => suspendedTingkatSet.has(Number(k.tingkat)))
+      .map((k) => k.id);
+
+    if (affectedKelasIds.length > 0) {
+      const examDates = extractCbtEventExamDates(evt);
+      rules.push({
+        id: `cbt_sync_${evt.id}`,
+        nama: evt.nama_event || evt.kode_event || 'Asesmen CBT',
+        tipe: 'NON_KBM',
+        kelompok_aktif: null,
+        tanggal_mulai: new Date(`${examDates[0] || cleanDate}T00:00:00.000Z`),
+        tanggal_selesai: new Date(`${examDates[examDates.length - 1] || cleanDate}T00:00:00.000Z`),
+        target_semua_kelas: false,
+        target_kelas_ids: affectedKelasIds,
+        source: 'CBT_EVENT',
+      });
+    }
+  }
+
   const ruleMatchesKelas = (rule: ActivePeriodeKbmRule, kelasId?: string | null): boolean => {
     if (rule.target_semua_kelas) return true;
     if (!kelasId) return false;
     return rule.target_kelas_ids.includes(kelasId);
   };
 
-  // Pisahkan menurut urutan prioritas: 1. PKL, 2. NON_KBM, 3. KBM_BLOK
   const pklRules = rules.filter((r) => r.tipe === 'PKL');
   const nonKbmRules = rules.filter((r) => r.tipe === 'NON_KBM');
   const blokRules = rules.filter((r) => r.tipe === 'KBM_BLOK');
@@ -233,7 +314,7 @@ export async function resolveKbmOperationalFilter(
       };
     }
 
-    // Prioritas 2: NON_KBM (Ujian / P5 / UKK)
+    // Prioritas 2: NON_KBM (Manual maupun Auto-Sync Event CBT pada tanggal hari ujian)
     const matchedNonKbm = nonKbmRules.find((r) => ruleMatchesKelas(r, kelasId));
     if (matchedNonKbm) {
       return {
@@ -270,7 +351,6 @@ export async function resolveKbmOperationalFilter(
       if (activeGroup === 'PRODUKTIF' || activeGroup === 'KEJURUAN') {
         isAllowedInBlock = mapelCategory === 'PRODUKTIF';
       } else if (activeGroup === 'UMUM') {
-        // Saat Blok Umum berjalan, mapel Umum & Muatan Lokal tetap jalan; Produktif ditangguhkan
         isAllowedInBlock = mapelCategory === 'UMUM' || mapelCategory === 'MUATAN_LOKAL';
       } else if (activeGroup === 'MUATAN_LOKAL') {
         isAllowedInBlock = mapelCategory === 'MUATAN_LOKAL';

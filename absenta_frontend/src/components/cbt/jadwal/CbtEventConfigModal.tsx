@@ -39,6 +39,8 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
   const [kodeEvent, setKodeEvent] = useState('');
   const [semester, setSemester] = useState<'GANJIL' | 'GENAP'>('GANJIL');
   const [targetTingkat, setTargetTingkat] = useState<number[]>([10, 11, 12]);
+  const [nonKbmExtraTingkat, setNonKbmExtraTingkat] = useState<number[]>([]);
+  const [suspendKbmDuringExam, setSuspendKbmDuringExam] = useState(true);
   const [tipePelaksanaan, setTipePelaksanaan] = useState<'MASSAL' | 'MANDIRI'>('MASSAL');
   const [keterangan, setKeterangan] = useState('');
   const [lockTeacherScheduling, setLockTeacherScheduling] = useState(true);
@@ -57,6 +59,8 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
       setKodeEvent(event.kode_event);
       setSemester(event.semester || 'GANJIL');
       setTargetTingkat(event.target_tingkat || [10, 11, 12]);
+      setNonKbmExtraTingkat(Array.isArray(event.non_kbm_extra_tingkat) ? event.non_kbm_extra_tingkat.map(Number) : []);
+      setSuspendKbmDuringExam(event.suspend_kbm_during_exam !== false);
       setTipePelaksanaan(event.tipe_pelaksanaan || (event.lock_teacher_scheduling === false ? 'MANDIRI' : 'MASSAL'));
       setKeterangan(event.keterangan || '');
       setLockTeacherScheduling(event.lock_teacher_scheduling ?? true);
@@ -72,6 +76,8 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
       setKodeEvent('');
       setSemester('GANJIL');
       setTargetTingkat([10, 11, 12]);
+      setNonKbmExtraTingkat([]);
+      setSuspendKbmDuringExam(true);
       setTipePelaksanaan('MASSAL');
       setKeterangan('');
       setLockTeacherScheduling(true);
@@ -86,24 +92,41 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
 
   const toggleTingkat = (tingkat: number) => {
     setTargetTingkat((prev) => {
+      let next: number[];
       if (prev.includes(tingkat)) {
         if (prev.length <= 1) {
           toast.error('Sasaran tingkat minimal harus memilih 1 angkatan!');
           return prev;
         }
-        return prev.filter((t) => t !== tingkat);
+        next = prev.filter((t) => t !== tingkat);
       } else {
-        return [...prev, tingkat].sort((a, b) => a - b);
+        next = [...prev, tingkat].sort((a, b) => a - b);
       }
+      setNonKbmExtraTingkat((extra) => extra.filter((t) => !next.includes(t)));
+      return next;
     });
   };
 
   const applyPreset = (preset: 'all' | '10_11' | '12' | '11') => {
-    if (preset === 'all') setTargetTingkat([10, 11, 12]);
-    else if (preset === '10_11') setTargetTingkat([10, 11]);
-    else if (preset === '12') setTargetTingkat([12]);
-    else if (preset === '11') setTargetTingkat([11]);
+    const next =
+      preset === 'all'
+        ? [10, 11, 12]
+        : preset === '10_11'
+        ? [10, 11]
+        : preset === '12'
+        ? [12]
+        : [11];
+    setTargetTingkat(next);
+    setNonKbmExtraTingkat((prev) => prev.filter((t) => !next.includes(t)));
   };
+
+  const toggleExtraNonKbmTingkat = (tingkat: number) => {
+    setNonKbmExtraTingkat((prev) =>
+      prev.includes(tingkat) ? prev.filter((t) => t !== tingkat) : [...prev, tingkat].sort((a, b) => a - b)
+    );
+  };
+
+  const unselectedTingkats = [10, 11, 12].filter((t) => !targetTingkat.includes(t));
 
   const applyEventTemplate = (
     nama: string,
@@ -115,6 +138,7 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
     setKodeEvent(kode);
     setSemester(sem);
     setTargetTingkat(tingkat);
+    setNonKbmExtraTingkat((prev) => prev.filter((t) => !tingkat.includes(t)));
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -141,6 +165,11 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
         kode_event: (kodeEvent.trim() || namaEvent.trim().slice(0, 10)).toUpperCase().replace(/\s+/g, '-'),
         semester,
         target_tingkat: targetTingkat,
+        non_kbm_extra_tingkat:
+          tipePelaksanaan === 'MASSAL' && suspendKbmDuringExam
+            ? nonKbmExtraTingkat.filter((t) => !targetTingkat.includes(t))
+            : [],
+        suspend_kbm_during_exam: tipePelaksanaan === 'MASSAL' ? suspendKbmDuringExam : false,
         tipe_pelaksanaan: tipePelaksanaan,
         keterangan: keterangan.trim(),
         lock_teacher_scheduling: lockTeacherScheduling,
@@ -367,6 +396,52 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
             Tingkat 11 Saja (ANBK)
           </button>
         </div>
+
+        {/* Integrasi Otomatis Agenda Non-KBM & Tawaran Tingkat Non-Peserta */}
+        {tipePelaksanaan === 'MASSAL' && (
+          <div className="p-3 rounded-xl border border-indigo-200/80 dark:border-indigo-900/60 bg-indigo-50/40 dark:bg-indigo-950/20 space-y-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block">
+                  Otomatis Masuk Agenda Non-KBM Saat Hari Ujian
+                </span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5 leading-snug">
+                  Sembunyikan kartu KBM reguler &amp; bebaskan guru dari alpa selama tanggal hari ujian CBT berlangsung (otomatis berakhir saat jadwal ujian selesai).
+                </span>
+              </div>
+              <Switch checked={suspendKbmDuringExam} onCheckedChange={setSuspendKbmDuringExam} />
+            </div>
+
+            {suspendKbmDuringExam && unselectedTingkats.length > 0 && (
+              <div className="pt-2 border-t border-indigo-200/60 dark:border-indigo-900/50 space-y-1.5">
+                <span className="text-[11px] font-semibold text-indigo-900 dark:text-indigo-200 block">
+                  Kelas {unselectedTingkats.join(' & ')} tidak ikut ujian ini — ikut bebaskan KBM regulernya selama hari ujian?
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {unselectedTingkats.map((t) => {
+                    const checked = nonKbmExtraTingkat.includes(t);
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => toggleExtraNonKbmTingkat(t)}
+                        className={cn(
+                          'px-3 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer',
+                          checked
+                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-2xs'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-400'
+                        )}
+                      >
+                        <span>Ikut Non-KBM Kelas {t}</span>
+                        {checked && <CheckCircle2 size={12} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Tipe Pelaksanaan: Ujian Massal vs KBM Mandiri */}
         <div className="space-y-1.5 pt-1">

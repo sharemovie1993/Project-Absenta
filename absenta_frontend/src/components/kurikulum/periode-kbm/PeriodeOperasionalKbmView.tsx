@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Calendar,
@@ -6,6 +7,8 @@ import {
   Briefcase,
   Layers,
   CalendarOff,
+  Laptop,
+  ExternalLink,
   Edit3,
   Trash2,
 } from 'lucide-react';
@@ -51,6 +54,7 @@ export const PeriodeOperasionalKbmView: React.FC<UniversalPeriodeOperasionalKbmV
   readOnly = false,
   className,
 }) => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { confirm } = useConfirm();
   const internalAcademic = useAcademicFilter({ enableTp: true, enableSemester: true });
@@ -73,6 +77,10 @@ export const PeriodeOperasionalKbmView: React.FC<UniversalPeriodeOperasionalKbmV
   });
 
   const items = useMemo(() => (Array.isArray(res?.data) ? res!.data : []), [res]);
+  const cbtSyncedEvents = useMemo(
+    () => (scope === 'ALL' && Array.isArray(res?.cbt_synced_events) ? res!.cbt_synced_events! : []),
+    [res, scope]
+  );
 
   const invalidateAll = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['periode-operasional-kbm'] });
@@ -180,12 +188,94 @@ export const PeriodeOperasionalKbmView: React.FC<UniversalPeriodeOperasionalKbmV
         )}
       </div>
 
+      {/* Kartu Integrasi Otomatis Event CBT Aktif (Khusus Kurikulum scope=ALL) */}
+      {cbtSyncedEvents.length > 0 && (
+        <div className="space-y-2">
+          {cbtSyncedEvents.map((evt) => {
+            const hasExamDates = evt.exam_dates && evt.exam_dates.length > 0;
+            const isExamToday = hasExamDates && evt.exam_dates.includes(todayStr) && evt.suspend_kbm_during_exam;
+            const extraLabel =
+              evt.non_kbm_extra_tingkat && evt.non_kbm_extra_tingkat.length > 0
+                ? ` + Kelas ${evt.non_kbm_extra_tingkat.join(', ')} (Non-Peserta)`
+                : '';
+
+            return (
+              <div
+                key={`cbt-sync-${evt.id}`}
+                className={cn(
+                  'rounded-2xl border px-4 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-sky-50/40 dark:bg-sky-950/20',
+                  isExamToday
+                    ? 'border-emerald-300 dark:border-emerald-800/70'
+                    : 'border-sky-200/80 dark:border-sky-900/50'
+                )}
+              >
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-sky-100 dark:bg-sky-900/50 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <Laptop size={16} />
+                  </div>
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                        {evt.nama_event}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-200">
+                        Auto-Sync Event CBT
+                      </span>
+                      {!evt.suspend_kbm_during_exam ? (
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500">
+                          Non-KBM Dimatikan
+                        </span>
+                      ) : isExamToday ? (
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                          Hari Ujian Aktif
+                        </span>
+                      ) : hasExamDates ? (
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                          {evt.exam_dates.length} Hari Ujian
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300">
+                          Jadwal Hari Ujian Belum Diisi
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
+                      <span className="font-medium text-slate-700 dark:text-slate-300">
+                        Kelas {(evt.target_tingkat || []).join(', ')}{extraLabel}
+                      </span>
+                      <span>·</span>
+                      <span>
+                        {hasExamDates
+                          ? `${formatIdDate(evt.tanggal_mulai)} – ${formatIdDate(evt.tanggal_selesai)} (otomatis berakhir saat ujian selesai)`
+                          : 'Atur tanggal hari ujian di menu Asesmen CBT agar Non-KBM aktif otomatis'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/dashboard?tab=kurikulum&subtab=cbt')}
+                  className="h-8 px-3 rounded-xl text-xs font-semibold shrink-0 flex items-center gap-1.5 self-end sm:self-center"
+                >
+                  <span>Atur di CBT</span>
+                  <ExternalLink size={12} />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Daftar Periode */}
       {isLoading ? (
         <div className="py-10 flex justify-center">
           <Loader size="sm" />
         </div>
-      ) : items.length === 0 ? (
+      ) : items.length === 0 && cbtSyncedEvents.length === 0 ? (
         <div className="p-8 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/40 text-center space-y-2">
           <Calendar className="w-7 h-7 text-slate-300 dark:text-slate-600 mx-auto" />
           <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">

@@ -1,6 +1,9 @@
 import { prisma } from '@/utils/prisma';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
-import { resolveKbmOperationalFilter } from '@/modules/attendance/helpers/kbm-operational-period.helper';
+import {
+  resolveKbmOperationalFilter,
+  extractCbtEventExamDates,
+} from '@/modules/attendance/helpers/kbm-operational-period.helper';
 
 export interface CreatePeriodeOperasionalKbmInput {
   tahun_pelajaran_id?: string;
@@ -107,7 +110,7 @@ export class PeriodeOperasionalKbmService {
   ) {
     if (!tenantId) throw new Error('Tenant ID required');
 
-    const [rows, tenantClasses] = await Promise.all([
+    const [rows, tenantClasses, activeCbtEvents] = await Promise.all([
       prisma.periodeOperasionalKbm.findMany({
         where: {
           tenant_id: tenantId,
@@ -125,11 +128,22 @@ export class PeriodeOperasionalKbmService {
         where: { tenant_id: tenantId },
         select: { id: true, tingkat: true, nama_kelas: true },
       }),
+      !filters?.tipe || filters.tipe.toUpperCase() === 'NON_KBM'
+        ? prisma.cbtEvent
+            .findMany({
+              where: {
+                tenant_id: tenantId,
+                is_active: true,
+                ...(filters?.tahun_pelajaran_id ? { tahun_pelajaran_id: filters.tahun_pelajaran_id } : {}),
+              },
+            })
+            .catch(() => [])
+        : Promise.resolve([]),
     ]);
 
     const kelasMap = new Map(tenantClasses.map((k) => [k.id, k]));
 
-    return rows.map((row) => ({
+    const mappedRows = rows.map((row) => ({
       ...row,
       target_tingkat_label: this.buildTargetTingkatLabel(
         row.target_semua_kelas,
@@ -137,6 +151,35 @@ export class PeriodeOperasionalKbmService {
         kelasMap
       ),
     }));
+
+    const cbtSyncedEvents = (activeCbtEvents || [])
+      .filter((evt: any) => String(evt.tipe_pelaksanaan || 'MASSAL').toUpperCase() !== 'MANDIRI')
+      .map((evt: any) => {
+        const examDates = extractCbtEventExamDates(evt);
+        const targetTingkat: number[] = Array.isArray(evt.target_tingkat)
+          ? evt.target_tingkat.map(Number).filter(Number.isFinite)
+          : [10, 11, 12];
+        const extraTingkat: number[] = Array.isArray(evt.non_kbm_extra_tingkat)
+          ? evt.non_kbm_extra_tingkat.map(Number).filter(Number.isFinite)
+          : [];
+        return {
+          id: evt.id,
+          nama_event: evt.nama_event,
+          kode_event: evt.kode_event,
+          semester: evt.semester,
+          target_tingkat: targetTingkat,
+          non_kbm_extra_tingkat: extraTingkat,
+          suspend_kbm_during_exam: evt.suspend_kbm_during_exam !== false,
+          exam_dates: examDates,
+          tanggal_mulai: examDates[0] || null,
+          tanggal_selesai: examDates[examDates.length - 1] || null,
+        };
+      });
+
+    return {
+      items: mappedRows,
+      cbt_synced_events: cbtSyncedEvents,
+    };
   }
 
   async create(tenantId: string, userId: string, input: CreatePeriodeOperasionalKbmInput) {

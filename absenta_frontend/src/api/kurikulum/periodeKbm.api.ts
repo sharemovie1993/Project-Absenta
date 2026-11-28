@@ -38,12 +38,33 @@ export interface SavePeriodeOperasionalKbmPayload {
   aktif?: boolean;
 }
 
+export interface CbtSyncedEventSummary {
+  id: string;
+  nama_event: string;
+  kode_event: string;
+  semester: string;
+  target_tingkat: number[];
+  non_kbm_extra_tingkat: number[];
+  suspend_kbm_during_exam: boolean;
+  exam_dates: string[];
+  tanggal_mulai: string | null;
+  tanggal_selesai: string | null;
+}
+
 export async function getPeriodeOperasionalKbm(params?: {
   tahun_pelajaran_id?: string;
   tipe?: string;
   aktif?: boolean;
-}): Promise<{ success: boolean; data: PeriodeOperasionalKbmItem[] }> {
-  return requestWithFallback<{ success: boolean; data: PeriodeOperasionalKbmItem[] }>(
+}): Promise<{
+  success: boolean;
+  data: PeriodeOperasionalKbmItem[];
+  cbt_synced_events?: CbtSyncedEventSummary[];
+}> {
+  return requestWithFallback<{
+    success: boolean;
+    data: PeriodeOperasionalKbmItem[];
+    cbt_synced_events?: CbtSyncedEventSummary[];
+  }>(
     'get',
     '/kurikulum/periode-kbm',
     {

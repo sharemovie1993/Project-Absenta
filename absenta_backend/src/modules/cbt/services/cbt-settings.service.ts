@@ -1,5 +1,6 @@
 import { prisma } from '@/utils/prisma';
 import { waQueueService } from '@/services/wa-queue.service';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 import crypto from 'crypto';
 
 export interface CbtEventItem {
@@ -9,6 +10,8 @@ export interface CbtEventItem {
   kode_event: string;
   semester: 'GANJIL' | 'GENAP';
   target_tingkat: number[];
+  non_kbm_extra_tingkat?: number[];
+  suspend_kbm_during_exam?: boolean;
   tipe_pelaksanaan?: 'MASSAL' | 'MANDIRI';
   keterangan?: string;
   days_config?: any[]; // Struktur ExamDayConfig (hari, tanggal, sesi, jam)
@@ -61,6 +64,10 @@ export class CbtSettingsService {
       kode_event: row.kode_event,
       semester: (row.semester as 'GANJIL' | 'GENAP') || 'GANJIL',
       target_tingkat: Array.isArray(row.target_tingkat) ? row.target_tingkat.map(Number) : [10, 11, 12],
+      non_kbm_extra_tingkat: Array.isArray(row.non_kbm_extra_tingkat)
+        ? row.non_kbm_extra_tingkat.map(Number).filter((n: number) => Number.isFinite(n))
+        : [],
+      suspend_kbm_during_exam: row.suspend_kbm_during_exam !== false,
       ...(row.tipe_pelaksanaan ? { tipe_pelaksanaan: row.tipe_pelaksanaan as 'MASSAL' | 'MANDIRI' } : {}),
       ...(row.keterangan !== null && row.keterangan !== undefined ? { keterangan: row.keterangan } : {}),
       ...(Array.isArray(row.days_config) ? { days_config: row.days_config } : {}),
@@ -92,6 +99,8 @@ export class CbtSettingsService {
         kode_event: evt.kode_event,
         semester: evt.semester || 'GANJIL',
         target_tingkat: evt.target_tingkat || [10, 11, 12],
+        non_kbm_extra_tingkat: Array.isArray(evt.non_kbm_extra_tingkat) ? evt.non_kbm_extra_tingkat : [],
+        suspend_kbm_during_exam: evt.suspend_kbm_during_exam !== false,
         tipe_pelaksanaan: evt.tipe_pelaksanaan ?? null,
         keterangan: evt.keterangan ?? null,
         days_config: evt.days_config !== undefined ? evt.days_config : undefined,
@@ -114,6 +123,8 @@ export class CbtSettingsService {
         kode_event: evt.kode_event,
         semester: evt.semester || 'GANJIL',
         target_tingkat: evt.target_tingkat || [10, 11, 12],
+        non_kbm_extra_tingkat: Array.isArray(evt.non_kbm_extra_tingkat) ? evt.non_kbm_extra_tingkat : [],
+        suspend_kbm_during_exam: evt.suspend_kbm_during_exam !== false,
         tipe_pelaksanaan: evt.tipe_pelaksanaan ?? null,
         keterangan: evt.keterangan ?? null,
         days_config: evt.days_config !== undefined ? evt.days_config : undefined,
@@ -545,6 +556,23 @@ export class CbtSettingsService {
       ? Boolean(payload.is_active)
       : (existing ? Boolean(existing.is_active) : (allEvents.length === 0));
 
+    const rawExtraTingkat =
+      payload.non_kbm_extra_tingkat !== undefined
+        ? (Array.isArray(payload.non_kbm_extra_tingkat) ? payload.non_kbm_extra_tingkat : [])
+        : (existing?.non_kbm_extra_tingkat || []);
+    const sanitizedExtraTingkat = Array.from(
+      new Set(
+        rawExtraTingkat
+          .map(Number)
+          .filter((n) => Number.isFinite(n) && !targetTingkat.includes(n))
+      )
+    ).sort((a, b) => a - b);
+
+    const suspendKbmDuringExam =
+      payload.suspend_kbm_during_exam !== undefined
+        ? Boolean(payload.suspend_kbm_during_exam)
+        : (existing?.suspend_kbm_during_exam ?? true);
+
     const updatedEvent: CbtEventItem = {
       id,
       tahun_pelajaran_id: payload.tahun_pelajaran_id !== undefined ? payload.tahun_pelajaran_id : (existing?.tahun_pelajaran_id || ''),
@@ -554,6 +582,8 @@ export class CbtSettingsService {
         : (existing?.kode_event || (payload.nama_event || 'EVENT').trim().toUpperCase().replace(/\s+/g, '-')),
       semester: payload.semester !== undefined ? payload.semester : (existing?.semester || 'GANJIL'),
       target_tingkat: targetTingkat,
+      non_kbm_extra_tingkat: sanitizedExtraTingkat,
+      suspend_kbm_during_exam: suspendKbmDuringExam,
       tipe_pelaksanaan: payload.tipe_pelaksanaan !== undefined ? payload.tipe_pelaksanaan : (existing?.tipe_pelaksanaan || 'MASSAL'),
       keterangan: payload.keterangan !== undefined ? payload.keterangan : (existing?.keterangan || ''),
       days_config: Array.isArray(payload.days_config) ? payload.days_config : (existing?.days_config || []),
@@ -584,6 +614,7 @@ export class CbtSettingsService {
     }
 
     await this.upsertRelationalEvent(tenantId, updatedEvent);
+    await cacheInvalidationService.invalidateAttendanceCache(tenantId).catch(() => {});
 
     // Sinkronkan token_ujian pada jadwal event ini jika custom_token diisi
     if (updatedEvent.custom_token) {
@@ -617,6 +648,7 @@ export class CbtSettingsService {
         data: { is_active: true },
       }),
     ]);
+    await cacheInvalidationService.invalidateAttendanceCache(tenantId).catch(() => {});
 
     return { ...this.mapRowToItem(targetRow), is_active: true };
   }

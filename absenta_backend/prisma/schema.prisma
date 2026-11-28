@@ -1726,6 +1726,8 @@ model CbtEvent {
   kode_event              String
   semester                String         @default("GANJIL")
   target_tingkat          Json           @default("[10,11,12]")
+  non_kbm_extra_tingkat   Json           @default("[]")
+  suspend_kbm_during_exam Boolean        @default(true)
   tipe_pelaksanaan        String?
   keterangan              String?
   days_config             Json?

@@ -332,6 +332,8 @@ export interface CbtEventItem {
   kode_event: string;
   semester: 'GANJIL' | 'GENAP';
   target_tingkat: number[];
+  non_kbm_extra_tingkat?: number[];
+  suspend_kbm_during_exam?: boolean;
   tipe_pelaksanaan?: 'MASSAL' | 'MANDIRI';
   keterangan?: string;
   days_config?: any[]; // Struktur ExamDayConfig (hari, tanggal, sesi, jam)
