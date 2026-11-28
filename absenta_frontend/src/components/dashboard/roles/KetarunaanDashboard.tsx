@@ -630,6 +630,7 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
                         jadwalKegiatanId={jadwalKegiatanId}
                         tahunPelajaranId={selectedTpId}
                         semesterId={selectedSemId}
+                        onNavigateTab={handleTabChange}
                       />
                     </Suspense>
                   </div>

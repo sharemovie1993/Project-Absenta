@@ -129,6 +129,7 @@ export interface UnifiedTarunaRankingItem {
   siswa_id: string;
   nama_siswa: string;
   nis: string;
+  foto?: string | null;
   kelas_id: string;
   nama_kelas: string;
   jurusan_id: string;
@@ -198,6 +199,7 @@ export interface UnifiedStatsResponse {
     by_jurusan?: Array<{
       jurusan_id: string;
       nama_jurusan: string;
+      logo_url?: string | null;
       total: number;
       hadir: number;
       persen: number;
@@ -214,9 +216,11 @@ export interface UnifiedStatsResponse {
       siswa_id: string;
       nama_siswa: string;
       nis: string;
+      foto?: string | null;
       nama_kelas: string;
       total_alpa: number;
     }>;
+    at_risk_total?: number;
     barometer_sertifikasi?: {
       indeks_disiplin: number;
       total_taruna: number;

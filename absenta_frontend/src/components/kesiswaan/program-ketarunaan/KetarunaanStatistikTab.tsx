@@ -25,6 +25,7 @@ import {
   Medal,
   Crown,
   Search,
+  ExternalLink,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -40,6 +41,8 @@ import {
   Cell,
 } from 'recharts';
 import { Button } from '@/components/ui/Button';
+import { PersonPhoto } from '@/components/ui/PersonPhoto';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import {
@@ -52,6 +55,7 @@ interface KetarunaanStatistikTabProps {
   jadwalKegiatanId: string | null;
   tahunPelajaranId?: string;
   semesterId?: string;
+  onNavigateTab?: (tabId: string) => void;
 }
 
 type ScopePeriode = '1_tahun' | '1_semester' | '1_bulan';
@@ -110,6 +114,7 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
   jadwalKegiatanId,
   tahunPelajaranId,
   semesterId,
+  onNavigateTab,
 }) => {
   const [scopePeriode, setScopePeriode] = useState<ScopePeriode>('1_tahun');
   const [selectedBulanYm, setSelectedBulanYm] = useState<string>('latest_30d');
@@ -673,6 +678,15 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
                   <Layers className="w-3.5 h-3.5 text-blue-500" />
                   Jurusan ({byJurusan.length})
                 </h4>
+                {onNavigateTab && (
+                  <button
+                    type="button"
+                    onClick={() => onNavigateTab('laporan_kelas')}
+                    className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-0.5"
+                  >
+                    Rekap Rombel <ExternalLink className="w-3 h-3" />
+                  </button>
+                )}
               </div>
 
               {byJurusan.length === 0 ? (
@@ -680,17 +694,28 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
               ) : (
                 <div className="space-y-2">
                   {byJurusan.slice(0, 6).map((j, idx) => (
-                    <div key={j.jurusan_id || idx} className="flex items-center gap-2.5 text-xs">
-                      <span
-                        className={`w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center shrink-0 ${
-                          idx === 0
-                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                            : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
-                        }`}
-                      >
-                        {idx + 1}
-                      </span>
-                      <span className="font-bold text-slate-800 dark:text-slate-200 w-16 truncate" title={j.nama_jurusan}>
+                    <div key={j.jurusan_id || idx} className="flex items-center gap-2 text-xs">
+                      {/* Logo / Rank Badge */}
+                      <div className="w-7 h-7 rounded-lg shrink-0 overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                        {(j as any).logo_url ? (
+                          <img
+                            src={resolveProfilePhotoUrl((j as any).logo_url)}
+                            alt={j.nama_jurusan}
+                            className="w-full h-full object-contain p-0.5"
+                          />
+                        ) : (
+                          <span
+                            className={`text-[10px] font-black ${
+                              idx === 0
+                                ? 'text-amber-800 dark:text-amber-300'
+                                : 'text-slate-600 dark:text-slate-300'
+                            }`}
+                          >
+                            {idx + 1}
+                          </span>
+                        )}
+                      </div>
+                      <span className="font-bold text-slate-800 dark:text-slate-200 w-14 truncate" title={j.nama_jurusan}>
                         {j.nama_jurusan}
                       </span>
                       <div className="flex-1 h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
@@ -872,6 +897,30 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
                 </button>
               </div>
 
+              {/* Pintasan ke rekap lengkap */}
+              {onNavigateTab && (
+                <div className="flex items-center gap-2 self-start sm:self-auto">
+                  {activeDetailPanel === 'ranking' && (
+                    <button type="button" onClick={() => onNavigateTab('penilaian')}
+                      className="text-[10px] font-bold text-amber-700 dark:text-amber-400 hover:underline flex items-center gap-0.5 whitespace-nowrap">
+                      Rekap Penilaian <ExternalLink className="w-3 h-3" />
+                    </button>
+                  )}
+                  {activeDetailPanel === 'alpa' && (
+                    <button type="button" onClick={() => onNavigateTab('laporan_kelas')}
+                      className="text-[10px] font-bold text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-0.5 whitespace-nowrap">
+                      Rekap Per Rombel <ExternalLink className="w-3 h-3" />
+                    </button>
+                  )}
+                  {activeDetailPanel === 'log' && (
+                    <button type="button" onClick={() => onNavigateTab('laporan_tim')}
+                      className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5 whitespace-nowrap">
+                      Laporan Pembina <ExternalLink className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              )}
+
               {activeDetailPanel === 'ranking' && (
                 <div className="flex items-center gap-2 flex-wrap">
                   <div className="flex items-center gap-1 bg-slate-100/80 dark:bg-slate-800/70 p-0.5 rounded-lg">
@@ -1033,8 +1082,18 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
                                   </span>
                                 </td>
                                 <td className="py-2.5 px-3">
-                                  <div className="font-bold text-slate-800 dark:text-slate-100">{row.nama_siswa}</div>
-                                  <div className="text-[10px] text-slate-400">{row.nis}</div>
+                                  <div className="flex items-center gap-2">
+                                    <PersonPhoto
+                                      name={row.nama_siswa}
+                                      foto={(row as any).foto}
+                                      variant="circle"
+                                      size="sm"
+                                    />
+                                    <div>
+                                      <div className="font-bold text-slate-800 dark:text-slate-100">{row.nama_siswa}</div>
+                                      <div className="text-[10px] text-slate-400">{row.nis}</div>
+                                    </div>
+                                  </div>
                                 </td>
                                 <td className="py-2.5 px-3">
                                   <div className="flex items-center gap-1.5">
@@ -1137,9 +1196,15 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
                     {atRiskStudents.map((st, sIdx) => (
                       <div
                         key={st.siswa_id || sIdx}
-                        className="p-3 rounded-xl border border-rose-100 dark:border-rose-900/40 bg-rose-50/30 dark:bg-rose-950/10 flex items-center justify-between gap-2"
+                        className="p-3 rounded-xl border border-rose-100 dark:border-rose-900/40 bg-rose-50/30 dark:bg-rose-950/10 flex items-center gap-2.5"
                       >
-                        <div className="min-w-0">
+                        <PersonPhoto
+                          name={st.nama_siswa}
+                          foto={(st as any).foto}
+                          variant="circle"
+                          size="sm"
+                        />
+                        <div className="min-w-0 flex-1">
                           <p className="text-xs font-black text-slate-800 dark:text-slate-100 truncate" title={st.nama_siswa}>
                             {st.nama_siswa}
                           </p>

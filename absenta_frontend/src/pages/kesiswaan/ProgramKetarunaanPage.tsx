@@ -331,6 +331,7 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
                 jadwalKegiatanId={jadwalKegiatanId}
                 tahunPelajaranId={selectedTpId}
                 semesterId={selectedSemId}
+                onNavigateTab={handleTabChange}
               />
             </Suspense>
           </div>

@@ -1825,13 +1825,19 @@ export class UnifiedKegiatanService {
     // ── ANALITIK TAMBAHAN 2: Komparasi Lintas Program Keahlian (Department Benchmark) ──
     const allJurusan = await prisma.jurusan.findMany({
       where: { tenant_id: tenantId },
-      select: { id: true, nama: true, singkatan: true, kode: true },
+      select: { id: true, nama: true, singkatan: true, kode: true, logo_url: true },
     });
-    const jurusanMap = new Map<string, { id: string; nama: string; total: number; hadir: number }>();
+    const jurusanMap = new Map<string, { id: string; nama: string; logo_url: string | null; total: number; hadir: number }>();
     for (const j of allJurusan) {
-      jurusanMap.set(j.id, { id: j.id, nama: j.singkatan || j.kode || j.nama, total: 0, hadir: 0 });
+      jurusanMap.set(j.id, {
+        id: j.id,
+        nama: j.singkatan || j.kode || j.nama,
+        logo_url: j.logo_url ?? null,
+        total: 0,
+        hadir: 0,
+      });
     }
-    jurusanMap.set('OTHER', { id: 'OTHER', nama: 'Umum / Lainnya', total: 0, hadir: 0 });
+    jurusanMap.set('OTHER', { id: 'OTHER', nama: 'Umum / Lainnya', logo_url: null, total: 0, hadir: 0 });
 
     for (const bk of byKelas) {
       const jKey = bk.jurusan_id && jurusanMap.has(bk.jurusan_id) ? bk.jurusan_id : 'OTHER';
@@ -1845,6 +1851,7 @@ export class UnifiedKegiatanService {
       .map(j => ({
         jurusan_id: j.id,
         nama_jurusan: j.nama,
+        logo_url: j.logo_url,
         total: j.total,
         hadir: j.hadir,
         persen: j.total > 0 && j.hadir > 0 ? Math.min(100, Math.round((j.hadir / j.total) * 100)) : 0,
@@ -1876,7 +1883,7 @@ export class UnifiedKegiatanService {
       .sort((a, b) => a.day_index - b.day_index);
 
     // ── ANALITIK TAMBAHAN 4: Early Warning Radar (Taruna Berisiko Alpa Tinggi) ──
-    const atRiskRaw = await prisma.absenSiswa.groupBy({
+    const atRiskAll = await prisma.absenSiswa.groupBy({
       by: ['siswa_id'],
       where: {
         sesi_id: { in: sesiIds },
@@ -1886,8 +1893,10 @@ export class UnifiedKegiatanService {
       _count: { id: true },
       having: { id: { _count: { gte: 2 } } },
       orderBy: { _count: { id: 'desc' } },
-      take: 8,
+      take: 100,
     });
+    const at_risk_total = atRiskAll.length;
+    const atRiskRaw = atRiskAll.slice(0, 8);
 
     const studentIds = atRiskRaw.map(r => r.siswa_id).filter(Boolean) as string[];
     const studentsInfo = await prisma.siswa.findMany({
@@ -1896,6 +1905,7 @@ export class UnifiedKegiatanService {
         id: true,
         nama_siswa: true,
         nis: true,
+        foto: true,
         Kelas: {
           select: { nama_kelas: true },
         },
@@ -1909,6 +1919,7 @@ export class UnifiedKegiatanService {
         siswa_id: r.siswa_id,
         nama_siswa: st?.nama_siswa || 'Siswa Taruna',
         nis: st?.nis || '-',
+        foto: st?.foto || null,
         nama_kelas: st?.Kelas?.nama_kelas || '-',
         total_alpa: r._count.id,
       };
@@ -2097,6 +2108,7 @@ export class UnifiedKegiatanService {
         id: true,
         nama_siswa: true,
         nis: true,
+        foto: true,
         kelas_id: true,
         SiswaAkademik: {
           where: activeTp?.id ? { tahun_pelajaran_id: activeTp.id } : { status: 'AKTIF' },
@@ -2177,6 +2189,7 @@ export class UnifiedKegiatanService {
         siswa_id: prof.id,
         nama_siswa: prof.nama_siswa,
         nis: prof.nis || '-',
+        foto: prof.foto || null,
         kelas_id: resolvedKelasId,
         nama_kelas: namaKelas,
         jurusan_id: resolvedJurusanId,
@@ -2366,6 +2379,7 @@ export class UnifiedKegiatanService {
       by_jurusan,
       pola_hari,
       at_risk_students,
+      at_risk_total,
       barometer_sertifikasi,
       available_months,
       taruna_ranking,
