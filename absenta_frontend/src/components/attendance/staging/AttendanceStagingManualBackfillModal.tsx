@@ -570,131 +570,133 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
         </div>
       }
     >
-      <div className="p-4 sm:p-5 space-y-4">
-        {/* ── COMPACT OFFICIAL EVENT GUARD BAR + STEPPER HEADER ── */}
-        <div className="space-y-2.5">
-          {isGuardEnabled ? (
-            <div className="px-3.5 py-2 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/70 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                  <Unlock className="w-3.5 h-3.5" />
-                </span>
-                <span className="text-xs font-extrabold text-emerald-950 dark:text-emerald-200">
-                  Guard Event Resmi Terbuka
-                </span>
-                <span className="px-1.5 py-0.5 rounded bg-emerald-600 text-white text-[9px] font-bold uppercase">
-                  Disetujui Admin
-                </span>
-                <span className="text-[11px] text-emerald-700 dark:text-emerald-300/80 hidden sm:inline">
-                  &bull; Siap memilih tanggal &amp; menceklis siswa non-hadir
-                </span>
-              </div>
-              {isAdmin && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={isTogglingGuard}
-                  onClick={() => handleToggleGuard(false)}
-                  className="shrink-0 h-7 px-2.5 text-[11px] font-bold border-rose-200 bg-white hover:bg-rose-50 text-rose-600 rounded-lg gap-1 cursor-pointer"
-                >
-                  <Lock className="w-3 h-3" />
-                  <span>{isTogglingGuard ? 'Mengunci...' : 'Kunci Guard'}</span>
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="px-3.5 py-2.5 rounded-xl bg-amber-50/95 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/80 flex flex-wrap items-center justify-between gap-2.5">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span className="w-7 h-7 rounded-lg bg-amber-600 text-white flex items-center justify-center shrink-0">
-                  <ShieldAlert className="w-4 h-4" />
-                </span>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-xs font-black text-amber-950 dark:text-amber-100">
-                      Guard Keamanan Terkunci (Di Luar Event Resmi)
-                    </span>
-                    <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white text-[9px] font-bold uppercase">
-                      Eksekusi Dikunci
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-amber-800 dark:text-amber-200/90 truncate">
-                    Anda tetap dapat menyusun tanggal &amp; simulasi ceklis siswa, namun penyimpanan dikunci hingga Guard dibuka Admin.
-                  </p>
+      <div className={currentStep === 2 ? 'p-3 sm:p-4 space-y-2.5' : 'p-4 sm:p-5 space-y-4'}>
+        {/* ── COMPACT OFFICIAL EVENT GUARD BAR + STEPPER HEADER (HIDDEN IN STEP 2 FOR MAX WORKSPACE FOCUS) ── */}
+        {currentStep !== 2 && (
+          <div className="space-y-2.5">
+            {isGuardEnabled ? (
+              <div className="px-3.5 py-2 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/70 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                    <Unlock className="w-3.5 h-3.5" />
+                  </span>
+                  <span className="text-xs font-extrabold text-emerald-950 dark:text-emerald-200">
+                    Guard Event Resmi Terbuka
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded bg-emerald-600 text-white text-[9px] font-bold uppercase">
+                    Disetujui Admin
+                  </span>
+                  <span className="text-[11px] text-emerald-700 dark:text-emerald-300/80 hidden sm:inline">
+                    &bull; Siap memilih tanggal &amp; menceklis siswa non-hadir
+                  </span>
                 </div>
+                {isAdmin && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={isTogglingGuard}
+                    onClick={() => handleToggleGuard(false)}
+                    className="shrink-0 h-7 px-2.5 text-[11px] font-bold border-rose-200 bg-white hover:bg-rose-50 text-rose-600 rounded-lg gap-1 cursor-pointer"
+                  >
+                    <Lock className="w-3 h-3" />
+                    <span>{isTogglingGuard ? 'Mengunci...' : 'Kunci Guard'}</span>
+                  </Button>
+                )}
               </div>
-              {isAdmin ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={isTogglingGuard || isGuardLoading}
-                  onClick={() => handleToggleGuard(true)}
-                  className="shrink-0 h-7 px-3 text-[11px] font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg gap-1 cursor-pointer"
-                >
-                  <Unlock className="w-3.5 h-3.5" />
-                  <span>{isTogglingGuard ? 'Membuka...' : 'Buka Guard'}</span>
-                </Button>
-              ) : (
-                <span className="shrink-0 px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/60 border border-amber-300 text-[10px] font-bold text-amber-900 dark:text-amber-200 inline-flex items-center gap-1">
-                  <Lock className="w-3 h-3" />
-                  <span>Dikunci Admin</span>
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* ── STEPPER PROGRESS BAR ── */}
-          <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/70 border border-slate-200/70 dark:border-slate-800 select-none">
-            {([
-              { step: 1, title: '1. Jadwal & Rombel', desc: `${selectedDates.length} Tanggal • ${selectedKelasIds.length} Kelas` },
-              { step: 2, title: '2. Ceklis Non-Hadir', desc: `${exceptionsList.length} Siswa Non-Hadir` },
-              { step: 3, title: '3. Review & Simpan', desc: 'Matriks Kehadiran' },
-            ] as const).map((s) => {
-              const isActive = currentStep === s.step;
-              const isCompleted = currentStep > s.step;
-              return (
-                <button
-                  key={s.step}
-                  type="button"
-                  onClick={() => {
-                    if (s.step === 1) setCurrentStep(1);
-                    else if (s.step === 2 && selectedDates.length > 0 && selectedKelasIds.length > 0) setCurrentStep(2);
-                    else if (s.step === 3 && selectedDates.length > 0 && selectedKelasIds.length > 0) handleProceedToStep3();
-                  }}
-                  className={`py-2 px-3 rounded-lg text-left transition-all cursor-pointer ${
-                    isActive
-                      ? 'bg-white dark:bg-slate-900 shadow-2xs border border-amber-300 dark:border-amber-700/60'
-                      : isCompleted
-                      ? 'hover:bg-white/60 dark:hover:bg-slate-900/50 text-slate-700 dark:text-slate-300'
-                      : 'opacity-50 cursor-not-allowed text-slate-400'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-1.5">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      {isCompleted ? (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      ) : (
-                        <span
-                          className={`w-4 h-4 rounded-full text-[10px] font-black flex items-center justify-center shrink-0 ${
-                            isActive ? 'bg-amber-600 text-white' : 'bg-slate-300 text-slate-700'
-                          }`}
-                        >
-                          {s.step}
-                        </span>
-                      )}
-                      <span className={`text-xs font-extrabold truncate ${isActive ? 'text-amber-800 dark:text-amber-300' : ''}`}>
-                        {s.title}
+            ) : (
+              <div className="px-3.5 py-2.5 rounded-xl bg-amber-50/95 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/80 flex flex-wrap items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="w-7 h-7 rounded-lg bg-amber-600 text-white flex items-center justify-center shrink-0">
+                    <ShieldAlert className="w-4 h-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs font-black text-amber-950 dark:text-amber-100">
+                        Guard Keamanan Terkunci (Di Luar Event Resmi)
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white text-[9px] font-bold uppercase">
+                        Eksekusi Dikunci
                       </span>
                     </div>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold hidden sm:inline shrink-0">
-                      {s.desc}
-                    </span>
+                    <p className="text-[11px] text-amber-800 dark:text-amber-200/90 truncate">
+                      Anda tetap dapat menyusun tanggal &amp; simulasi ceklis siswa, namun penyimpanan dikunci hingga Guard dibuka Admin.
+                    </p>
                   </div>
-                </button>
-              );
-            })}
+                </div>
+                {isAdmin ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={isTogglingGuard || isGuardLoading}
+                    onClick={() => handleToggleGuard(true)}
+                    className="shrink-0 h-7 px-3 text-[11px] font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg gap-1 cursor-pointer"
+                  >
+                    <Unlock className="w-3.5 h-3.5" />
+                    <span>{isTogglingGuard ? 'Membuka...' : 'Buka Guard'}</span>
+                  </Button>
+                ) : (
+                  <span className="shrink-0 px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/60 border border-amber-300 text-[10px] font-bold text-amber-900 dark:text-amber-200 inline-flex items-center gap-1">
+                    <Lock className="w-3 h-3" />
+                    <span>Dikunci Admin</span>
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* ── STEPPER PROGRESS BAR ── */}
+            <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/70 border border-slate-200/70 dark:border-slate-800 select-none">
+              {([
+                { step: 1, title: '1. Jadwal & Rombel', desc: `${selectedDates.length} Tanggal • ${selectedKelasIds.length} Kelas` },
+                { step: 2, title: '2. Ceklis Non-Hadir', desc: `${exceptionsList.length} Siswa Non-Hadir` },
+                { step: 3, title: '3. Review & Simpan', desc: 'Matriks Kehadiran' },
+              ] as const).map((s) => {
+                const isActive = currentStep === s.step;
+                const isCompleted = currentStep > s.step;
+                return (
+                  <button
+                    key={s.step}
+                    type="button"
+                    onClick={() => {
+                      if (s.step === 1) setCurrentStep(1);
+                      else if (s.step === 2 && selectedDates.length > 0 && selectedKelasIds.length > 0) setCurrentStep(2);
+                      else if (s.step === 3 && selectedDates.length > 0 && selectedKelasIds.length > 0) handleProceedToStep3();
+                    }}
+                    className={`py-2 px-3 rounded-lg text-left transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-white dark:bg-slate-900 shadow-2xs border border-amber-300 dark:border-amber-700/60'
+                        : isCompleted
+                        ? 'hover:bg-white/60 dark:hover:bg-slate-900/50 text-slate-700 dark:text-slate-300'
+                        : 'opacity-50 cursor-not-allowed text-slate-400'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1.5">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {isCompleted ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        ) : (
+                          <span
+                            className={`w-4 h-4 rounded-full text-[10px] font-black flex items-center justify-center shrink-0 ${
+                              isActive ? 'bg-amber-600 text-white' : 'bg-slate-300 text-slate-700'
+                            }`}
+                          >
+                            {s.step}
+                          </span>
+                        )}
+                        <span className={`text-xs font-extrabold truncate ${isActive ? 'text-amber-800 dark:text-amber-300' : ''}`}>
+                          {s.title}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold hidden sm:inline shrink-0">
+                        {s.desc}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* ═══════════════════════════════════════════════════════════════════════════ */}
         {/* ── STEP 1: JADWAL PELAKSANAAN & SASARAN ROMBEL (CLEAN & COMPACT) ── */}
@@ -907,107 +909,86 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
         )}
 
         {/* ═══════════════════════════════════════════════════════════════════════════ */}
-        {/* ── STEP 2: MATRIKS CEKLIS LANGSUNG (2 X 5 SIKLUS BLOK TERBUKA) ── */}
+        {/* ── STEP 2: MATRIKS CEKLIS LANGSUNG (FOKUS PENUH KE TABEL ISIAN) ── */}
         {/* ═══════════════════════════════════════════════════════════════════════════ */}
         {currentStep === 2 && (
-          <div className="space-y-3">
-            <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3">
-              {/* Top Toolbar: Info Siklus Klik (H -> S -> I -> A -> T -> D) + Shortcut Keyboard */}
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100 dark:border-slate-800">
-                <div>
-                  <h4 className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-                    <Table className="w-4 h-4 text-amber-600" />
-                    Matriks Ceklis Kehadiran Terbuka ({selectedDates.length} Hari &times; Siklus Sesi = {generatedSessions.length} Blok Sesi)
-                  </h4>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    <strong>Klik kotak</strong> untuk fokus &amp; memutar status (<strong className="text-amber-600">S</strong> &rarr; <strong className="text-blue-600">I</strong> &rarr; <strong className="text-rose-600">A</strong> &rarr; <strong className="text-orange-600">T</strong> &rarr; <strong className="text-purple-600">D</strong> &rarr; <strong className="text-emerald-600">H</strong>), atau <strong>tekan huruf keyboard</strong> (<kbd className="px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 font-mono text-[10px]">H</kbd> <kbd className="px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 font-mono text-[10px]">S</kbd> <kbd className="px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 font-mono text-[10px]">I</kbd> <kbd className="px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 font-mono text-[10px]">A</kbd> <kbd className="px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 font-mono text-[10px]">T</kbd> <kbd className="px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 font-mono text-[10px]">D</kbd> + panah <kbd className="px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 font-mono text-[10px]">&larr;&uarr;&darr;&rarr;</kbd>).
-                  </p>
-                </div>
+          <div className="space-y-2.5">
+            {/* Single-Row Compact Control Bar: Rombel Pills + Search + Mini Legend */}
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-2 bg-slate-50 dark:bg-slate-800/60 px-3 py-2 rounded-xl border border-slate-200/80 dark:border-slate-800">
+              {/* Rombel Pills */}
+              <div className="flex items-center gap-1.5 flex-wrap flex-1">
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase shrink-0 mr-0.5">
+                  Rombel ({selectedKelasIds.length}):
+                </span>
+                {selectedKelasIds.map((kId) => {
+                  const c = classOptions.find((opt) => opt.id === kId);
+                  const isCurrentKelas = (activeFilterKelasId || selectedKelasIds[0]) === kId;
+                  const countInClass = exceptionsList.filter((ex) => ex.nama_kelas === c?.nama_kelas).length;
 
-                {/* Urutan Siklus Klik & Shortcut Keyboard Badge Visual */}
-                <div className="flex items-center gap-1 flex-wrap shrink-0 bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-700 text-[10px] font-extrabold">
-                  <span className="text-slate-500 uppercase mr-1">Klik / Ketik:</span>
-                  <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">[H] Hadir</span>
-                  <span className="text-slate-400">&rarr;</span>
-                  <span className="px-1.5 py-0.5 rounded bg-amber-500 text-white">[S] Sakit</span>
-                  <span className="text-slate-400">&rarr;</span>
-                  <span className="px-1.5 py-0.5 rounded bg-blue-600 text-white">[I] Izin</span>
-                  <span className="text-slate-400">&rarr;</span>
-                  <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white">[A] Alpa</span>
-                  <span className="text-slate-400">&rarr;</span>
-                  <span className="px-1.5 py-0.5 rounded bg-orange-500 text-white">[T] Telat</span>
-                  <span className="text-slate-400">&rarr;</span>
-                  <span className="px-1.5 py-0.5 rounded bg-purple-600 text-white">[D] Dispen</span>
-                </div>
+                  return (
+                    <button
+                      key={kId}
+                      type="button"
+                      onClick={() => setActiveFilterKelasId(kId)}
+                      className={`px-2 py-0.5 rounded-lg text-[11px] font-extrabold shrink-0 transition-all cursor-pointer flex items-center gap-1 border ${
+                        isCurrentKelas
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                          : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-emerald-400'
+                      }`}
+                    >
+                      <span>{c?.nama_kelas || kId}</span>
+                      {countInClass > 0 && (
+                        <span
+                          className={`px-1 rounded-full text-[9px] font-black ${
+                            isCurrentKelas ? 'bg-white text-emerald-800' : 'bg-amber-500 text-white'
+                          }`}
+                        >
+                          {countInClass}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* ── BANNER STATUS RECHECK DATA FISIK DATABASE ── */}
-              {isLoadingDbMatrix ? (
-                <div className="px-3 py-2 rounded-xl bg-blue-50/80 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/70 text-xs font-semibold text-blue-800 dark:text-blue-200 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 animate-spin text-blue-600 shrink-0" />
-                  <span>Sedang memeriksa &amp; menyinkronkan kondisi data presensi fisik di database untuk tanggal dan sesi yang beririsan...</span>
-                </div>
-              ) : dbRecheckStats.totalExistingSessions > 0 ? (
-                <div className="px-3.5 py-2 rounded-xl bg-sky-50/90 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/70 flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-md bg-sky-600 text-white text-[10px] font-black uppercase">
-                      ✓ Recheck Database Aktif
-                    </span>
-                    <span className="text-sky-950 dark:text-sky-200 font-semibold">
-                      Ditemukan <strong>{dbRecheckStats.totalExistingSessions} Sesi Beririsan</strong> ({dbRecheckStats.totalExistingRecords.toLocaleString('id-ID')} data presensi siswa) yang sudah tersimpan di database. Kondisi kehadiran (H/S/I/A/T/D) otomatis ditampilkan pada kolom bertanda <strong className="text-sky-700 dark:text-sky-300">✓ DB</strong>.
-                    </span>
-                  </div>
-                </div>
-              ) : null}
-
-              {/* ── ROMBEL QUICK PILLS & SEARCH BAR ── */}
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
-                <div className="flex items-center gap-1.5 flex-wrap flex-1">
-                  <span className="text-[11px] font-extrabold text-slate-400 uppercase shrink-0 mr-1">
-                    Rombel ({selectedKelasIds.length}):
+              {/* Right: Mini Shortcut Badge + Search */}
+              <div className="flex items-center gap-2 flex-wrap shrink-0">
+                {isLoadingDbMatrix ? (
+                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 animate-spin" /> Sync DB...
                   </span>
-                  {selectedKelasIds.map((kId) => {
-                    const c = classOptions.find((opt) => opt.id === kId);
-                    const isCurrentKelas = (activeFilterKelasId || selectedKelasIds[0]) === kId;
-                    const countInClass = exceptionsList.filter((ex) => ex.nama_kelas === c?.nama_kelas).length;
+                ) : dbRecheckStats.totalExistingSessions > 0 ? (
+                  <span
+                    className="px-2 py-0.5 rounded-md bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800 text-[10px] font-extrabold"
+                    title={`${dbRecheckStats.totalExistingSessions} sesi beririsan dimuat dari database`}
+                  >
+                    ✓ {dbRecheckStats.totalExistingSessions} Sesi DB
+                  </span>
+                ) : null}
 
-                    return (
-                      <button
-                        key={kId}
-                        type="button"
-                        onClick={() => setActiveFilterKelasId(kId)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-extrabold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 border ${
-                          isCurrentKelas
-                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
-                            : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-emerald-400'
-                        }`}
-                      >
-                        <span>{c?.nama_kelas || kId}</span>
-                        {countInClass > 0 && (
-                          <span
-                            className={`px-1.5 rounded-full text-[10px] font-black ${
-                              isCurrentKelas ? 'bg-white text-emerald-800' : 'bg-amber-500 text-white'
-                            }`}
-                          >
-                            {countInClass}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
+                <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700 text-[10px] font-extrabold">
+                  <span className="px-1 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">H</span>
+                  <span className="px-1 rounded bg-amber-500 text-white">S</span>
+                  <span className="px-1 rounded bg-blue-600 text-white">I</span>
+                  <span className="px-1 rounded bg-rose-600 text-white">A</span>
+                  <span className="px-1 rounded bg-orange-500 text-white">T</span>
+                  <span className="px-1 rounded bg-purple-600 text-white">D</span>
                 </div>
 
-                <div className="relative w-full lg:w-64 shrink-0">
+                <div className="relative w-full sm:w-52">
                   <input
                     type="text"
                     value={studentChecklistSearch}
                     onChange={(e) => setStudentChecklistSearch(e.target.value)}
-                    placeholder="Cari cepat nama atau NIS siswa..."
-                    className="w-full h-8 pl-8 pr-3 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                    placeholder="Cari nama / NIS siswa..."
+                    className="w-full h-7 pl-7 pr-2.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
                   />
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2 top-1.5" />
                 </div>
               </div>
+            </div>
+
+            <div>
 
               {/* ── DIRECT INTERACTIVE 2 X N SIKLUS BLOCK MATRIX TABLE ── */}
               <div className="border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-x-auto bg-white dark:bg-slate-900">
