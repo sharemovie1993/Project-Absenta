@@ -839,7 +839,7 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
         {currentStep === 2 && (
           <div className="space-y-3">
             <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3">
-              {/* Top Toolbar: Mode Kuas Status (S/I/A/T/D) + Search + Counter */}
+              {/* Top Toolbar: Info Siklus Klik (H -> S -> I -> A -> T -> D) + Legend */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100 dark:border-slate-800">
                 <div>
                   <h4 className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
@@ -847,40 +847,24 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                     Matriks Ceklis Kehadiran Terbuka ({selectedDates.length} Hari &times; Siklus Sesi = {generatedSessions.length} Blok Sesi)
                   </h4>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Seluruh blok sesi terbuka sekaligus tanpa perlu pindah tab tanggal. Pilih <strong>Kuas Status</strong> lalu klik kotak sesi siswa yang tidak hadir (atau klik <strong>1 Hari / Semua</strong>).
+                    <strong>Klik kotak sesi untuk memutar siklus status:</strong> Klik 1x = <strong className="text-amber-600">Sakit (S)</strong> &rarr; Klik 2x = <strong className="text-blue-600">Izin (I)</strong> &rarr; Klik 3x = <strong className="text-rose-600">Alpa (A)</strong> &rarr; Klik 4x = <strong className="text-orange-600">Telat (T)</strong> &rarr; Klik 5x = <strong className="text-purple-600">Dispen (D)</strong> &rarr; Kembali <strong className="text-emerald-600">Hadir (H)</strong>.
                   </p>
                 </div>
 
-                {/* Kuas Status Aktif (1-Click Paint Mode) */}
-                <div className="flex items-center gap-1.5 flex-wrap shrink-0 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-xl border border-slate-200/80 dark:border-slate-700">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 px-1.5">
-                    Kuas Ceklis:
-                  </span>
-                  {(
-                    [
-                      { code: 'SAKIT', short: 'S', label: 'Sakit (S)', activeCls: 'bg-amber-600 text-white border-amber-600 shadow-xs' },
-                      { code: 'IZIN', short: 'I', label: 'Izin (I)', activeCls: 'bg-blue-600 text-white border-blue-600 shadow-xs' },
-                      { code: 'ALPA', short: 'A', label: 'Alpa (A)', activeCls: 'bg-rose-600 text-white border-rose-600 shadow-xs' },
-                      { code: 'TERLAMBAT', short: 'T', label: 'Telat (T)', activeCls: 'bg-orange-600 text-white border-orange-600 shadow-xs' },
-                      { code: 'DISPENSASI', short: 'D', label: 'Dispen (D)', activeCls: 'bg-purple-600 text-white border-purple-600 shadow-xs' },
-                    ] as const
-                  ).map((b) => {
-                    const isActiveBrush = activeBrushStatus === b.code;
-                    return (
-                      <button
-                        key={b.code}
-                        type="button"
-                        onClick={() => setActiveBrushStatus(b.code)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-extrabold border transition-all cursor-pointer ${
-                          isActiveBrush
-                            ? b.activeCls
-                            : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-amber-400'
-                        }`}
-                      >
-                        {b.label}
-                      </button>
-                    );
-                  })}
+                {/* Urutan Siklus Klik Badge Visual */}
+                <div className="flex items-center gap-1 flex-wrap shrink-0 bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-700 text-[10px] font-extrabold">
+                  <span className="text-slate-500 uppercase mr-1">Siklus Klik:</span>
+                  <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">H</span>
+                  <span className="text-slate-400">&rarr;</span>
+                  <span className="px-1.5 py-0.5 rounded bg-amber-500 text-white">1. Sakit (S)</span>
+                  <span className="text-slate-400">&rarr;</span>
+                  <span className="px-1.5 py-0.5 rounded bg-blue-600 text-white">2. Izin (I)</span>
+                  <span className="text-slate-400">&rarr;</span>
+                  <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white">3. Alpa (A)</span>
+                  <span className="text-slate-400">&rarr;</span>
+                  <span className="px-1.5 py-0.5 rounded bg-orange-500 text-white">4. Telat (T)</span>
+                  <span className="text-slate-400">&rarr;</span>
+                  <span className="px-1.5 py-0.5 rounded bg-purple-600 text-white">5. Dispen (D)</span>
                 </div>
               </div>
 
@@ -957,6 +941,22 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                     const kId = activeFilterKelasId || selectedKelasIds[0];
                     const kObj = classOptions.find((c) => c.id === kId);
 
+                    const CYCLE_ORDER: Array<'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA' | 'TERLAMBAT' | 'DISPENSASI'> = [
+                      'HADIR',
+                      'SAKIT',
+                      'IZIN',
+                      'ALPA',
+                      'TERLAMBAT',
+                      'DISPENSASI',
+                    ];
+
+                    const getNextCycleStatus = (
+                      current: 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA' | 'TERLAMBAT' | 'DISPENSASI'
+                    ): 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA' | 'TERLAMBAT' | 'DISPENSASI' => {
+                      const idx = CYCLE_ORDER.indexOf(current);
+                      return CYCLE_ORDER[(idx + 1) % CYCLE_ORDER.length];
+                    };
+
                     // Helper untuk mengubah status sejumlah sessionKeys sekaligus pada 1 siswa
                     const applyStudentSessionKeys = (
                       st: ClassStudentOption,
@@ -976,7 +976,6 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                             if (rk.includes('_')) {
                               studentSessMap[rk] = ex.status;
                             } else {
-                              // Jika masih format dateIso penuh, ekspansi ke seluruh sesi di tanggal tsb
                               for (const gs of generatedSessions) {
                                 if (gs.dateIso === rk) {
                                   studentSessMap[`${gs.dateIso}_${gs.sessionCode}`] = ex.status;
@@ -986,13 +985,8 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                           }
                         }
 
-                        // Cek apakah seluruh targetSessKeys sudah memiliki status yang sama dengan targetStatus
-                        const allAlreadySame =
-                          targetStatus !== 'HADIR' &&
-                          targetSessKeys.every((k) => studentSessMap[k] === targetStatus);
-
                         for (const k of targetSessKeys) {
-                          if (targetStatus === 'HADIR' || allAlreadySame) {
+                          if (targetStatus === 'HADIR') {
                             delete studentSessMap[k];
                           } else {
                             studentSessMap[k] = targetStatus;
@@ -1153,6 +1147,8 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                                           ? 'T'
                                           : 'D';
 
+                                      const nextStatus = getNextCycleStatus(status);
+
                                       return (
                                         <td
                                           key={`${sessKey}_${sessIdx}`}
@@ -1161,10 +1157,10 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                                           <button
                                             type="button"
                                             onClick={() =>
-                                              applyStudentSessionKeys(st, [sessKey], activeBrushStatus)
+                                              applyStudentSessionKeys(st, [sessKey], nextStatus)
                                             }
-                                            title={`${st.nama_siswa} • ${sess.dayName}, ${sess.dateFormatted} (${sess.sessionLabel})\nStatus saat ini: ${status}\nKlik untuk tandai [${activeBrushStatus}] (atau klik lagi untuk kembali HADIR)`}
-                                            className={`w-full h-7 rounded-lg border font-black text-[11px] transition-all cursor-pointer flex items-center justify-center ${badgeStyle}`}
+                                            title={`${st.nama_siswa} • ${sess.dayName}, ${sess.dateFormatted} (${sess.sessionLabel})\nStatus saat ini: ${status} -> Klik untuk ubah ke [${nextStatus}]`}
+                                            className={`w-full h-7 rounded-lg border font-black text-[11px] transition-all cursor-pointer select-none flex items-center justify-center active:scale-95 ${badgeStyle}`}
                                           >
                                             {shortCode}
                                           </button>
@@ -1173,16 +1169,21 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                                     })
                                   )}
 
-                                  {/* Quick Row Action: Tandai Semua Blok / Reset ke Hadir */}
+                                  {/* Quick Row Action: Siklus Semua Blok / Dropdown Baris */}
                                   <td className="px-2 py-1 text-center">
                                     <div className="flex items-center justify-center gap-1">
                                       <button
                                         type="button"
-                                        onClick={() =>
-                                          applyStudentSessionKeys(st, allSessionKeys, activeBrushStatus)
-                                        }
-                                        title={`Tandai [${activeBrushStatus}] ke seluruh ${allSessionKeys.length} blok sesi untuk ${st.nama_siswa}`}
-                                        className="px-2 py-1 rounded-md text-[10px] font-extrabold bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-900 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                                        onClick={() => {
+                                          const firstSess = generatedSessions[0];
+                                          const currentFirstStatus = firstSess
+                                            ? getStudentSessionStatus(st.siswa_id, firstSess).status
+                                            : 'HADIR';
+                                          const nextRowStatus = getNextCycleStatus(currentFirstStatus);
+                                          applyStudentSessionKeys(st, allSessionKeys, nextRowStatus);
+                                        }}
+                                        title={`Klik berulang untuk memutar siklus status seluruh sesi baris ini (H -> S -> I -> A -> T -> D)`}
+                                        className="px-2 py-1 rounded-md text-[10px] font-extrabold bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-900 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700 cursor-pointer select-none"
                                       >
                                         Semua
                                       </button>
