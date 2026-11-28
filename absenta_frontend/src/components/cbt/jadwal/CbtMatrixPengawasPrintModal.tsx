@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useRef, useState, useMemo, useCallback, useEffect } from 'react';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
@@ -6,6 +6,12 @@ import {
   UniversalDocumentSignatures,
   usePrintHeaderData,
 } from '@/components/ui';
+import { useDocumentSigners } from '@/hooks/useDocumentSigners';
+import {
+  CbtMatrixPengawasSignersDrawer,
+  type EditableSignerState,
+} from './CbtMatrixPengawasSignersDrawer';
+import { SlidersHorizontal } from 'lucide-react';
 import type { CbtJadwalUjian, CbtEventItem } from '@/types/cbt.types';
 import { formatLocalDateIndo, formatLocalTimeFromISO, toLocalDate } from '@/utils/attendance/time';
 import { detectNodeTingkat } from '@/components/spasial/denahTingkatHelper';
@@ -356,6 +362,106 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
   const { tenantInfo, rawSekolah } = usePrintHeaderData();
   const sekolahData = rawSekolah as any;
 
+  // ── Integrasi SSOT Struktur Organisasi & Penandatangan Dokumen CBT ──
+  const autoSigners = useDocumentSigners({
+    tahunPelajaranId: activeEvent?.tahun_pelajaran_id || undefined,
+  });
+
+  const [isSignersDrawerOpen, setIsSignersDrawerOpen] = useState(false);
+  const [titimangsaCity, setTitimangsaCity] = useState('');
+  const [titimangsaDate, setTitimangsaDate] = useState('');
+  const [panitiaSigner, setPanitiaSigner] = useState<EditableSignerState>({
+    roleTitle: 'Ketua Panitia Pelaksana CBT,',
+    personName: '',
+    nip: '',
+    signatureImage: null,
+  });
+  const [kepsekSigner, setKepsekSigner] = useState<EditableSignerState>({
+    roleTitle: 'Mengetahui,\nKepala Sekolah',
+    personName: '',
+    nip: '',
+    signatureImage: null,
+  });
+
+  const applyResolvedSigners = useCallback(() => {
+    const city =
+      autoSigners.city ||
+      sekolahData?.kabupaten ||
+      sekolahData?.kota ||
+      tenantInfo?.kota ||
+      'Purwakarta';
+    const date = new Date().toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+    setTitimangsaCity(city);
+    setTitimangsaDate(date);
+
+    // Resolve Panitia CBT dari Struktur Organisasi (posisi Panitia CBT / Waka Kurikulum)
+    const panitiaAssignment = autoSigners.getByPositionCode([
+      'KETUA_PANITIA_CBT',
+      'PANITIA_CBT',
+      'KETUA_PANITIA',
+      'PANITIA_UJIAN',
+      'WAKA_KURIKULUM',
+    ]);
+    const resolvedPanitiaName =
+      (panitiaAssignment.isAssigned && panitiaAssignment.personName) ||
+      (autoSigners.wakaKurikulum.isAssigned && autoSigners.wakaKurikulum.personName) ||
+      '';
+    const resolvedPanitiaNip =
+      (panitiaAssignment.isAssigned && panitiaAssignment.nip) ||
+      (autoSigners.wakaKurikulum.isAssigned && autoSigners.wakaKurikulum.nip) ||
+      '';
+
+    setPanitiaSigner((prev) => ({
+      roleTitle: prev.roleTitle || 'Ketua Panitia Pelaksana CBT,',
+      personName: resolvedPanitiaName || prev.personName || 'Ketua Panitia CBT',
+      nip: resolvedPanitiaNip || prev.nip || '',
+      signatureImage: prev.signatureImage || null,
+    }));
+
+    // Resolve Kepala Sekolah dari Struktur Organisasi / Master Sekolah
+    const resolvedKepsekName =
+      autoSigners.kepsek.personName ||
+      sekolahData?.kepala_sekolah ||
+      sekolahData?.nama_kepala_sekolah ||
+      tenantInfo?.kepala_sekolah ||
+      'Kepala Sekolah';
+    const resolvedKepsekNip =
+      autoSigners.kepsek.nip ||
+      sekolahData?.nip_kepala_sekolah ||
+      tenantInfo?.nip_kepala_sekolah ||
+      '';
+
+    setKepsekSigner((prev) => ({
+      roleTitle: autoSigners.kepsek.roleTitle || 'Mengetahui,\nKepala Sekolah',
+      personName: resolvedKepsekName,
+      nip: resolvedKepsekNip,
+      signatureImage: prev.signatureImage || null,
+    }));
+  }, [autoSigners, sekolahData, tenantInfo]);
+
+  const [hasInitializedSigners, setHasInitializedSigners] = useState(false);
+  useEffect(() => {
+    if (isOpen && !autoSigners.isLoading && !hasInitializedSigners) {
+      applyResolvedSigners();
+      setHasInitializedSigners(true);
+    }
+  }, [isOpen, autoSigners.isLoading, hasInitializedSigners, applyResolvedSigners]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setHasInitializedSigners(false);
+    }
+  }, [isOpen]);
+
+  const handleResetStruktur = () => {
+    setHasInitializedSigners(false);
+    applyResolvedSigners();
+  };
+
   const namaEvent = activeEvent?.nama_event || eventName || 'Ujian CBT';
 
   // Build matriks per tingkat (Kolom = Kelas/Ruang tersortir, Baris = Hari)
@@ -516,11 +622,41 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
             />
             Sertakan Proktor
           </label>
+
+          <button
+            type="button"
+            onClick={() => setIsSignersDrawerOpen((o) => !o)}
+            className={cn(
+              'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold border transition-all cursor-pointer',
+              isSignersDrawerOpen
+                ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+            )}
+            title="Kustomisasi nama penandatangan, NIP, TTD digital, dan titimangsa"
+          >
+            <SlidersHorizontal size={13} />
+            <span>Atur TTD</span>
+          </button>
         </div>
       }
     >
-      <div ref={sheetContainerRef} id="print-desk-canvas-area" className="space-y-6">
-        {displaySheets.length === 0 ? (
+      <div className="flex flex-col lg:flex-row items-start justify-center gap-4 w-full">
+        <CbtMatrixPengawasSignersDrawer
+          isOpen={isSignersDrawerOpen}
+          onClose={() => setIsSignersDrawerOpen(false)}
+          titimangsaCity={titimangsaCity}
+          setTitimangsaCity={setTitimangsaCity}
+          titimangsaDate={titimangsaDate}
+          setTitimangsaDate={setTitimangsaDate}
+          panitiaSigner={panitiaSigner}
+          setPanitiaSigner={setPanitiaSigner}
+          kepsekSigner={kepsekSigner}
+          setKepsekSigner={setKepsekSigner}
+          onResetStruktur={handleResetStruktur}
+        />
+
+        <div ref={sheetContainerRef} id="print-desk-canvas-area" className="space-y-6 max-w-full overflow-x-auto">
+          {displaySheets.length === 0 ? (
           <PrintDocumentSheet orientation="landscape">
             <div className="text-center py-16 text-slate-400" style={{ fontSize: '10pt' }}>
               Belum ada data jadwal/ruang yang siap dicetak untuk tingkat ini.
@@ -770,38 +906,27 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
               <div className="mt-4 pt-1 w-full page-break-inside-avoid">
                 <UniversalDocumentSignatures
                   layout="dual_cbt_pengawas"
-                  titimangsaCity={
-                    sekolahData?.kabupaten ||
-                    sekolahData?.kota ||
-                    tenantInfo?.kota ||
-                    'Tempat'
-                  }
-                  titimangsaDate={new Date().toLocaleDateString('id-ID', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                  })}
-                  notesOrApprovalLabel="Mengetahui,\nKepala Sekolah"
-                  customSigners={{
-                    pengawasUjian: {
-                      roleTitle: 'Ketua Panitia Pelaksana CBT,',
-                      personName: activeEvent?.keterangan || 'Ketua Pelaksana',
-                      nip: '',
-                    },
-                    kepsek: {
-                      roleTitle: 'Mengetahui,\nKepala Sekolah',
-                      personName:
-                        sekolahData?.kepala_sekolah ||
-                        sekolahData?.nama_kepala_sekolah ||
-                        tenantInfo?.kepala_sekolah ||
-                        'Kepala Sekolah',
-                      nip:
-                        sekolahData?.nip_kepala_sekolah ||
-                        tenantInfo?.nip_kepala_sekolah ||
-                        '-',
-                    },
+                  titimangsaCity={titimangsaCity}
+                  titimangsaDate={titimangsaDate}
+                  notesOrApprovalLabel={kepsekSigner.roleTitle}
+                  signerLeft={{
+                    roleTitle: kepsekSigner.roleTitle,
+                    personName: kepsekSigner.personName,
+                    nip: kepsekSigner.nip || undefined,
+                    isAssigned: Boolean(kepsekSigner.personName),
+                    signatureImage: kepsekSigner.signatureImage || undefined,
                   }}
-                  spacingHeightMm={13}
+                  signerRight={{
+                    roleTitle: panitiaSigner.roleTitle,
+                    personName: panitiaSigner.personName,
+                    nip: panitiaSigner.nip || undefined,
+                    isAssigned: Boolean(panitiaSigner.personName),
+                    signatureImage: panitiaSigner.signatureImage || undefined,
+                  }}
+                  overrideSignerRight={{
+                    topDate: titimangsaCity && titimangsaDate ? `${titimangsaCity}, ${titimangsaDate}` : undefined,
+                  }}
+                  spacingHeightMm={14}
                 />
               </div>
 
@@ -823,6 +948,7 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
             </PrintDocumentSheet>
           ))
         )}
+        </div>
       </div>
     </UniversalDocumentModal>
   );
