@@ -126,6 +126,68 @@ function formatTwoWordsName(fullName: string): string {
 }
 
 // ─────────────────────────────────────────────────────────────────
+//  Preset Densitas / Ukuran Font untuk Skalabilitas Jumlah Kolom Kelas
+// ─────────────────────────────────────────────────────────────────
+type FontDensity = 'compact' | 'standard' | 'large';
+
+const DENSITY_STYLES: Record<
+  FontDensity,
+  {
+    nameSize: string;
+    headerKelasSize: string;
+    headerRuangSize: string;
+    avatarPx: number;
+    avatarTextSize: string;
+    proctorSize: string;
+    colHariWidth: string;
+    cellPadding: string;
+    letterSpacing: string;
+    hariNameSize: string;
+    hariDateSize: string;
+  }
+> = {
+  compact: {
+    nameSize: '5pt',
+    headerKelasSize: '6pt',
+    headerRuangSize: '5pt',
+    avatarPx: 18,
+    avatarTextSize: 'text-[5.5pt]',
+    proctorSize: '4.5pt',
+    colHariWidth: '56px',
+    cellPadding: '2px 1px',
+    letterSpacing: '-0.03em',
+    hariNameSize: '6.5pt',
+    hariDateSize: '5pt',
+  },
+  standard: {
+    nameSize: '5.8pt',
+    headerKelasSize: '6.8pt',
+    headerRuangSize: '5.8pt',
+    avatarPx: 22,
+    avatarTextSize: 'text-[6.5pt]',
+    proctorSize: '5.2pt',
+    colHariWidth: '68px',
+    cellPadding: '3px 2px',
+    letterSpacing: '-0.02em',
+    hariNameSize: '7.5pt',
+    hariDateSize: '5.8pt',
+  },
+  large: {
+    nameSize: '6.8pt',
+    headerKelasSize: '7.8pt',
+    headerRuangSize: '6.5pt',
+    avatarPx: 26,
+    avatarTextSize: 'text-[7pt]',
+    proctorSize: '5.8pt',
+    colHariWidth: '82px',
+    cellPadding: '4px 2px',
+    letterSpacing: 'normal',
+    hariNameSize: '8pt',
+    hariDateSize: '6.5pt',
+  },
+};
+
+// ─────────────────────────────────────────────────────────────────
 //  Helper Urutan Hari Indonesia
 // ─────────────────────────────────────────────────────────────────
 function getDayNameIndo(dateStr: string): string {
@@ -282,7 +344,10 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
   const [showLogoSekolah, setShowLogoSekolah] = useState(true);
   const [showPhotos, setShowPhotos] = useState(true);
   const [shortenName, setShortenName] = useState(true);
+  const [fontDensity, setFontDensity] = useState<FontDensity>('compact');
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  const currentDensity = DENSITY_STYLES[fontDensity];
   const [selectedTingkatTab, setSelectedTingkatTab] = useState<number | 'ALL'>('ALL');
   const [showProktor, setShowProktor] = useState(
     () => Boolean(activeEvent?.enable_proctor)
@@ -429,6 +494,19 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
             Nama 2 Kata
           </label>
 
+          <div className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300">
+            <span className="font-semibold text-slate-500">Ukuran Teks:</span>
+            <select
+              value={fontDensity}
+              onChange={(e) => setFontDensity(e.target.value as FontDensity)}
+              className="text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-0.5 font-medium cursor-pointer"
+            >
+              <option value="compact">Ekstra Kompak (5pt - Pas 20 Kolom)</option>
+              <option value="standard">Sedang (5.8pt)</option>
+              <option value="large">Besar (6.8pt)</option>
+            </select>
+          </div>
+
           <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 cursor-pointer select-none">
             <input
               type="checkbox"
@@ -491,7 +569,7 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
                 >
                   <colgroup>
                     {/* Kolom Hari & Tanggal */}
-                    <col style={{ width: '82px' }} />
+                    <col style={{ width: currentDensity.colHariWidth }} />
                     {/* Kolom Kelas & Ruang (dibagi proporsional) */}
                     {sheet.columns.map((col) => (
                       <col key={col.roomCode} />
@@ -506,12 +584,13 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
                         rowSpan={2}
                         style={{
                           border: '1.2px solid #334155',
-                          padding: '4px 3px',
+                          padding: '3px 2px',
                           backgroundColor: '#f1f5f9',
                           textAlign: 'center',
                           fontWeight: 700,
                           color: '#0f172a',
-                          fontSize: '7.5pt',
+                          fontSize: currentDensity.headerKelasSize,
+                          letterSpacing: currentDensity.letterSpacing,
                         }}
                       >
                         HARI &amp; TANGGAL
@@ -521,12 +600,13 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
                           key={col.roomCode}
                           style={{
                             border: '1.2px solid #334155',
-                            padding: '4px 2px',
+                            padding: '3px 1px',
                             backgroundColor: '#e0e7ff',
                             textAlign: 'center',
                             fontWeight: 800,
                             color: '#1e3a8a',
-                            fontSize: '7.5pt',
+                            fontSize: currentDensity.headerKelasSize,
+                            letterSpacing: currentDensity.letterSpacing,
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -545,12 +625,12 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
                           key={col.roomCode}
                           style={{
                             border: '1.2px solid #334155',
-                            padding: '2px 2px',
+                            padding: '2px 1px',
                             backgroundColor: '#eef2ff',
                             textAlign: 'center',
                             fontWeight: 700,
                             color: '#3730a3',
-                            fontSize: '6.5pt',
+                            fontSize: currentDensity.headerRuangSize,
                           }}
                         >
                           {col.roomCode}
@@ -569,15 +649,15 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
                           <td
                             style={{
                               border: '1px solid #64748b',
-                              padding: '4px 3px',
+                              padding: '3px 2px',
                               textAlign: 'center',
                               fontWeight: 700,
                               backgroundColor: isEven ? '#f8fafc' : '#ffffff',
                               color: '#0f172a',
                             }}
                           >
-                            <div style={{ fontSize: '7.5pt', color: '#1e293b' }}>{day.dayName}</div>
-                            <div style={{ fontSize: '6pt', color: '#64748b', fontWeight: 500 }}>
+                            <div style={{ fontSize: currentDensity.hariNameSize, color: '#1e293b' }}>{day.dayName}</div>
+                            <div style={{ fontSize: currentDensity.hariDateSize, color: '#64748b', fontWeight: 500 }}>
                               {day.dateKey}
                             </div>
                           </td>
@@ -595,7 +675,7 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
                                 key={col.roomCode}
                                 style={{
                                   border: '1px solid #94a3b8',
-                                  padding: '3px 2px',
+                                  padding: currentDensity.cellPadding,
                                   textAlign: 'center',
                                   backgroundColor: isUnassigned
                                     ? '#fff1f2'
@@ -607,14 +687,20 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
                                 }}
                               >
                                 {isUnassigned ? (
-                                  <span style={{ fontStyle: 'italic', color: '#f87171', fontSize: '6.5pt' }}>
+                                  <span style={{ fontStyle: 'italic', color: '#f87171', fontSize: currentDensity.nameSize }}>
                                     (Kosong)
                                   </span>
                                 ) : (
                                   <div className="flex flex-col items-center justify-center gap-0.5">
                                     {/* Foto Pengawas (Opsional via toggle) */}
                                     {showPhotos && (
-                                      <div className="w-6 h-6 rounded-full overflow-hidden bg-slate-200 border border-slate-300 shrink-0 flex items-center justify-center shadow-2xs">
+                                      <div
+                                        style={{
+                                          width: `${currentDensity.avatarPx}px`,
+                                          height: `${currentDensity.avatarPx}px`,
+                                        }}
+                                        className="rounded-full overflow-hidden bg-slate-200 border border-slate-300 shrink-0 flex items-center justify-center shadow-2xs"
+                                      >
                                         {fotoUrl ? (
                                           <img
                                             src={fotoUrl}
@@ -627,7 +713,7 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
                                             }}
                                           />
                                         ) : (
-                                          <span className="text-[7pt] font-bold text-slate-500 uppercase">
+                                          <span className={`font-bold text-slate-500 uppercase ${currentDensity.avatarTextSize}`}>
                                             {p1.charAt(0)}
                                           </span>
                                         )}
@@ -638,12 +724,13 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
                                     <div
                                       style={{
                                         fontWeight: 600,
-                                        fontSize: '6.5pt',
+                                        fontSize: currentDensity.nameSize,
+                                        letterSpacing: currentDensity.letterSpacing,
                                         maxWidth: '100%',
                                         whiteSpace: 'nowrap',
                                         overflow: 'hidden',
                                         textOverflow: 'ellipsis',
-                                        lineHeight: '1.2',
+                                        lineHeight: '1.1',
                                       }}
                                       title={p1}
                                     >
@@ -654,7 +741,8 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
                                     {showProktor && pr && (
                                       <div
                                         style={{
-                                          fontSize: '5.5pt',
+                                          fontSize: currentDensity.proctorSize,
+                                          letterSpacing: currentDensity.letterSpacing,
                                           color: '#6b21a8',
                                           maxWidth: '100%',
                                           whiteSpace: 'nowrap',
