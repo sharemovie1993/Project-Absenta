@@ -115,6 +115,17 @@ function compareKelasNatural(a: string, b: string): number {
 }
 
 // ─────────────────────────────────────────────────────────────────
+//  Helper Format Nama Maksimal 2 Kata (untuk kerapian matrix & hemat ruang)
+// ─────────────────────────────────────────────────────────────────
+function formatTwoWordsName(fullName: string): string {
+  if (!fullName) return '';
+  const trimmed = fullName.trim();
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  if (words.length <= 2) return trimmed;
+  return `${words[0]} ${words[1]}`.replace(/[,;]+$/, '');
+}
+
+// ─────────────────────────────────────────────────────────────────
 //  Helper Urutan Hari Indonesia
 // ─────────────────────────────────────────────────────────────────
 function getDayNameIndo(dateStr: string): string {
@@ -270,6 +281,7 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
   const [showLogoDaerah, setShowLogoDaerah] = useState(true);
   const [showLogoSekolah, setShowLogoSekolah] = useState(true);
   const [showPhotos, setShowPhotos] = useState(true);
+  const [shortenName, setShortenName] = useState(true);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [selectedTingkatTab, setSelectedTingkatTab] = useState<number | 'ALL'>('ALL');
   const [showProktor, setShowProktor] = useState(
@@ -405,6 +417,16 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
               className="w-3.5 h-3.5 rounded accent-indigo-600"
             />
             Sertakan Foto Pengawas
+          </label>
+
+          <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={shortenName}
+              onChange={(e) => setShortenName(e.target.checked)}
+              className="w-3.5 h-3.5 rounded accent-indigo-600"
+            />
+            Nama 2 Kata
           </label>
 
           <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 cursor-pointer select-none">
@@ -625,7 +647,7 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
                                       }}
                                       title={p1}
                                     >
-                                      {p1}
+                                      {shortenName ? formatTwoWordsName(p1) : p1}
                                     </div>
 
                                     {/* Nama Proktor (Jika diaktifkan) */}
@@ -641,7 +663,7 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
                                         }}
                                         title={`Proktor: ${pr}`}
                                       >
-                                        P: {pr}
+                                        P: {shortenName ? formatTwoWordsName(pr) : pr}
                                       </div>
                                     )}
                                   </div>
