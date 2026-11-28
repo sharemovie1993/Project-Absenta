@@ -956,7 +956,18 @@ export class UnifiedKegiatanService {
     const namaKegiatan = parentSesi.JadwalKegiatan?.nama || parentSesi.jenis_kegiatan || 'Kegiatan Pembiasaan';
     const activeSesiId = parentSesi.id;
 
-    // 1. Catat murni di AbsenGuru milik Sesi Kegiatan
+    // 1. Catat murni di AbsenGuru milik Sesi Kegiatan (idempoten penuh: pertahankan waktu_tap awal jika sudah HADIR)
+    const existingGuruKegiatan = await prisma.absenGuru.findUnique({
+      where: {
+        sesi_id_guru_id: {
+          sesi_id: activeSesiId,
+          guru_id: payload.guru_id,
+        },
+      },
+    });
+    const preserveGuruTap = existingGuruKegiatan?.status === 'HADIR' && existingGuruKegiatan?.waktu_tap;
+    const effectiveGuruTap = payload.status === 'HADIR' ? (preserveGuruTap ? existingGuruKegiatan.waktu_tap : now) : undefined;
+
     await prisma.absenGuru.upsert({
       where: {
         sesi_id_guru_id: {
@@ -966,8 +977,10 @@ export class UnifiedKegiatanService {
       },
       update: {
         status: payload.status,
-        waktu_tap: payload.status === 'HADIR' ? now : undefined,
-        catatan: payload.catatan || `Hadir via Terminal Kegiatan (${namaKegiatan})`,
+        waktu_tap: effectiveGuruTap,
+        catatan: existingGuruKegiatan?.status === 'HADIR' && payload.status === 'HADIR'
+          ? (existingGuruKegiatan.catatan || payload.catatan || `Hadir via Terminal Kegiatan (${namaKegiatan})`)
+          : (payload.catatan || `Hadir via Terminal Kegiatan (${namaKegiatan})`),
         updated_at: now,
       },
       create: {
@@ -975,7 +988,7 @@ export class UnifiedKegiatanService {
         sesi_id: activeSesiId,
         guru_id: payload.guru_id,
         status: payload.status,
-        waktu_tap: payload.status === 'HADIR' ? now : undefined,
+        waktu_tap: effectiveGuruTap,
         catatan: payload.catatan || `Hadir via Terminal Kegiatan (${namaKegiatan})`,
         tahun_pelajaran_id: parentSesi.tahun_pelajaran_id,
         semester_id: parentSesi.semester_id,
@@ -1439,13 +1452,18 @@ export class UnifiedKegiatanService {
       throw new Error(`Data akademik siswa ${siswa.nama_siswa} tidak valid atau belum terdaftar.`);
     }
 
-    // Upsert AbsenSiswa pada sesi kegiatan tersebut
+    // Upsert AbsenSiswa pada sesi kegiatan tersebut (idempoten penuh: pertahankan waktu_tap & status terlambat awal jika sudah HADIR)
     const existingAbsen = await prisma.absenSiswa.findFirst({
       where: {
         sesi_id: studentSesi.id,
         siswa_akademik_id: finalSaId,
       },
     });
+
+    const alreadyHadirKegiatan = existingAbsen?.status === 'HADIR';
+    const effectiveIsLate = alreadyHadirKegiatan ? Boolean(existingAbsen?.is_terlambat) : isLate;
+    const effectiveMenitTelat = alreadyHadirKegiatan ? (existingAbsen?.menit_keterlambatan ?? 0) : (isLate ? menitTerlambat : 0);
+    const effectiveTapTime = alreadyHadirKegiatan && existingAbsen?.waktu_tap ? existingAbsen.waktu_tap : now;
 
     if (existingAbsen) {
       await prisma.absenSiswa.update({
@@ -1457,10 +1475,10 @@ export class UnifiedKegiatanService {
         },
         data: {
           status: 'HADIR',
-          is_terlambat: isLate,
-          menit_keterlambatan: isLate ? menitTerlambat : 0,
-          waktu_tap: now,
-          catatan: `Hadir via Terminal Kegiatan (${jenis})`,
+          is_terlambat: effectiveIsLate,
+          menit_keterlambatan: effectiveMenitTelat,
+          waktu_tap: effectiveTapTime,
+          catatan: alreadyHadirKegiatan ? (existingAbsen.catatan || `Hadir via Terminal Kegiatan (${jenis})`) : `Hadir via Terminal Kegiatan (${jenis})`,
           updated_at: now,
         },
       });
@@ -1472,9 +1490,9 @@ export class UnifiedKegiatanService {
           siswa_id: siswa.id,
           siswa_akademik_id: finalSaId,
           status: 'HADIR',
-          is_terlambat: isLate,
-          menit_keterlambatan: isLate ? menitTerlambat : 0,
-          waktu_tap: now,
+          is_terlambat: effectiveIsLate,
+          menit_keterlambatan: effectiveMenitTelat,
+          waktu_tap: effectiveTapTime,
           kelas_id_snapshot: targetKelasId || undefined,
           kelas_nama_snapshot: targetKelasNama,
           tingkat_snapshot: targetTingkat,
@@ -1576,6 +1594,7 @@ export class UnifiedKegiatanService {
 
         const kbmCatatan = `Hadir via Dual-Tap Kegiatan + KBM (${jenis})`;
         if (existingKbmAbsen) {
+          const alreadyHadirKbm = existingKbmAbsen.status === 'HADIR';
           await prisma.absenSiswa.update({
             where: {
               id_created_at: {
@@ -1585,10 +1604,10 @@ export class UnifiedKegiatanService {
             },
             data: {
               status: 'HADIR',
-              is_terlambat: isLate,
-              menit_keterlambatan: isLate ? menitTerlambat : 0,
-              waktu_tap: now,
-              catatan: kbmCatatan,
+              is_terlambat: alreadyHadirKbm ? Boolean(existingKbmAbsen.is_terlambat) : effectiveIsLate,
+              menit_keterlambatan: alreadyHadirKbm ? (existingKbmAbsen.menit_keterlambatan ?? 0) : effectiveMenitTelat,
+              waktu_tap: (alreadyHadirKbm && existingKbmAbsen.waktu_tap) ? existingKbmAbsen.waktu_tap : effectiveTapTime,
+              catatan: alreadyHadirKbm ? (existingKbmAbsen.catatan || kbmCatatan) : kbmCatatan,
               updated_at: now,
             },
           });
@@ -1600,9 +1619,9 @@ export class UnifiedKegiatanService {
               siswa_id: siswa.id,
               siswa_akademik_id: finalSaId,
               status: 'HADIR',
-              is_terlambat: isLate,
-              menit_keterlambatan: isLate ? menitTerlambat : 0,
-              waktu_tap: now,
+              is_terlambat: effectiveIsLate,
+              menit_keterlambatan: effectiveMenitTelat,
+              waktu_tap: effectiveTapTime,
               kelas_id_snapshot: targetKelasId || undefined,
               kelas_nama_snapshot: targetKelasNama,
               tingkat_snapshot: targetTingkat,
@@ -1617,32 +1636,37 @@ export class UnifiedKegiatanService {
       }
     }
 
-    // Emit non-blocking domain event agar log kegiatan (Pembiasaan, Ketarunaan, Upacara, Apel) masuk ke chat Orang Tua
-    emitDomainEvent({
-      event_type: 'attendance.session.tap',
-      tenant_id: tenantId,
-      source_service: 'unified-kegiatan',
-      payload: {
-        student_id: siswa.id,
-        sesi_id: studentSesi.id,
-        status: isLate ? 'TERLAMBAT' : 'HADIR',
-        jenis_kegiatan: jenis,
-        mapel: jenis,
-        keterangan: `Kegiatan ${jenis}${isLate ? ` (Terlambat ${menitTerlambat} menit)` : ''}`,
-        tap_time: now.toISOString(),
-        source: 'UNIFIED_KEGIATAN',
-      },
-    }).catch(() => {});
+    // Emit non-blocking domain event hanya pada tap pertama (idempoten: tidak spam notifikasi Orang Tua saat tap ulang)
+    if (!alreadyHadirKegiatan) {
+      emitDomainEvent({
+        event_type: 'attendance.session.tap',
+        tenant_id: tenantId,
+        source_service: 'unified-kegiatan',
+        payload: {
+          student_id: siswa.id,
+          sesi_id: studentSesi.id,
+          status: effectiveIsLate ? 'TERLAMBAT' : 'HADIR',
+          jenis_kegiatan: jenis,
+          mapel: jenis,
+          keterangan: `Kegiatan ${jenis}${effectiveIsLate ? ` (Terlambat ${effectiveMenitTelat} menit)` : ''}`,
+          tap_time: effectiveTapTime.toISOString(),
+          source: 'UNIFIED_KEGIATAN',
+        },
+      }).catch(() => {});
+    }
 
     return {
       success: true,
       action: 'HADIR_SISWA',
       entity_type: 'SISWA',
       status: 'HADIR',
-      is_terlambat: isLate,
+      is_terlambat: effectiveIsLate,
+      already_tapped: alreadyHadirKegiatan,
       synced_kbm: syncedKbm,
       jadwal_kbm_opened: jadwalKbmOpened,
-      message: isLate
+      message: alreadyHadirKegiatan
+        ? `Sudah tercatat hadir sebelumnya: ${siswa.nama_siswa} (${targetKelasNama})`
+        : effectiveIsLate
         ? `Presensi taruna terlambat: ${siswa.nama_siswa} (${targetKelasNama})`
         : syncedKbm
         ? `Dual-Tap Berhasil (Kegiatan + KBM): ${siswa.nama_siswa} (${targetKelasNama})`
