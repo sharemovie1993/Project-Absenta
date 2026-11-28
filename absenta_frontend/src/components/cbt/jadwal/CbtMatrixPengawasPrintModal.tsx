@@ -371,7 +371,7 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
   const [titimangsaCity, setTitimangsaCity] = useState('');
   const [titimangsaDate, setTitimangsaDate] = useState('');
   const [panitiaSigner, setPanitiaSigner] = useState<EditableSignerState>({
-    roleTitle: 'Ketua Panitia Pelaksana CBT,',
+    roleTitle: 'Waka. Bidang Kurikulum,',
     personName: '',
     nip: '',
     signatureImage: null,
@@ -398,27 +398,28 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
     setTitimangsaCity(city);
     setTitimangsaDate(date);
 
-    // Resolve Panitia CBT dari Struktur Organisasi (posisi Panitia CBT / Waka Kurikulum)
-    const panitiaAssignment = autoSigners.getByPositionCode([
-      'KETUA_PANITIA_CBT',
-      'PANITIA_CBT',
-      'KETUA_PANITIA',
-      'PANITIA_UJIAN',
-      'WAKA_KURIKULUM',
-    ]);
-    const resolvedPanitiaName =
-      (panitiaAssignment.isAssigned && panitiaAssignment.personName) ||
-      (autoSigners.wakaKurikulum.isAssigned && autoSigners.wakaKurikulum.personName) ||
+    // Resolve Waka Kurikulum / Panitia CBT dari Struktur Organisasi
+    const kurikulumAssignment =
+      (autoSigners.wakaKurikulum.isAssigned && autoSigners.wakaKurikulum) ||
+      autoSigners.getByPositionCode([
+        'WAKA_KURIKULUM',
+        'KURIKULUM',
+        'KETUA_PANITIA_CBT',
+        'PANITIA_CBT',
+        'KETUA_PANITIA',
+        'PANITIA_UJIAN',
+      ]);
+    const resolvedKurikulumName =
+      (kurikulumAssignment.isAssigned && kurikulumAssignment.personName) ||
       '';
-    const resolvedPanitiaNip =
-      (panitiaAssignment.isAssigned && panitiaAssignment.nip) ||
-      (autoSigners.wakaKurikulum.isAssigned && autoSigners.wakaKurikulum.nip) ||
+    const resolvedKurikulumNip =
+      (kurikulumAssignment.isAssigned && kurikulumAssignment.nip) ||
       '';
 
     setPanitiaSigner((prev) => ({
-      roleTitle: prev.roleTitle || 'Ketua Panitia Pelaksana CBT,',
-      personName: resolvedPanitiaName || prev.personName || 'Ketua Panitia CBT',
-      nip: resolvedPanitiaNip || prev.nip || '',
+      roleTitle: prev.roleTitle && prev.roleTitle !== 'Ketua Panitia Pelaksana CBT,' ? prev.roleTitle : 'Waka. Bidang Kurikulum,',
+      personName: resolvedKurikulumName || prev.personName || 'Waka. Bidang Kurikulum',
+      nip: resolvedKurikulumNip || prev.nip || '',
       signatureImage: prev.signatureImage || null,
     }));
 
@@ -539,6 +540,8 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
       onClose={onClose}
       size="full"
       title={`Cetak Matrix Pengawas (Urut Kelas: X TJKT 1, X AKL 1 ...) — ${namaEvent}`}
+      orientation="landscape"
+      allowOrientationToggle
       allowLogoToggles
       showLogoDaerah={showLogoDaerah}
       showLogoSekolah={showLogoSekolah}

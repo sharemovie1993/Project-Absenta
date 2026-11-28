@@ -90,11 +90,11 @@ export const CbtMatrixPengawasSignersDrawer: React.FC<CbtMatrixPengawasSignersDr
         </div>
       </div>
 
-      {/* 1. KETUA PANITIA PELAKSANA CBT */}
+      {/* 1. WAKA KURIKULUM / KETUA PANITIA */}
       <div className="space-y-2 text-xs pt-2 border-t border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
           <UserCheck size={12} />
-          <span>Ketua Panitia Pelaksana CBT</span>
+          <span>Waka. Bidang Kurikulum</span>
         </div>
 
         <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 space-y-2">
@@ -106,7 +106,7 @@ export const CbtMatrixPengawasSignersDrawer: React.FC<CbtMatrixPengawasSignersDr
               type="text"
               value={panitiaSigner.roleTitle}
               onChange={(e) => setPanitiaSigner((p) => ({ ...p, roleTitle: e.target.value }))}
-              placeholder="Ketua Panitia Pelaksana CBT,"
+              placeholder="Waka. Bidang Kurikulum,"
               className="w-full p-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
             />
           </div>
@@ -118,7 +118,7 @@ export const CbtMatrixPengawasSignersDrawer: React.FC<CbtMatrixPengawasSignersDr
               type="text"
               value={panitiaSigner.personName}
               onChange={(e) => setPanitiaSigner((p) => ({ ...p, personName: e.target.value }))}
-              placeholder="Nama Ketua Panitia / Waka Kurikulum"
+              placeholder="Nama Waka Kurikulum"
               className="w-full p-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-semibold"
             />
           </div>
@@ -135,7 +135,7 @@ export const CbtMatrixPengawasSignersDrawer: React.FC<CbtMatrixPengawasSignersDr
             />
           </div>
           <DigitalSignatureField
-            label="TTD Digital Ketua Panitia"
+            label="TTD Digital Waka Kurikulum"
             penName={panitiaSigner.personName}
             value={panitiaSigner.signatureImage}
             onChange={(sig) => setPanitiaSigner((p) => ({ ...p, signatureImage: sig }))}
