@@ -342,6 +342,31 @@ export class AttendanceStagingController {
   }
 
   /**
+   * POST /attendance/staging/existing-matrix
+   * Tarik data presensi fisik yang sudah ada di database untuk recheck di Matriks Step 2
+   */
+  static async getExistingMatrix(req: any, reply: any) {
+    try {
+      const tenantId = req.tenantId || req.user?.tenant_id || req.user?.tenantId;
+      if (!tenantId) {
+        return sendError(reply, 401, 'Unauthorized: Tenant ID tidak ditemukan');
+      }
+      const body = (req.body || {}) as any;
+      const result = await AttendanceStagingService.getExistingAttendanceMatrix(tenantId, body);
+      return sendResponse(
+        reply,
+        200,
+        true,
+        'Berhasil memuat data presensi fisik dari database',
+        result
+      );
+    } catch (err: any) {
+      appLogger.error({ err: err.message }, 'Gagal memuat existing attendance matrix');
+      return sendError(reply, 400, err.message, err);
+    }
+  }
+
+  /**
    * POST /attendance/staging/manual-backfill
    * Buat sesi dan presensi dari input Backfill Manual UI (Multi-Tanggal)
    */

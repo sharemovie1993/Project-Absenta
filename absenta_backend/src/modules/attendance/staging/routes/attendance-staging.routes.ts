@@ -20,6 +20,9 @@ export default async function attendanceStagingRoutes(fastify: any) {
   // POST /attendance/staging/manual-backfill - Buat sesi & presensi via input UI manual multi-tanggal
   fastify.post('/manual-backfill', AttendanceStagingController.createManualBackfill);
 
+  // POST /attendance/staging/existing-matrix - Cek & tarik data presensi fisik yang sudah ada di DB untuk recheck
+  fastify.post('/existing-matrix', AttendanceStagingController.getExistingMatrix);
+
   // GET /attendance/staging - List seluruh lembar staging
   fastify.get('/', AttendanceStagingController.listSheets);
 

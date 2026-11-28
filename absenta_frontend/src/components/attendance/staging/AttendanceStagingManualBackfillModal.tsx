@@ -144,6 +144,12 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
 
   const [exceptionsList, setExceptionsList] = useState<ManualBackfillException[]>([]);
   const [activeBrushStatus, setActiveBrushStatus] = useState<'SAKIT' | 'IZIN' | 'ALPA' | 'TERLAMBAT' | 'DISPENSASI'>('SAKIT');
+  const [existingDbSessionsByKelas, setExistingDbSessionsByKelas] = useState<Record<string, string[]>>({});
+  const [dbRecheckStats, setDbRecheckStats] = useState<{ totalExistingSessions: number; totalExistingRecords: number }>({
+    totalExistingSessions: 0,
+    totalExistingRecords: 0,
+  });
+  const [isLoadingDbMatrix, setIsLoadingDbMatrix] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // ── Step 3: Preview State ──
@@ -450,8 +456,8 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
     }
   };
 
-  // Navigasi ke Step 2
-  const handleProceedToStep2 = () => {
+  // Navigasi ke Step 2 (Sekaligus Recheck Data Presensi Fisik di Database)
+  const handleProceedToStep2 = async () => {
     if (selectedDates.length === 0) {
       toast.error('Mohon tentukan minimal 1 tanggal pelaksanaan presensi.');
       return;
@@ -461,6 +467,59 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
       return;
     }
     setCurrentStep(2);
+
+    // Tarik kondisi data presensi fisik yang sudah ada di database untuk tanggal, sesi & rombel beririsan
+    setIsLoadingDbMatrix(true);
+    try {
+      const res = await attendanceStagingApi.getExistingMatrix({
+        dates: selectedDates,
+        kelas_ids: selectedKelasIds,
+        sessions: generatedSessions.map((s) => ({
+          dateIso: s.dateIso,
+          sessionCode: s.sessionCode,
+          defaultType: s.defaultType,
+        })),
+      });
+
+      if (res.success && res.data) {
+        setExistingDbSessionsByKelas(res.data.existingSessionKeysByKelas || {});
+        setDbRecheckStats({
+          totalExistingSessions: res.data.totalExistingSessions || 0,
+          totalExistingRecords: res.data.totalExistingRecords || 0,
+        });
+
+        // Gabungkan pengecualian non-hadir dari DB dengan yang mungkin sudah diceklis user di sesi UI ini
+        if (res.data.exceptions && res.data.exceptions.length > 0) {
+          setExceptionsList((prev) => {
+            // Pertahankan perubahan manual user (from_db !== true), lalu tambahkan data fisik DB yang belum di-override
+            const manualOnly = prev.filter((p) => !p.from_db);
+            const merged = [...manualOnly];
+
+            for (const dbEx of res.data.exceptions) {
+              const existingIdx = merged.findIndex(
+                (m) => m.siswa_id === dbEx.siswa_id && m.status === dbEx.status
+              );
+              if (existingIdx >= 0) {
+                const combinedDates = Array.from(
+                  new Set([...(merged[existingIdx].dates || []), ...(dbEx.dates || [])])
+                ).sort();
+                merged[existingIdx] = {
+                  ...merged[existingIdx],
+                  dates: combinedDates,
+                };
+              } else {
+                merged.push(dbEx);
+              }
+            }
+            return merged;
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch existing attendance matrix from DB:', err);
+    } finally {
+      setIsLoadingDbMatrix(false);
+    }
   };
 
   // Navigasi ke Step 3 (Review Matriks)
@@ -868,6 +927,25 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                 </div>
               </div>
 
+              {/* ── BANNER STATUS RECHECK DATA FISIK DATABASE ── */}
+              {isLoadingDbMatrix ? (
+                <div className="px-3 py-2 rounded-xl bg-blue-50/80 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/70 text-xs font-semibold text-blue-800 dark:text-blue-200 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 animate-spin text-blue-600 shrink-0" />
+                  <span>Sedang memeriksa &amp; menyinkronkan kondisi data presensi fisik di database untuk tanggal dan sesi yang beririsan...</span>
+                </div>
+              ) : dbRecheckStats.totalExistingSessions > 0 ? (
+                <div className="px-3.5 py-2 rounded-xl bg-sky-50/90 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/70 flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-md bg-sky-600 text-white text-[10px] font-black uppercase">
+                      ✓ Recheck Database Aktif
+                    </span>
+                    <span className="text-sky-950 dark:text-sky-200 font-semibold">
+                      Ditemukan <strong>{dbRecheckStats.totalExistingSessions} Sesi Beririsan</strong> ({dbRecheckStats.totalExistingRecords.toLocaleString('id-ID')} data presensi siswa) yang sudah tersimpan di database. Kondisi kehadiran (H/S/I/A/T/D) otomatis ditampilkan pada kolom bertanda <strong className="text-sky-700 dark:text-sky-300">✓ DB</strong>.
+                    </span>
+                  </div>
+                </div>
+              ) : null}
+
               {/* ── ROMBEL QUICK PILLS & SEARCH BAR ── */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
                 <div className="flex items-center gap-1.5 flex-wrap flex-1">
@@ -1059,22 +1137,41 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                           {/* Row 2: Individual Session Blocks (2 x 5 Siklus Blok: Pagi & Sore) */}
                           <tr className="border-b border-slate-200 dark:border-slate-700">
                             {dateGroups.map((dg) =>
-                              dg.sessions.map((sess, sIdx) => (
-                                <th
-                                  key={`${sess.dateIso}_${sess.sessionCode}_${sIdx}`}
-                                  className="px-1.5 py-1.5 text-center min-w-[64px] border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"
-                                >
-                                  <span
-                                    className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-black ${
-                                      sess.sessionCode === 'PAGI'
-                                        ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300'
-                                        : 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300'
+                              dg.sessions.map((sess, sIdx) => {
+                                const sessKey = `${sess.dateIso}_${sess.sessionCode}`;
+                                const isExistingInDb = (existingDbSessionsByKelas[kId] || []).includes(sessKey);
+
+                                return (
+                                  <th
+                                    key={`${sessKey}_${sIdx}`}
+                                    className={`px-1.5 py-1.5 text-center min-w-[68px] border-r border-slate-200 dark:border-slate-700 ${
+                                      isExistingInDb
+                                        ? 'bg-sky-50/90 dark:bg-sky-950/40'
+                                        : 'bg-slate-50 dark:bg-slate-800/50'
                                     }`}
                                   >
-                                    {sess.sessionLabel}
-                                  </span>
-                                </th>
-                              ))
+                                    <div className="flex flex-col items-center gap-0.5">
+                                      <span
+                                        className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-black ${
+                                          sess.sessionCode === 'PAGI'
+                                            ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300'
+                                            : 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300'
+                                        }`}
+                                      >
+                                        {sess.sessionLabel}
+                                      </span>
+                                      {isExistingInDb && (
+                                        <span
+                                          className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-sky-600 text-white text-[8px] font-extrabold tracking-tight"
+                                          title="Sesi ini sudah memiliki data fisik di database (Ditampilkan untuk Recheck)"
+                                        >
+                                          ✓ DB
+                                        </span>
+                                      )}
+                                    </div>
+                                  </th>
+                                );
+                              })
                             )}
                           </tr>
                         </thead>
@@ -1148,19 +1245,28 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                                           : 'D';
 
                                       const nextStatus = getNextCycleStatus(status);
+                                      const isExistingInDb = (existingDbSessionsByKelas[kId] || []).includes(sessKey);
 
                                       return (
                                         <td
                                           key={`${sessKey}_${sessIdx}`}
-                                          className="p-1 text-center border-r border-slate-100 dark:border-slate-800"
+                                          className={`p-1 text-center border-r border-slate-100 dark:border-slate-800 ${
+                                            isExistingInDb ? 'bg-sky-50/40 dark:bg-sky-950/15' : ''
+                                          }`}
                                         >
                                           <button
                                             type="button"
                                             onClick={() =>
                                               applyStudentSessionKeys(st, [sessKey], nextStatus)
                                             }
-                                            title={`${st.nama_siswa} • ${sess.dayName}, ${sess.dateFormatted} (${sess.sessionLabel})\nStatus saat ini: ${status} -> Klik untuk ubah ke [${nextStatus}]`}
-                                            className={`w-full h-7 rounded-lg border font-black text-[11px] transition-all cursor-pointer select-none flex items-center justify-center active:scale-95 ${badgeStyle}`}
+                                            title={`${st.nama_siswa} • ${sess.dayName}, ${sess.dateFormatted} (${sess.sessionLabel})${
+                                              isExistingInDb ? ' [✓ Sudah Ada di Database]' : ''
+                                            }\nStatus saat ini: ${status} -> Klik untuk ubah ke [${nextStatus}]`}
+                                            className={`w-full h-7 rounded-lg border font-black text-[11px] transition-all cursor-pointer select-none flex items-center justify-center active:scale-95 ${badgeStyle} ${
+                                              isExistingInDb && status === 'HADIR'
+                                                ? 'ring-1 ring-sky-400/70 dark:ring-sky-500/60'
+                                                : ''
+                                            }`}
                                           >
                                             {shortCode}
                                           </button>

@@ -173,6 +173,27 @@ export const attendanceStagingApi = {
     const response = await api.post('/attendance/staging/manual-backfill', payload, { timeout: 180000 });
     return response.data;
   },
+
+  getExistingMatrix: async (payload: {
+    dates: string[];
+    kelas_ids: string[];
+    sessions: Array<{
+      dateIso: string;
+      sessionCode: string;
+      defaultType: 'UPACARA' | 'KETARUNAAN' | 'DUHA' | 'APEL_SORE';
+    }>;
+  }): Promise<{
+    success: boolean;
+    data: {
+      existingSessionKeysByKelas: Record<string, string[]>;
+      exceptions: ManualBackfillException[];
+      totalExistingSessions: number;
+      totalExistingRecords: number;
+    };
+  }> => {
+    const response = await api.post('/attendance/staging/existing-matrix', payload);
+    return response.data;
+  },
 };
 
 export interface ManualBackfillException {
@@ -184,6 +205,7 @@ export interface ManualBackfillException {
   dates?: string[];
   catatan?: string;
   menit_keterlambatan?: number;
+  from_db?: boolean;
 }
 
 export interface ManualBackfillPayload {

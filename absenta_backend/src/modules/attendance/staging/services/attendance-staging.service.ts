@@ -1164,6 +1164,202 @@ export class AttendanceStagingService {
   }
 
   /**
+   * Tarik kondisi data presensi fisik yang SUDAH ADA di database (SesiAbsensi & AbsenSiswa)
+   * untuk rentang tanggal, rombel, dan sesi kegiatan yang beririsan (fitur Recheck Database).
+   */
+  static async getExistingAttendanceMatrix(
+    tenantId: string,
+    payload: {
+      dates: string[];
+      kelas_ids: string[];
+      sessions: Array<{
+        dateIso: string;
+        sessionCode: string;
+        defaultType: 'UPACARA' | 'KETARUNAAN' | 'DUHA' | 'APEL_SORE';
+      }>;
+    }
+  ) {
+    if (!payload.dates?.length || !payload.kelas_ids?.length || !payload.sessions?.length) {
+      return {
+        existingSessionKeysByKelas: {} as Record<string, string[]>,
+        exceptions: [] as Array<{
+          siswa_id: string;
+          nama_siswa: string;
+          nis: string;
+          nama_kelas: string;
+          status: 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPENSASI' | 'TERLAMBAT';
+          dates: string[];
+          catatan?: string;
+          from_db?: boolean;
+        }>,
+        totalExistingSessions: 0,
+        totalExistingRecords: 0,
+      };
+    }
+
+    const sortedDates = [...new Set(payload.dates)].sort();
+    const minDate = new Date(`${sortedDates[0]}T00:00:00.000+07:00`);
+    const maxDate = new Date(`${sortedDates[sortedDates.length - 1]}T23:59:59.999+07:00`);
+
+    // Ambil informasi nama kelas
+    const classes = await prisma.kelas.findMany({
+      where: { tenant_id: tenantId, id: { in: payload.kelas_ids } },
+      select: { id: true, nama_kelas: true },
+    });
+    const kelasNameMap = new Map(classes.map((c) => [c.id, c.nama_kelas]));
+
+    // Ambil JadwalKegiatan terkait untuk pencocokan jadwal_kegiatan_id
+    const jadwalList = await prisma.jadwalKegiatan.findMany({
+      where: { tenant_id: tenantId },
+      select: { id: true, nama: true, jenis_kegiatan: true },
+    });
+
+    // Ambil seluruh SesiAbsensi pada rentang tanggal & kelas tersebut
+    const dbSessions = await prisma.sesiAbsensi.findMany({
+      where: {
+        tenant_id: tenantId,
+        kelas_id: { in: payload.kelas_ids },
+        tanggal: {
+          gte: new Date(minDate.getTime() - 14 * 3600 * 1000),
+          lte: new Date(maxDate.getTime() + 14 * 3600 * 1000),
+        },
+      },
+      include: {
+        AbsenSiswa: {
+          include: {
+            Siswa: {
+              select: { id: true, nama_siswa: true, nis: true },
+            },
+            SiswaAkademik: {
+              select: { siswa_id: true, siswa: { select: { id: true, nama_siswa: true, nis: true } } },
+            },
+          },
+        },
+      },
+    });
+
+    const existingSessionKeysByKelas: Record<string, string[]> = {};
+    // Key: `${siswa_id}__${status}` -> { siswa_id, nama_siswa, nis, nama_kelas, status, dates: Set<string>, catatan }
+    const groupedExceptions = new Map<
+      string,
+      {
+        siswa_id: string;
+        nama_siswa: string;
+        nis: string;
+        nama_kelas: string;
+        status: 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPENSASI' | 'TERLAMBAT';
+        dates: Set<string>;
+        catatan?: string;
+      }
+    >();
+
+    let totalExistingSessions = 0;
+    let totalExistingRecords = 0;
+
+    // Helper klasifikasi tipe kegiatan dari SesiAbsensi
+    const resolveSessionType = (sesi: any): 'UPACARA' | 'KETARUNAAN' | 'DUHA' | 'APEL_SORE' | null => {
+      const jkObj = jadwalList.find((j) => j.id === sesi.jadwal_kegiatan_id);
+      const rawText = `${sesi.jenis_kegiatan || ''} ${jkObj?.jenis_kegiatan || ''} ${jkObj?.nama || ''} ${sesi.keterangan || ''}`.toUpperCase();
+      if (rawText.includes('APEL_SORE') || rawText.includes('APEL SORE') || rawText.includes('APEL PULANG')) {
+        return 'APEL_SORE';
+      }
+      if (rawText.includes('UPACARA')) return 'UPACARA';
+      if (rawText.includes('DUHA') || rawText.includes('DHUHA')) return 'DUHA';
+      if (rawText.includes('KETARUNAAN') || rawText.includes('TARUNA')) return 'KETARUNAAN';
+      return null;
+    };
+
+    for (const dbSesi of dbSessions) {
+      if (!dbSesi.kelas_id) continue;
+      // Hanya hitung sesi yang benar-benar sudah memiliki record presensi siswa
+      if (!dbSesi.AbsenSiswa || dbSesi.AbsenSiswa.length === 0) continue;
+
+      // Konversi tanggal sesi ke YYYY-MM-DD (WIB / UTC+7)
+      const wibDate = new Date(dbSesi.tanggal.getTime() + 7 * 3600 * 1000);
+      const dateIso = wibDate.toISOString().slice(0, 10);
+      const detectedType = resolveSessionType(dbSesi);
+
+      // Cocokkan dengan salah satu sesi pada payload.sessions
+      const matchedReqSess = payload.sessions.find((reqS) => {
+        if (reqS.dateIso !== dateIso) return false;
+        if (detectedType && reqS.defaultType === detectedType) return true;
+        // Fallback jika jenis_kegiatan adalah KEGIATAN_KHUSUS, cocokkan waktu mulai (Pagi vs Sore)
+        if (!detectedType) {
+          const hourUtc = dbSesi.waktu_mulai ? new Date(dbSesi.waktu_mulai).getUTCHours() : 6;
+          const isSore = hourUtc >= 12;
+          return isSore ? reqS.sessionCode === 'SORE' : reqS.sessionCode === 'PAGI';
+        }
+        return false;
+      });
+
+      if (!matchedReqSess) continue;
+
+      const sessKey = `${matchedReqSess.dateIso}_${matchedReqSess.sessionCode}`;
+      if (!existingSessionKeysByKelas[dbSesi.kelas_id]) {
+        existingSessionKeysByKelas[dbSesi.kelas_id] = [];
+      }
+      if (!existingSessionKeysByKelas[dbSesi.kelas_id].includes(sessKey)) {
+        existingSessionKeysByKelas[dbSesi.kelas_id].push(sessKey);
+        totalExistingSessions++;
+      }
+
+      const namaKelas = kelasNameMap.get(dbSesi.kelas_id) || '';
+
+      for (const absen of dbSesi.AbsenSiswa) {
+        totalExistingRecords++;
+        const rawStatus = String(absen.status || 'HADIR').toUpperCase();
+        const isLate = Boolean(absen.is_terlambat);
+        const resolvedSiswaId = absen.siswa_id || absen.SiswaAkademik?.siswa_id || null;
+        const resolvedNama = absen.Siswa?.nama_siswa || absen.SiswaAkademik?.siswa?.nama_siswa || 'Siswa';
+        const resolvedNis = absen.Siswa?.nis || absen.SiswaAkademik?.siswa?.nis || '';
+
+        let mappedStatus: 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPENSASI' | 'TERLAMBAT' = 'HADIR';
+        if (rawStatus === 'SAKIT') mappedStatus = 'SAKIT';
+        else if (rawStatus === 'IZIN') mappedStatus = 'IZIN';
+        else if (rawStatus === 'ALPA' || rawStatus === 'ALPHA') mappedStatus = 'ALPA';
+        else if (rawStatus === 'DISPENSASI' || rawStatus === 'DISPEN') mappedStatus = 'DISPENSASI';
+        else if (isLate || rawStatus === 'TERLAMBAT') mappedStatus = 'TERLAMBAT';
+
+        if (mappedStatus !== 'HADIR' && resolvedSiswaId) {
+          const groupKey = `${resolvedSiswaId}__${mappedStatus}`;
+          const existingGroup = groupedExceptions.get(groupKey);
+          if (existingGroup) {
+            existingGroup.dates.add(sessKey);
+          } else {
+            groupedExceptions.set(groupKey, {
+              siswa_id: resolvedSiswaId,
+              nama_siswa: resolvedNama,
+              nis: resolvedNis,
+              nama_kelas: namaKelas,
+              status: mappedStatus,
+              dates: new Set([sessKey]),
+              catatan: absen.catatan || undefined,
+            });
+          }
+        }
+      }
+    }
+
+    const exceptions = Array.from(groupedExceptions.values()).map((item) => ({
+      siswa_id: item.siswa_id,
+      nama_siswa: item.nama_siswa,
+      nis: item.nis,
+      nama_kelas: item.nama_kelas,
+      status: item.status,
+      dates: Array.from(item.dates).sort(),
+      catatan: item.catatan,
+      from_db: true,
+    }));
+
+    return {
+      existingSessionKeysByKelas,
+      exceptions,
+      totalExistingSessions,
+      totalExistingRecords,
+    };
+  }
+
+  /**
    * Buat lembar staging dari input Backfill Manual UI (Multi-Tanggal & Exception-Based Entry)
    * Siswa yang TIDAK dimasukkan ke daftar pengecualian otomatis dicatat HADIR.
    */
