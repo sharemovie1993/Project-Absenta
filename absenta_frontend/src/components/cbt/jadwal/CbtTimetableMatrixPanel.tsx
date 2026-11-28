@@ -1648,9 +1648,16 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                         }
 
                         const isZeroQuestions = Boolean(selectedOpt && selectedOpt.soalCount === 0);
+                        // Filter per tingkat agar tidak terjumlah lintas kelas (misal K10+K11 = 36 ditampilkan di tiap kolom)
+                        const tingkatRoman = tingkat === 10 ? 'X' : tingkat === 11 ? 'XI' : tingkat === 12 ? 'XII' : String(tingkat);
+                        const filterByTingkat = (sessions: CbtJadwalUjian[]) =>
+                          sessions.filter((j) => {
+                            const b = bankList.find((b2) => b2.id === j.bank_soal_id);
+                            return b?.tingkat === tingkatRoman;
+                          });
                         const publishedCount =
-                          (publishedSessionsByMapelId.get(selectedOpt?.mapelId || selectedBankId)?.length || 0) ||
-                          (publishedSessionsByBankId.get(selectedBankId)?.length || 0);
+                          filterByTingkat(publishedSessionsByMapelId.get(selectedOpt?.mapelId || selectedBankId) || []).length ||
+                          filterByTingkat(publishedSessionsByBankId.get(selectedBankId) || []).length;
 
                         const isAllPlotted =
                           !selectedBankId && availableOptions.length === 0 && allOptionsForTingkat.length > 0;
