@@ -77,7 +77,7 @@ export const BulkAssignModal: React.FC<BulkAssignModalProps> = React.memo(({
       pos: bulkPos,
     });
     if (!parsed.success) {
-      toast.error(parsed.error.errors[0]?.message || 'Data penugasan massal belum lengkap');
+      toast.error(parsed.error.issues?.[0]?.message || 'Data penugasan massal belum lengkap');
       return;
     }
     try {

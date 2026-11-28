@@ -86,7 +86,7 @@ export const SingleAssignModal: React.FC<SingleAssignModalProps> = React.memo(({
       slotSelesai: formSlotSelesai,
     });
     if (!parsed.success) {
-      toast.error(parsed.error.errors[0]?.message || 'Data penugasan belum lengkap');
+      toast.error(parsed.error.issues?.[0]?.message || 'Data penugasan belum lengkap');
       return;
     }
     try {
