@@ -65,6 +65,11 @@ const AttendanceStagingView = lazy(() =>
     default: m.AttendanceStagingView,
   }))
 );
+const AttendanceStagingManualBackfillModal = lazy(() =>
+  import('../../components/attendance/staging/AttendanceStagingManualBackfillModal').then((m) => ({
+    default: m.AttendanceStagingManualBackfillModal,
+  }))
+);
 const HistoricalBackfillModal = lazy(() =>
   import('../../components/attendance/backfill/HistoricalBackfillModal').then((m) => ({
     default: m.HistoricalBackfillModal,
@@ -100,6 +105,7 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
   const [activeTab, setActiveTab] = useState<string>('terminal_absensi');
   const [visitedTabs, setVisitedTabs] = useState<Set<string>>(() => new Set(['terminal_absensi']));
   const [isStagingModalOpen, setIsStagingModalOpen] = useState(false);
+  const [isManualBackfillModalOpen, setIsManualBackfillModalOpen] = useState(false);
   const [isBackfillModalOpen, setIsBackfillModalOpen] = useState(false);
   const { isKesiswaan, isAdmin, can } = useCapabilities();
 
@@ -438,21 +444,33 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
               <div className="space-y-1">
                 <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                   <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  <span>Rekap Backfill Absensi ke Belakang (Template Excel Per Rombel)</span>
+                  <span>Rekap Backfill Absensi ke Belakang (Versi GUI Ceklis Non-Hadir &amp; Template Excel)</span>
                 </h3>
                 <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400">
-                  Unduh template Excel per rombel/peleton dan impor rekap kehadiran Ketarunaan ke belakang. Eksekusi dilindungi oleh Guard Event Resmi Admin.
+                  Gunakan <strong>Backfill Cepat GUI</strong> untuk memilih rentang tanggal dan cukup menceklis siswa yang tidak hadir (S/I/A/T/D) — siswa lainnya otomatis tercatat HADIR. Semua eksekusi dilindungi oleh Guard Event Resmi Admin.
                 </p>
               </div>
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => setIsBackfillModalOpen(true)}
-                className="shrink-0 h-9 px-4 text-xs font-extrabold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-xs gap-1.5 cursor-pointer"
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                <span>Buka Wizard Rekap Backfill Excel</span>
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap shrink-0">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => setIsManualBackfillModalOpen(true)}
+                  className="h-9 px-4 text-xs font-extrabold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-xs gap-1.5 cursor-pointer"
+                >
+                  <Clock className="w-4 h-4" />
+                  <span>Buka Backfill Cepat GUI (Ceklis Non-Hadir)</span>
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsBackfillModalOpen(true)}
+                  className="h-9 px-3.5 text-xs font-bold border-slate-300 dark:border-slate-700 rounded-xl gap-1.5 cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  <span>Backfill via Excel</span>
+                </Button>
+              </div>
             </div>
 
             <Suspense
@@ -514,11 +532,11 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => setIsBackfillModalOpen(true)}
+                onClick={() => setIsManualBackfillModalOpen(true)}
                 className="h-8 px-2.5 text-xs font-bold gap-1.5 border-amber-300 text-amber-800 dark:text-amber-300"
               >
                 <Clock size={13} className="text-amber-600" />
-                <span>Rekap Backfill</span>
+                <span>Backfill GUI (Non-Hadir)</span>
               </Button>
               <Button
                 type="button"
@@ -535,6 +553,20 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
 
           <AcademicFilterToolbar {...academicFilter.toolbarProps} variant="compact" />
           {tabPanelsNode}
+
+          {isManualBackfillModalOpen && (
+            <Suspense fallback={null}>
+              <AttendanceStagingManualBackfillModal
+                isOpen={isManualBackfillModalOpen}
+                onClose={() => setIsManualBackfillModalOpen(false)}
+                defaultAgendaMode="AUTO_SIKLUS"
+                onSuccess={() => {
+                  handleRefresh();
+                  queryClient.invalidateQueries({ queryKey: ['ketarunaan-stats'] });
+                }}
+              />
+            </Suspense>
+          )}
 
           {isBackfillModalOpen && (
             <Suspense fallback={null}>
@@ -725,6 +757,20 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
             {tabPanelsNode}
           </main>
         </div>
+
+        {isManualBackfillModalOpen && (
+          <Suspense fallback={null}>
+            <AttendanceStagingManualBackfillModal
+              isOpen={isManualBackfillModalOpen}
+              onClose={() => setIsManualBackfillModalOpen(false)}
+              defaultAgendaMode="AUTO_SIKLUS"
+              onSuccess={() => {
+                handleRefresh();
+                queryClient.invalidateQueries({ queryKey: ['ketarunaan-stats'] });
+              }}
+            />
+          </Suspense>
+        )}
 
         {isBackfillModalOpen && (
           <Suspense fallback={null}>

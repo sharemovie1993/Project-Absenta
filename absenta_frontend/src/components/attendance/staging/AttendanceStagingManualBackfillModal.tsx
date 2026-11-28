@@ -17,7 +17,12 @@ import {
   Table,
   Check,
   Search,
+  Lock,
+  Unlock,
+  ShieldAlert,
 } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCapabilities } from '@/hooks/useCapabilities';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -31,8 +36,9 @@ import {
 export interface AttendanceStagingManualBackfillModalProps {
   isOpen: boolean;
   onClose: () => void;
-  classOptions: Array<{ id: string; nama_kelas: string; tingkat: number; jurusan_nama?: string }>;
+  classOptions?: Array<{ id: string; nama_kelas: string; tingkat: number; jurusan_nama?: string }>;
   onSuccess: () => void;
+  defaultAgendaMode?: AgendaMode;
 }
 
 type AgendaMode = 'AUTO_SIKLUS' | 'KETARUNAAN' | 'UPACARA' | 'DUHA' | 'APEL_SORE' | 'ALL_SIKLUS';
@@ -50,9 +56,64 @@ function formatTanggalIndo(dStr: string) {
 export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingManualBackfillModalProps> = React.memo(({
   isOpen,
   onClose,
-  classOptions,
+  classOptions: externalClassOptions,
   onSuccess,
+  defaultAgendaMode = 'AUTO_SIKLUS',
 }) => {
+  const queryClient = useQueryClient();
+  const { isAdmin } = useCapabilities();
+  const [internalClassOptions, setInternalClassOptions] = useState<Array<{ id: string; nama_kelas: string; tingkat: number; jurusan_nama?: string }>>([]);
+  const [isTogglingGuard, setIsTogglingGuard] = useState(false);
+  const [studentChecklistSearch, setStudentChecklistSearch] = useState('');
+
+  const classOptions = useMemo(
+    () => (externalClassOptions && externalClassOptions.length > 0 ? externalClassOptions : internalClassOptions),
+    [externalClassOptions, internalClassOptions]
+  );
+
+  // Auto-load classOptions if not passed from parent
+  useEffect(() => {
+    if (isOpen && (!externalClassOptions || externalClassOptions.length === 0) && internalClassOptions.length === 0) {
+      attendanceStagingApi.getClassOptions().then((res) => {
+        if (res.success) {
+          setInternalClassOptions(res.data || []);
+        }
+      }).catch(() => {});
+    }
+  }, [isOpen, externalClassOptions, internalClassOptions.length]);
+
+  // Query Guard Status
+  const { data: guardRes, isLoading: isGuardLoading, refetch: refetchStagingGuard } = useQuery({
+    queryKey: ['attendance-staging-guard'],
+    queryFn: () => attendanceStagingApi.getGuardStatus(),
+    enabled: isOpen,
+    staleTime: 30_000,
+  });
+
+  const guardStatus = guardRes?.data;
+  const isGuardEnabled = Boolean(guardStatus?.enabled);
+
+  const handleToggleGuard = async (nextEnabled: boolean) => {
+    setIsTogglingGuard(true);
+    try {
+      const res = await attendanceStagingApi.updateGuardStatus({
+        enabled: nextEnabled,
+      });
+      if (res.success) {
+        toast.success(res.message);
+        await refetchStagingGuard();
+        queryClient.invalidateQueries({ queryKey: ['attendance-staging-guard'] });
+        queryClient.invalidateQueries({ queryKey: ['tenant-info'] });
+      } else {
+        toast.error(res.message || 'Gagal memperbarui status Guard.');
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Gagal memperbarui status Guard.');
+    } finally {
+      setIsTogglingGuard(false);
+    }
+  };
+
   // ── WIZARD STEP: 1 = Konfigurasi, 2 = Input Siswa Non-Hadir, 3 = Review Matriks ──
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
@@ -64,7 +125,7 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
 
   // ── Step 1: Agenda & Target Kelas ──
-  const [agendaMode, setAgendaMode] = useState<AgendaMode>('AUTO_SIKLUS');
+  const [agendaMode, setAgendaMode] = useState<AgendaMode>(defaultAgendaMode);
   const [selectedKelasIds, setSelectedKelasIds] = useState<string[]>([]);
   const [customTitle, setCustomTitle] = useState<string>('');
   const [directSync, setDirectSync] = useState<boolean>(true);
@@ -433,7 +494,82 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
         </div>
       }
     >
-      <div className="p-6 space-y-6 max-h-[78vh] overflow-y-auto">
+      <div className="p-6 space-y-5 max-h-[78vh] overflow-y-auto">
+        {/* ── OFFICIAL EVENT GUARD BANNER (ANTI-MANIPULATION GUARD) ── */}
+        {isGuardEnabled ? (
+          <div className="p-3.5 rounded-2xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                <Unlock className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs sm:text-sm font-extrabold text-emerald-950 dark:text-emerald-200">
+                    Guard Terbuka • Mode Event Resmi Rekonsiliasi Aktif
+                  </span>
+                  <Badge className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5">
+                    DISETUJUI ADMIN
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-emerald-800/90 dark:text-emerald-300/90">
+                  Anda diizinkan memilih rentang tanggal, menceklis siswa non-hadir, dan mengeksekusi Backfill Presensi ke belakang.
+                </p>
+              </div>
+            </div>
+            {isAdmin && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={isTogglingGuard}
+                onClick={() => handleToggleGuard(false)}
+                className="shrink-0 h-8 px-3 text-xs font-bold border-rose-300 bg-white hover:bg-rose-50 text-rose-700 rounded-xl gap-1.5"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>{isTogglingGuard ? 'Mengunci...' : 'Kunci Guard'}</span>
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="p-4 rounded-2xl bg-amber-50/95 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs sm:text-sm font-black text-amber-950 dark:text-amber-100">
+                    Guard Keamanan Aktif • Eksekusi Backfill Presensi Dikunci
+                  </span>
+                  <Badge className="bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5">
+                    DI LUAR EVENT RESMI
+                  </Badge>
+                </div>
+                <p className="text-xs text-amber-900/90 dark:text-amber-200/90 leading-relaxed">
+                  Untuk menghindari manipulasi data presensi ke belakang, penyimpanan Backfill dikunci di luar Event Resmi. Anda tetap dapat menyusun tanggal, menceklis siswa non-hadir, dan meninjau matriks pratinjau, namun tombol <strong>Eksekusi &amp; Simpan</strong> hanya dapat ditekan bila Guard dibuka oleh Admin.
+                </p>
+              </div>
+            </div>
+            {isAdmin ? (
+              <Button
+                type="button"
+                size="sm"
+                disabled={isTogglingGuard || isGuardLoading}
+                onClick={() => handleToggleGuard(true)}
+                className="shrink-0 h-9 px-4 text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs gap-1.5"
+              >
+                <Unlock className="w-4 h-4" />
+                <span>{isTogglingGuard ? 'Membuka...' : 'Aktifkan Event Resmi (Buka Guard)'}</span>
+              </Button>
+            ) : (
+              <div className="shrink-0 px-3 py-2 rounded-xl bg-amber-100 dark:bg-amber-900/60 border border-amber-300 text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5" />
+                <span>Dikunci Admin</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── STEPPER PROGRESS BAR ── */}
         <div className="grid grid-cols-3 gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800 select-none">
           {([
@@ -815,6 +951,131 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                     />
                   </div>
                 </div>
+
+                {/* ── DAFTAR CEKLIS CEPAT SISWA ROMBEL (1-CLICK TOGGLE NON-HADIR) ── */}
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                        <Check className="w-4 h-4 text-amber-600" />
+                        Ceklis Cepat Siswa Non-Hadir di Rombel Ini ({currentAvailableStudents.length} Siswa)
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        Klik tombol status (<strong>S / I / A / T / D</strong>) pada baris siswa yang tidak hadir. Siswa yang tidak diceklis otomatis <strong>HADIR</strong>.
+                      </span>
+                    </div>
+                    <div className="relative w-full sm:w-56">
+                      <input
+                        type="text"
+                        value={studentChecklistSearch}
+                        onChange={(e) => setStudentChecklistSearch(e.target.value)}
+                        placeholder="Cari nama / NIS siswa..."
+                        className="w-full pl-7 pr-2.5 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                      />
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+                    </div>
+                  </div>
+
+                  <div className="max-h-56 overflow-y-auto border border-slate-200/80 dark:border-slate-800 rounded-xl divide-y divide-slate-100 dark:divide-slate-800 bg-slate-50/40 dark:bg-slate-900/40">
+                    {loadingStudents ? (
+                      <div className="p-6 text-center text-xs text-slate-400">Memuat daftar siswa rombel...</div>
+                    ) : currentAvailableStudents.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-slate-400">Tidak ada data siswa pada rombel ini.</div>
+                    ) : (
+                      currentAvailableStudents
+                        .filter((st) => {
+                          if (!studentChecklistSearch.trim()) return true;
+                          const q = studentChecklistSearch.toLowerCase();
+                          return st.nama_siswa.toLowerCase().includes(q) || (st.nis && st.nis.toLowerCase().includes(q));
+                        })
+                        .map((st, sIdx) => {
+                          const existingExIndex = exceptionsList.findIndex((e) => e.siswa_id === st.siswa_id);
+                          const existingEx = existingExIndex >= 0 ? exceptionsList[existingExIndex] : null;
+                          const kId = activeFilterKelasId || selectedKelasIds[0];
+                          const kObj = classOptions.find((c) => c.id === kId);
+
+                          const toggleStudentException = (status: 'SAKIT' | 'IZIN' | 'ALPA' | 'TERLAMBAT' | 'DISPENSASI') => {
+                            if (existingEx && existingEx.status === status) {
+                              // Uncheck -> kembali jadi HADIR
+                              setExceptionsList((prev) => prev.filter((e) => e.siswa_id !== st.siswa_id));
+                            } else if (existingEx) {
+                              // Ganti status
+                              setExceptionsList((prev) =>
+                                prev.map((e) => (e.siswa_id === st.siswa_id ? { ...e, status } : e))
+                              );
+                            } else {
+                              // Ceklis baru sebagai non-hadir
+                              setExceptionsList((prev) => [
+                                {
+                                  siswa_id: st.siswa_id,
+                                  nama_siswa: st.nama_siswa,
+                                  nis: st.nis,
+                                  nama_kelas: kObj?.nama_kelas || '',
+                                  status,
+                                },
+                                ...prev,
+                              ]);
+                            }
+                          };
+
+                          return (
+                            <div
+                              key={st.siswa_id}
+                              className={`flex items-center justify-between gap-2 px-3 py-2 text-xs transition-colors ${
+                                existingEx
+                                  ? 'bg-amber-50/90 dark:bg-amber-950/30'
+                                  : 'hover:bg-white dark:hover:bg-slate-800/60'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <span className="text-[11px] font-bold text-slate-400 w-5">{sIdx + 1}.</span>
+                                <div className="min-w-0">
+                                  <span className="font-bold text-slate-800 dark:text-slate-100 truncate block">
+                                    {st.nama_siswa}
+                                  </span>
+                                  {st.nis && <span className="text-[10px] text-slate-400 font-mono">NIS: {st.nis}</span>}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-1 shrink-0">
+                                {!existingEx && (
+                                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 text-[10px] font-extrabold mr-1">
+                                    HADIR
+                                  </span>
+                                )}
+                                {(
+                                  [
+                                    { code: 'SAKIT', short: 'S', label: 'Sakit', activeCls: 'bg-amber-600 text-white border-amber-600' },
+                                    { code: 'IZIN', short: 'I', label: 'Izin', activeCls: 'bg-blue-600 text-white border-blue-600' },
+                                    { code: 'ALPA', short: 'A', label: 'Alpa', activeCls: 'bg-rose-600 text-white border-rose-600' },
+                                    { code: 'TERLAMBAT', short: 'T', label: 'Telat', activeCls: 'bg-orange-600 text-white border-orange-600' },
+                                    { code: 'DISPENSASI', short: 'D', label: 'Dispen', activeCls: 'bg-purple-600 text-white border-purple-600' },
+                                  ] as const
+                                ).map((btn) => {
+                                  const isSelected = existingEx?.status === btn.code;
+                                  return (
+                                    <button
+                                      key={btn.code}
+                                      type="button"
+                                      onClick={() => toggleStudentException(btn.code)}
+                                      title={`Tandai ${btn.label}`}
+                                      className={`px-2 py-1 rounded-lg text-[10px] font-black border transition-all cursor-pointer ${
+                                        isSelected
+                                          ? `${btn.activeCls} shadow-2xs`
+                                          : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-amber-400'
+                                      }`}
+                                    >
+                                      {btn.short}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Tabel Daftar Pengecualian */}
@@ -1164,8 +1425,9 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
               type="button"
               variant="primary"
               onClick={handleSubmitGenerate}
-              disabled={isSubmitting || selectedDates.length === 0 || selectedKelasIds.length === 0}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs px-6 shadow-md"
+              disabled={isSubmitting || selectedDates.length === 0 || selectedKelasIds.length === 0 || !isGuardEnabled}
+              title={!isGuardEnabled ? 'Guard Keamanan sedang dikunci oleh Admin (Di Luar Event Resmi)' : undefined}
+              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-black text-xs px-6 shadow-md"
             >
               {isSubmitting ? (
                 <span className="flex items-center gap-1.5">

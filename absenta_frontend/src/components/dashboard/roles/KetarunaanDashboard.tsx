@@ -70,6 +70,11 @@ const AttendanceStagingView = lazy(() =>
     default: m.AttendanceStagingView,
   }))
 );
+const AttendanceStagingManualBackfillModal = lazy(() =>
+  import('@/components/attendance/staging/AttendanceStagingManualBackfillModal').then((m) => ({
+    default: m.AttendanceStagingManualBackfillModal,
+  }))
+);
 const HistoricalBackfillModal = lazy(() =>
   import('@/components/attendance/backfill/HistoricalBackfillModal').then((m) => ({
     default: m.HistoricalBackfillModal,
@@ -156,6 +161,7 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
   const queryClient = useQueryClient();
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [isStagingModalOpen, setIsStagingModalOpen] = useState(false);
+  const [isManualBackfillModalOpen, setIsManualBackfillModalOpen] = useState(false);
   const [isBackfillModalOpen, setIsBackfillModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { isMobileSidebarOpen, setIsMobileSidebarOpen } = useMobileSubtabSidebar('ketarunaan');
@@ -438,12 +444,12 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => setIsBackfillModalOpen(true)}
+                onClick={() => setIsManualBackfillModalOpen(true)}
                 className="h-7 sm:h-8 px-2 sm:px-2.5 text-[11px] font-bold bg-amber-500/25 hover:bg-amber-500/40 text-white border-amber-300/40 gap-1.5 cursor-pointer shadow-2xs"
-                title="Buka Rekap Backfill Absensi ke Belakang (Dilindungi Guard Event Resmi)"
+                title="Buka Wizard Backfill Presensi GUI (Ceklis Siswa Non-Hadir)"
               >
                 <Clock className="w-3.5 h-3.5 text-amber-200" />
-                <span className="hidden sm:inline">Rekap Backfill</span>
+                <span className="hidden sm:inline">Backfill GUI (Non-Hadir)</span>
               </Button>
               <Button
                 type="button"
@@ -772,21 +778,33 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
                       <div className="space-y-1">
                         <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                           <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                          <span>Rekap Backfill Absensi ke Belakang (Template Excel Per Rombel)</span>
+                          <span>Rekap Backfill Absensi ke Belakang (Versi GUI Ceklis Non-Hadir &amp; Template Excel)</span>
                         </h3>
                         <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400">
-                          Gunakan fitur ini untuk mengunduh template Excel resmi per rombel/peleton dan mengimpor rekap kehadiran Ketarunaan ke belakang. Eksekusi dilindungi oleh Guard Event Resmi Admin.
+                          Gunakan <strong>Backfill Cepat GUI</strong> untuk memilih rentang tanggal dan cukup menceklis siswa yang tidak hadir (S/I/A/T/D) — siswa lainnya otomatis tercatat HADIR. Semua eksekusi dilindungi oleh Guard Event Resmi Admin.
                         </p>
                       </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => setIsBackfillModalOpen(true)}
-                        className="shrink-0 h-9 px-4 text-xs font-extrabold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-xs gap-1.5 cursor-pointer"
-                      >
-                        <FileSpreadsheet className="w-4 h-4" />
-                        <span>Buka Wizard Rekap Backfill Excel</span>
-                      </Button>
+                      <div className="flex items-center gap-2 flex-wrap shrink-0">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => setIsManualBackfillModalOpen(true)}
+                          className="h-9 px-4 text-xs font-extrabold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-xs gap-1.5 cursor-pointer"
+                        >
+                          <Clock className="w-4 h-4" />
+                          <span>Buka Backfill Cepat GUI (Ceklis Non-Hadir)</span>
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setIsBackfillModalOpen(true)}
+                          className="h-9 px-3.5 text-xs font-bold border-slate-300 dark:border-slate-700 rounded-xl gap-1.5 cursor-pointer"
+                        >
+                          <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                          <span>Backfill via Excel</span>
+                        </Button>
+                      </div>
                     </div>
 
                     <Suspense
@@ -817,6 +835,23 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
             </SectionCard>
           </main>
         </div>
+
+        {/* Manual Multi-Date GUI Backfill Modal (Ceklis Siswa Non-Hadir - Dilindungi Guard Event Resmi) */}
+        {isManualBackfillModalOpen && (
+          <Suspense fallback={null}>
+            <AttendanceStagingManualBackfillModal
+              isOpen={isManualBackfillModalOpen}
+              onClose={() => setIsManualBackfillModalOpen(false)}
+              defaultAgendaMode="AUTO_SIKLUS"
+              onSuccess={() => {
+                handleRefresh();
+                queryClient.invalidateQueries({ queryKey: ['ketarunaan-stats'] });
+                queryClient.invalidateQueries({ queryKey: ['ketarunaan-sesi-hari-ini'] });
+                queryClient.invalidateQueries({ queryKey: ['ketarunaan-penilaian'] });
+              }}
+            />
+          </Suspense>
+        )}
 
         {/* Historical Backfill Excel Modal (Dilindungi Guard Event Resmi) */}
         {isBackfillModalOpen && (

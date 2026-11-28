@@ -526,15 +526,8 @@ export const AttendanceStagingView: React.FC<UniversalAttendanceStagingViewProps
                 <Button
                   type="button"
                   variant="primary"
-                  disabled={!isGuardEnabled}
-                  onClick={() => {
-                    if (!isGuardEnabled) {
-                      toast.error('Guard Keamanan sedang terkunci. Hubungi Admin untuk mengaktifkan Event Resmi.');
-                      return;
-                    }
-                    setManualBackfillOpen(true);
-                  }}
-                  className="h-8 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold text-xs px-3 rounded-xl shadow-2xs flex items-center gap-1.5"
+                  onClick={() => setManualBackfillOpen(true)}
+                  className="h-8 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-3 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-amber-200" />
                   Input Backfill Cepat (Manual UI)
