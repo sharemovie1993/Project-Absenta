@@ -459,33 +459,68 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
   return (
     <div
       className={cn(
-        "bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl shadow-xs overflow-hidden flex flex-col space-y-4 p-4 sm:p-5",
+        "bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden flex flex-col space-y-3 p-3 sm:p-4",
         className
       )}
       onClick={() => {
         if (inputSubTab === 'SCANNER') focusScannerInput();
       }}
     >
-      {/* ── TOP CONTROL BAR (SELARAS DENGAN POS GERBANG SATPAM) ────────── */}
-      <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 rounded-2xl p-3 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-        {/* Info & Counter Badges */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20 shrink-0">
-            <Scan className="w-5 h-5 animate-pulse" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white tracking-tight">
-                {panelTitle}
-              </h3>
-            </div>
-          </div>
+      {/* ── TOP CONTROL BAR (RINGKAS & FOKUS INPUT) ────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
+        {/* Sub-Tab Selector: Scan RFID vs Scan QR vs Lupa Kartu */}
+        <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl">
+          <button
+            type="button"
+            onClick={() => setInputSubTab('SCANNER')}
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+              inputSubTab === 'SCANNER'
+                ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+            )}
+          >
+            <Scan size={13} />
+            <span>Scan RFID</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setInputSubTab('QR_KAMERA')}
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+              inputSubTab === 'QR_KAMERA'
+                ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+            )}
+          >
+            <Camera size={13} />
+            <span>QR Kamera</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setInputSubTab('PICKER')}
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+              inputSubTab === 'PICKER'
+                ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+            )}
+          >
+            <Search size={13} />
+            <span>Lupa Kartu</span>
+          </button>
         </div>
 
-        {/* Right Tools: Mini Stats + Sub-Tab Switcher + Suara Audio */}
-        <div className="flex items-center gap-2 flex-wrap self-end md:self-auto">
-          {/* Mini Counter Sesi Ini */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold shadow-2xs">
+        {/* Right Tools: Siaga indicator + Mini Stats + Suara Audio */}
+        <div className="flex items-center gap-2">
+          <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400 mr-1">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Siaga
+          </span>
+
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold">
             <span className="text-slate-400">Hadir:</span>
             <span className="text-emerald-600 dark:text-emerald-400 font-mono font-black">
               {miniStats.hadir}
@@ -501,59 +536,13 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
             )}
           </div>
 
-          {/* Sub-Tab Selector: Scan RFID vs Scan QR vs Lupa Kartu */}
-          <div className="flex items-center bg-slate-200/80 dark:bg-slate-900 p-0.5 rounded-xl">
-            <button
-              type="button"
-              onClick={() => setInputSubTab('SCANNER')}
-              className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
-                inputSubTab === 'SCANNER'
-                  ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-              )}
-            >
-              <Scan size={13} />
-              <span className="hidden sm:inline">Scan</span> RFID
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setInputSubTab('QR_KAMERA')}
-              className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
-                inputSubTab === 'QR_KAMERA'
-                  ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-              )}
-            >
-              <Camera size={13} />
-              <span>QR Kamera</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setInputSubTab('PICKER')}
-              className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
-                inputSubTab === 'PICKER'
-                  ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-              )}
-            >
-              <Search size={13} />
-              <span>Lupa Kartu</span>
-            </button>
-          </div>
-
-          {/* Audio Synthesizer Beep Switcher */}
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               setIsMuted((prev) => !prev);
             }}
-            className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer"
+            className="p-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer"
             title={isMuted ? 'Nyalakan Suara Beep' : 'Bisukan Suara Beep'}
             aria-label="Toggle Suara Beep"
           >
@@ -567,97 +556,52 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
       </div>
 
       {/* ── MAIN WORKSPACE GRID: 7 COLS (TERMINAL) & 5 COLS (FEED) ──────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 items-start">
         {/* ── LEFT COLUMN: INPUT MODES & LAST RESULT CARD (7 COLS) ───────── */}
-        <div className="lg:col-span-7 space-y-4">
-          <div className="bg-slate-50/60 dark:bg-slate-950/40 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-4">
-            {/* Header Pos Status */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200/70 dark:border-slate-800 gap-2">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/80 dark:border-emerald-800/60">
-                  <Radio size={16} className="animate-pulse" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                    {inputSubTab === 'SCANNER'
-                      ? 'RFID & Barcode Gun'
-                      : inputSubTab === 'QR_KAMERA'
-                      ? 'Kamera QR Code'
-                      : 'Cari Nama (Lupa Kartu)'}
-                  </h4>
-                </div>
-              </div>
-
-              <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Siaga</span>
-              </div>
-            </div>
-
-            {/* ── SUB-PANEL 1: SCANNER VIEWPORT FRAME (ANIMATED RETICLE) ── */}
+        <div className="lg:col-span-7 space-y-3">
+          <div className="bg-slate-50/70 dark:bg-slate-950/40 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 sm:p-4 space-y-3">
+            {/* ── SUB-PANEL 1: SCANNER INPUT (FOKUS UTAMA) ── */}
             {inputSubTab === 'SCANNER' && (
-              <div className="space-y-4 animate-in fade-in duration-150">
-                <div className="relative w-full h-44 sm:h-52 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-200/80 dark:border-indigo-800/60 flex flex-col items-center justify-center text-center p-6 space-y-3 overflow-hidden group select-none shadow-xs">
-                  {/* Animated Laser Reticle (Gaya Gerbang Satpam) */}
-                  <div className="absolute inset-x-0 h-0.5 bg-indigo-500/80 dark:bg-indigo-400 shadow-[0_0_15px_#6366f1] animate-pulse top-1/2 -translate-y-1/2 pointer-events-none" />
-
-                  <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/80 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-xs group-hover:scale-105 transition-transform">
-                    <QrCode size={30} />
+              <form
+                onSubmit={handleScannerSubmit}
+                className="space-y-2.5 animate-in fade-in duration-150"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Scan
+                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-indigo-500"
+                      size={18}
+                    />
+                    <input
+                      ref={inputRef}
+                      id="unified-scanner-input"
+                      type="text"
+                      value={scannerInput}
+                      onChange={(e) => setScannerInput(e.target.value)}
+                      placeholder="Tempel kartu RFID ke reader atau ketik NIP/NIS..."
+                      aria-label="Scan kartu atau ketik NIP/NIS"
+                      disabled={isProcessing}
+                      className="w-full pl-11 pr-3.5 h-12 bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800/80 text-slate-900 dark:text-white font-mono text-sm rounded-xl focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-xs"
+                    />
                   </div>
-                  <div className="space-y-1 relative z-10 max-w-sm">
-                    <h4 className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200 tracking-wide uppercase">
-                      Tempelkan Kartu RFID ke Reader USB
-                    </h4>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Alat scanner membaca kode kartu secara langsung tanpa perlu klik mouse
-                    </p>
-                  </div>
+                  <Button
+                    type="submit"
+                    disabled={isProcessing || !scannerInput.trim()}
+                    className="h-12 px-5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm gap-1.5 shrink-0"
+                  >
+                    {isProcessing ? (
+                      <RefreshCw size={14} className="animate-spin" />
+                    ) : (
+                      <Zap size={14} />
+                    )}
+                    <span>Tap Presensi</span>
+                  </Button>
                 </div>
-
-                {/* Input Bar for Hardware Reader & Manual Enter */}
-                <form
-                  onSubmit={handleScannerSubmit}
-                  className="space-y-2 pt-2 border-t border-slate-200/80 dark:border-slate-800"
-                >
-                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                    <span className="uppercase tracking-wider">Input Barcode / UID Fisik:</span>
-                    <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-mono">
-                      Auto-Focus Ready
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <Scan
-                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-                        size={16}
-                      />
-                      <input
-                        ref={inputRef}
-                        id="unified-scanner-input"
-                        type="text"
-                        value={scannerInput}
-                        onChange={(e) => setScannerInput(e.target.value)}
-                        placeholder="Scan kartu RFID atau ketik NIP/NIS..."
-                        aria-label="Scan kartu atau ketik NIP/NIS"
-                        disabled={isProcessing}
-                        className="w-full pl-10 pr-3.5 h-11 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-mono text-xs rounded-2xl focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-inner"
-                      />
-                    </div>
-                    <Button
-                      type="submit"
-                      disabled={isProcessing || !scannerInput.trim()}
-                      className="h-11 px-5 rounded-2xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 gap-1.5 shrink-0"
-                    >
-                      {isProcessing ? (
-                        <RefreshCw size={14} className="animate-spin" />
-                      ) : (
-                        <Zap size={14} />
-                      )}
-                      <span>Tap Presensi</span>
-                    </Button>
-                  </div>
-                </form>
-              </div>
+                <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
+                  <Radio size={12} className="text-emerald-500 shrink-0" />
+                  <span>Auto-focus aktif — reader RFID/Barcode USB otomatis terbaca tanpa klik mouse.</span>
+                </p>
+              </form>
             )}
 
             {/* ── SUB-PANEL 2: SCAN QR KAMERA (WEBRTC & NATIVE HP) ──────── */}
@@ -894,11 +838,11 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
         </div>
 
         {/* ── RIGHT COLUMN: LIVE RECENT TAP FEED (5 COLS - GAYA GERBANG) ── */}
-        <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col justify-between min-h-[420px] space-y-4">
+        <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xs flex flex-col min-h-[220px]">
           <div className="space-y-3">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <History size={16} className="text-indigo-600 dark:text-indigo-400" />
+                <History size={15} className="text-indigo-600 dark:text-indigo-400" />
                 <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                   Feed Presensi Sesi Ini
                 </h3>
@@ -921,15 +865,12 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
             </div>
 
             {feedTaps.length === 0 ? (
-              <div className="py-14 text-center text-slate-400 space-y-2">
-                <ShieldCheck size={28} className="mx-auto text-slate-300 dark:text-slate-700" />
-                <p className="text-xs font-medium">Belum ada tap presensi pada sesi terminal ini</p>
-                <p className="text-[10px] text-slate-400">
-                  Tempelkan kartu RFID atau cari nama untuk mulai merekam.
-                </p>
+              <div className="py-10 text-center text-slate-400 space-y-1.5">
+                <ShieldCheck size={24} className="mx-auto text-slate-300 dark:text-slate-700" />
+                <p className="text-xs font-medium">Belum ada tap presensi</p>
               </div>
             ) : (
-              <div className="space-y-2 max-h-[360px] overflow-y-auto no-scrollbar pr-1">
+              <div className="space-y-2 max-h-[320px] overflow-y-auto no-scrollbar pr-1">
                 {feedTaps.map((item) => (
                   <div
                     key={item.id}
@@ -974,11 +915,6 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
                 ))}
               </div>
             )}
-          </div>
-
-          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span>Mendukung Reader USB HID, Barcode Gun, Kamera QR &amp; Pencarian Nama</span>
           </div>
         </div>
       </div>
