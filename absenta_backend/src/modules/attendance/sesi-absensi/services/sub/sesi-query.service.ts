@@ -874,6 +874,8 @@ export class SesiQueryService {
     const activeKegiatanPoliciesForKbm: Array<{
       startMin: number;
       endMin: number;
+      targetSemuaKelas: boolean;
+      targetKelasIds: string[];
       wajibTapTerminalGuru: boolean;
       wajibGuruBeririsan: boolean;
     }> = [];
@@ -1045,9 +1047,17 @@ export class SesiQueryService {
               const kegEndMin = toMin(kegSelesai);
               if (kegStartMin === null || kegEndMin === null) continue;
 
+              const kegTargetSemua = Boolean(keg.target_semua_kelas);
+              const kegTargetKelasIds: string[] = !kegTargetSemua && Array.isArray(keg.target_kelas_ids)
+                ? keg.target_kelas_ids
+                : [];
+              const isKegRestrictedKelas = !kegTargetSemua && kegTargetKelasIds.length > 0;
+
               activeKegiatanPoliciesForKbm.push({
                 startMin: kegStartMin,
                 endMin: kegEndMin,
+                targetSemuaKelas: kegTargetSemua,
+                targetKelasIds: kegTargetKelasIds,
                 wajibTapTerminalGuru: policy.wajibTapTerminalGuru,
                 wajibGuruBeririsan: policy.wajibGuruBeririsan,
               });
@@ -1055,24 +1065,32 @@ export class SesiQueryService {
               if (existingActivityJadwalIds.has(String(keg.id))) continue;
 
               // Cocokkan posisi jabatan organisasi guru ini dengan relasi WajibPositions milik JadwalKegiatan ini
+              // Scope-aware WALIKELAS: hanya berlaku jika kelas binaannya masuk target_kelas_ids kegiatan ini
               const applicableOrgAssigns = guruOrgAssignments.filter((a: any) => {
                 const posId = a.Position?.id;
                 const posCode = String(a.Position?.code || '').toUpperCase();
-                if (policy.wajibPositionsConfigured) {
-                  return Boolean(posId && policy.orgPositionIds.includes(posId));
+                const matchesPosition = policy.wajibPositionsConfigured
+                  ? Boolean(posId && policy.orgPositionIds.includes(posId))
+                  : !((posCode === 'KOORDINATOR_DHUHA' || posCode === 'PEMBINA_ROHIS') && !policy.isDhuha) &&
+                    policy.orgPositionCodes.includes(posCode);
+                if (!matchesPosition) return false;
+                if (posCode === 'WALIKELAS' && isKegRestrictedKelas) {
+                  return Boolean(a.kelas_id && kegTargetKelasIds.includes(a.kelas_id));
                 }
-                if ((posCode === 'KOORDINATOR_DHUHA' || posCode === 'PEMBINA_ROHIS') && !policy.isDhuha) {
-                  return false;
-                }
-                return policy.orgPositionCodes.includes(posCode);
+                return true;
               });
 
               const orgDutyLabels = Array.from(new Set(applicableOrgAssigns.map(formatOrgDutyLabel)));
               const hasOrgDuty = orgDutyLabels.length > 0;
 
-              // Cek apakah benar-benar beririsan dengan minimal 1 jadwal KBM guru hari ini (hanya jika policy mengaktifkan wajibGuruBeririsan)
+              // Cek apakah benar-benar beririsan dengan minimal 1 jadwal KBM guru hari ini pada rombel target kegiatan
               const isOverlapping = policy.wajibGuruBeririsan && guruKbmSlots.some(
-                (slot: any) => Math.max(kegStartMin, slot.sMin) < Math.min(kegEndMin, slot.eMin)
+                (slot: any) => {
+                  if (isKegRestrictedKelas && (!slot.kelasId || !kegTargetKelasIds.includes(slot.kelasId))) {
+                    return false;
+                  }
+                  return Math.max(kegStartMin, slot.sMin) < Math.min(kegEndMin, slot.eMin);
+                }
               );
 
               if (!isOverlapping && !hasOrgDuty) continue;
@@ -1434,9 +1452,14 @@ export class SesiQueryService {
             const matched = guruAttendedKegiatanList.find((att) => Math.max(att.startMin, sMin) < Math.min(att.endMin, eMin));
             if (matched) guruHadirKegiatanNama = matched.nama;
           }
-          const matchedPolicy = activeKegiatanPoliciesForKbm.find(
-            (pol) => Math.max(pol.startMin, sMin) < Math.min(pol.endMin, eMin)
-          );
+          const matchedPolicy = activeKegiatanPoliciesForKbm.find((pol) => {
+            const isClassMatch =
+              pol.targetSemuaKelas ||
+              pol.targetKelasIds.length === 0 ||
+              !item.kelas_id ||
+              pol.targetKelasIds.includes(item.kelas_id);
+            return isClassMatch && Math.max(pol.startMin, sMin) < Math.min(pol.endMin, eMin);
+          });
           if (matchedPolicy) {
             itemWajibTapTerminalGuru = matchedPolicy.wajibTapTerminalGuru;
             itemWajibGuruBeririsan = matchedPolicy.wajibGuruBeririsan;

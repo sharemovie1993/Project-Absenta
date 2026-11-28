@@ -321,7 +321,7 @@ export class JadwalKegiatanService {
     if (!scope.tenantId) throw new Error('Tenant ID required');
     const tenantId = scope.tenantId;
 
-    const [availablePositions, jadwalRows] = await Promise.all([
+    const [availablePositions, jadwalRows, tenantClasses] = await Promise.all([
       getAvailableKegiatanPositions(tenantId),
       prisma.jadwalKegiatan.findMany({
         where: { tenant_id: tenantId, aktif: true },
@@ -335,7 +335,32 @@ export class JadwalKegiatanService {
         },
         orderBy: [{ waktu_mulai: 'asc' }, { nama: 'asc' }],
       }),
+      prisma.kelas.findMany({
+        where: { tenant_id: tenantId },
+        select: { id: true, tingkat: true, nama_kelas: true },
+      }),
     ]);
+
+    const kelasMap = new Map(tenantClasses.map((k) => [k.id, k]));
+    const formatTargetTingkatLabel = (targetSemua: boolean, targetIds: string[]): string | null => {
+      if (targetSemua) return 'Seluruh Kelas';
+      if (!targetIds || targetIds.length === 0) return null;
+      const levels = new Set<string>();
+      for (const cid of targetIds) {
+        const k = kelasMap.get(cid);
+        if (!k) continue;
+        const t = String(k.tingkat ?? '').trim().toUpperCase();
+        const nm = String(k.nama_kelas || '').trim().toUpperCase();
+        if (t === '10' || t === 'X' || nm.startsWith('X ') || nm.startsWith('10 ')) levels.add('X');
+        else if (t === '11' || t === 'XI' || nm.startsWith('XI ') || nm.startsWith('11 ')) levels.add('XI');
+        else if (t === '12' || t === 'XII' || nm.startsWith('XII ') || nm.startsWith('12 ')) levels.add('XII');
+      }
+      if (levels.size > 0) {
+        const ordered = ['X', 'XI', 'XII'].filter((lvl) => levels.has(lvl));
+        return `Kls ${ordered.join(', ')}`;
+      }
+      return `${targetIds.length} Kls`;
+    };
 
     const positionIdByCode = new Map(availablePositions.map((p) => [p.code.toUpperCase(), p.id]));
 
@@ -358,6 +383,11 @@ export class JadwalKegiatanService {
             .filter((id): id is string => Boolean(id));
 
       const allDays = Array.from(new Set(group.flatMap((g) => g.hari || [])));
+      const targetSemuaKelas = group.some((g) => Boolean(g.target_semua_kelas));
+      const unionTargetKelasIds = targetSemuaKelas
+        ? []
+        : Array.from(new Set(group.flatMap((g) => (Array.isArray(g.target_kelas_ids) ? g.target_kelas_ids : []))));
+      const targetTingkatLabel = formatTargetTingkatLabel(targetSemuaKelas, unionTargetKelasIds);
 
       return {
         id: primary.id,
@@ -368,6 +398,9 @@ export class JadwalKegiatanService {
         waktu_mulai: primary.waktu_mulai,
         waktu_selesai: primary.waktu_selesai,
         aktif: primary.aktif,
+        target_semua_kelas: targetSemuaKelas,
+        target_kelas_ids: unionTargetKelasIds,
+        target_tingkat_label: targetTingkatLabel,
         termasuk_siklus_ketarunaan:
           group.some((g) => Boolean(g.termasuk_siklus_ketarunaan)) ||
           this.isKetarunaanCore(primary.nama, primary.jenis_kegiatan),

@@ -40,6 +40,9 @@ export interface JadwalKegiatanPolicyItem {
   waktu_mulai: string;
   waktu_selesai?: string | null;
   aktif: boolean;
+  target_semua_kelas?: boolean;
+  target_kelas_ids?: string[];
+  target_tingkat_label?: string | null;
   termasuk_siklus_ketarunaan?: boolean;
   is_apel_pulang: boolean;
   is_dhuha: boolean;

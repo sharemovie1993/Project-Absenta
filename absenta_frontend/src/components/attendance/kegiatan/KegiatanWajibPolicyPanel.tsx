@@ -334,7 +334,7 @@ export const KegiatanWajibPolicyPanel: React.FC<KegiatanWajibPolicyPanelProps> =
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mt-0.5">
+                  <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mt-0.5 flex-wrap">
                     <Clock size={11} />
                     <span className="font-mono">
                       {policy.waktu_mulai}{policy.waktu_selesai ? `–${policy.waktu_selesai}` : ''}
@@ -343,6 +343,21 @@ export const KegiatanWajibPolicyPanel: React.FC<KegiatanWajibPolicyPanelProps> =
                     <span className="truncate">
                       {(policy.hari || []).map((h) => getDayShortLabel(h)).join(', ') || 'Aktif'}
                     </span>
+                    {policy.target_tingkat_label && (
+                      <>
+                        <span>·</span>
+                        <span
+                          className={cn(
+                            'px-1.5 py-0.2 rounded text-[10px] font-semibold',
+                            policy.target_semua_kelas === false
+                              ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                              : 'text-slate-400'
+                          )}
+                        >
+                          {policy.target_tingkat_label}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
               </button>

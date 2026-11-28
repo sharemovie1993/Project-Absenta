@@ -813,6 +813,17 @@ export class UnifiedKegiatanService {
       return '👤';
     };
 
+    // Scope target rombel kegiatan ini:
+    // Jika kegiatan hanya menarget kelas tertentu (mis. Ketarunaan khusus Kelas X, Apel Datang khusus Kelas XI),
+    // maka WALIKELAS dan Guru Mapel KBM Beririsan otomatis disaring hanya untuk rombel target kegiatan ini.
+    const jadwalTargetSemuaKelas = jadwalKegiatan ? Boolean(jadwalKegiatan.target_semua_kelas) : true;
+    const jadwalTargetKelasSet = new Set<string>(
+      !jadwalTargetSemuaKelas && Array.isArray(jadwalKegiatan?.target_kelas_ids)
+        ? jadwalKegiatan.target_kelas_ids
+        : []
+    );
+    const hasRestrictedKelasScope = !jadwalTargetSemuaKelas && jadwalTargetKelasSet.size > 0;
+
     // 1. Seluruh Posisi Jabatan Organisasi yang berelasi pada JadwalKegiatan ini
     for (const pos of sortedPositions) {
       if (!kegiatanPolicy.wajibPositionsConfigured && (pos.code === 'KOORDINATOR_DHUHA' || pos.code === 'PEMBINA_ROHIS') && !isDhuhaMode) {
@@ -820,6 +831,12 @@ export class UnifiedKegiatanService {
       }
       const icon = getPositionIcon(pos.code);
       pos.organizationalAssigns.forEach((a) => {
+        // Scope-aware WALIKELAS: hanya Wali Kelas yang kelas binaannya menjadi peserta kegiatan ini
+        if (pos.code === 'WALIKELAS' && hasRestrictedKelasScope) {
+          if (!a.kelas_id || !jadwalTargetKelasSet.has(a.kelas_id)) {
+            return;
+          }
+        }
         const g = a.User?.Guru;
         if (g && !seenGuruIds.has(g.id)) {
           seenGuruIds.add(g.id);
@@ -844,7 +861,7 @@ export class UnifiedKegiatanService {
       });
     }
 
-    // 2. Guru Mapel KBM yang Jadwalnya BERIRISAN Jam dengan Kegiatan
+    // 2. Guru Mapel KBM yang Jadwalnya BERIRISAN Jam dengan Kegiatan (dan mengajar di rombel target kegiatan)
     // Aktif jika kebijakan JadwalKegiatan mengaktifkan wajib_guru_beririsan dan kegiatan bukan Apel Pulang (APEL_SORE).
     if (!isApelPulang && kegiatanPolicy.wajibGuruBeririsan) {
       const allKbmHariIni = await prisma.jadwalKBM.findMany({
@@ -852,6 +869,7 @@ export class UnifiedKegiatanService {
           tenant_id: tenantId,
           hari: kbmHariQuery,
           guru_id: { not: null },
+          ...(hasRestrictedKelasScope ? { kelas_id: { in: Array.from(jadwalTargetKelasSet) } } : {}),
         },
         include: {
           Guru: { select: { id: true, nama_guru: true } },
@@ -1362,10 +1380,136 @@ export class UnifiedKegiatanService {
 
     if (guru) {
       const jenis = payload.jenis_kegiatan || 'KETARUNAAN';
+      const todayStr = this.getTodayDateStr();
+      const hariEnum = this.getHariEnum(todayStr);
+
+      // Smart Routing & Multi-Slot Sync untuk Guru saat terdapat ≥ 2 slot paralel hari ini
+      // (mis. Ketarunaan Kelas X 06:30–07:50 & Apel Datang Kelas XI 07:00–07:15):
+      // 1× tap kartu guru otomatis dicatat pada seluruh slot paralel tempat guru tersebut bertugas
+      // (Wali Kelas sesuai rombel target, Guru KBM beririsan di rombel target, atau Jabatan Lintas Kelas).
+      let matchedParallelJadwals: any[] = [];
+      if (jenis.toUpperCase() === 'KETARUNAAN') {
+        const resolvedSiklus = await this.resolveSiklusJadwal(tenantId, jenis, hariEnum);
+        const curTime = resolvedSiklus.currentTimeStr;
+        const isAfternoon = curTime >= '13:00';
+        const todayCandidates = (resolvedSiklus.todaySchedules || []).filter((s) => {
+          const siklus = this.classifySiklusType(s.nama || s.jenis_kegiatan);
+          return isAfternoon ? siklus === 'APEL_SORE' : siklus !== 'APEL_SORE';
+        });
+
+        if (todayCandidates.length > 1) {
+          const [guruOrgAssigns, guruKbmsToday] = await Promise.all([
+            guru.user_id
+              ? prisma.organizationalAssignment.findMany({
+                  where: {
+                    tenant_id: tenantId,
+                    user_id: guru.user_id,
+                    is_active: true,
+                    Position: { is_active: true },
+                  },
+                  include: { Position: { select: { id: true, code: true } } },
+                })
+              : Promise.resolve([]),
+            prisma.jadwalKBM.findMany({
+              where: {
+                tenant_id: tenantId,
+                guru_id: guru.id,
+                hari: hariEnum,
+              },
+              select: { kelas_id: true, jam_mulai: true, jam_selesai: true },
+            }),
+          ]);
+
+          for (const slot of todayCandidates) {
+            const slotPolicy = await getEffectivePolicyForJadwalKegiatan(
+              tenantId,
+              slot.id,
+              slot.nama,
+              slot.jenis_kegiatan
+            );
+            const slotSemua = Boolean(slot.target_semua_kelas);
+            const slotKelasSet = new Set<string>(
+              !slotSemua && Array.isArray(slot.target_kelas_ids) ? slot.target_kelas_ids : []
+            );
+            const isSlotRestricted = !slotSemua && slotKelasSet.size > 0;
+
+            const hasOrgDutyInSlot = guruOrgAssigns.some((a: any) => {
+              const posId = a.Position?.id;
+              const posCode = String(a.Position?.code || '').toUpperCase();
+              const isAllowedPos = slotPolicy.wajibPositionsConfigured
+                ? Boolean(posId && slotPolicy.orgPositionIds.includes(posId))
+                : slotPolicy.orgPositionCodes.includes(posCode);
+              if (!isAllowedPos) return false;
+              if (posCode === 'WALIKELAS' && isSlotRestricted) {
+                return Boolean(a.kelas_id && slotKelasSet.has(a.kelas_id));
+              }
+              return true;
+            });
+
+            const hasKbmInSlot =
+              slotPolicy.wajibGuruBeririsan &&
+              guruKbmsToday.some((kbm) => {
+                if (isSlotRestricted && (!kbm.kelas_id || !slotKelasSet.has(kbm.kelas_id))) {
+                  return false;
+                }
+                return this.isTimeOverlapping(
+                  slot.waktu_mulai,
+                  slot.waktu_selesai,
+                  kbm.jam_mulai,
+                  kbm.jam_selesai
+                );
+              });
+
+            if (hasOrgDutyInSlot || hasKbmInSlot) {
+              matchedParallelJadwals.push(slot);
+            }
+          }
+        }
+      }
+
+      if (matchedParallelJadwals.length > 0) {
+        let primaryTapResult: any = null;
+        const recordedNames: string[] = [];
+
+        for (const slot of matchedParallelJadwals) {
+          const sesiSlot = await this.getSesiHariIni(tenantId, {
+            tanggal: todayStr,
+            jadwal_kegiatan_id: slot.id,
+            jenis_kegiatan: jenis,
+          });
+          const res = await this.tapPendamping(tenantId, {
+            guru_id: guru.id,
+            sesi_id: sesiSlot?.id,
+            status: 'HADIR',
+            jenis_kegiatan: jenis,
+            jadwal_kegiatan_id: slot.id,
+            catatan: `Hadir via Scanner RFID Universal (${slot.nama})`,
+          });
+          if (!primaryTapResult) primaryTapResult = res;
+          recordedNames.push(slot.nama);
+        }
+
+        return {
+          ...primaryTapResult,
+          message:
+            recordedNames.length > 1
+              ? `Presensi ${guru.nama_guru} tercatat pada ${recordedNames.join(' & ')}`
+              : primaryTapResult?.message || `Presensi ${guru.nama_guru} tercatat pada ${recordedNames[0]}`,
+          action: 'HADIR_GURU',
+          entity_type: 'GURU',
+          guru: {
+            id: guru.id,
+            nama_guru: guru.nama_guru,
+            nip: guru.nip,
+            foto: guru.foto || null,
+            jenis_ptk: (guru as any).jenis_ptk || null,
+          },
+        };
+      }
+
       let sesiId = payload.sesi_id;
 
       if (!sesiId) {
-        const todayStr = this.getTodayDateStr();
         const sesiToday = await this.getSesiHariIni(tenantId, {
           tanggal: todayStr,
           jadwal_kegiatan_id: payload.jadwal_kegiatan_id,
