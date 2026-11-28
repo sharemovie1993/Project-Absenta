@@ -55,6 +55,7 @@ export const SingleAssignModal: React.FC<SingleAssignModalProps> = React.memo(({
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    if (!isOpen) return;
     if (editingItem) {
       setFormGuruId(editingItem.guru_id);
       setFormHari(editingItem.hari);
@@ -74,7 +75,7 @@ export const SingleAssignModal: React.FC<SingleAssignModalProps> = React.memo(({
       setFormJamSelesai(getSlotEndTime(10));
       setFormCatatan('');
     }
-  }, [editingItem, activeHari, getSlotStartTime, getSlotEndTime]);
+  }, [isOpen, editingItem, activeHari, getSlotStartTime, getSlotEndTime]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,9 +139,8 @@ export const SingleAssignModal: React.FC<SingleAssignModalProps> = React.memo(({
           </label>
           <GuruSelect
             id="piket-guru-select"
-            aria-label="Pilih guru bertugas piket"
             value={formGuruId}
-            onChange={setFormGuruId}
+            onValueChange={setFormGuruId}
             placeholder="Pilih guru..."
           />
         </div>
