@@ -589,18 +589,11 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
                 <div>
                   <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                     {inputSubTab === 'SCANNER'
-                      ? 'Terminal Hardware RFID & Barcode Gun'
+                      ? 'RFID & Barcode Gun'
                       : inputSubTab === 'QR_KAMERA'
-                      ? 'Kamera Pemindai QR Code'
-                      : 'Smart Search Siswa & Guru (Lupa Kartu)'}
+                      ? 'Kamera QR Code'
+                      : 'Cari Nama (Lupa Kartu)'}
                   </h4>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    {inputSubTab === 'SCANNER'
-                      ? 'Siap membaca kartu RFID / barcode USB secara otomatis'
-                      : inputSubTab === 'QR_KAMERA'
-                      ? 'Arahkan kartu QR siswa atau guru ke lensa kamera'
-                      : 'Pencarian cepat nama, NIP, NISN dengan Smart Entity Picker'}
-                  </p>
                 </div>
               </div>
 
