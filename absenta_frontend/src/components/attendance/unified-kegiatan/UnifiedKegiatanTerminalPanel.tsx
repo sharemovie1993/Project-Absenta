@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Scan,
@@ -27,6 +28,7 @@ import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 import { SmartStudentPicker, type Student } from '@/components/common/SmartStudentPicker';
 import toast from 'react-hot-toast';
 import {
+  getUnifiedTerminalFeed,
   tapUnifiedPendampingRfid,
   type UnifiedRfidTapResponse
 } from '@/api/attendance/unifiedKegiatan.api';
@@ -122,17 +124,48 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
   const bufferRef = useRef<string>('');
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Feedback State
+  const qc = useQueryClient();
+
+  // Feedback State & Live Persistent Feed dari Database
   const [lastScanned, setLastScanned] = useState<RecentUnifiedTapRecord | null>(null);
   const [lastErrorMsg, setLastErrorMsg] = useState<string | null>(null);
   const [feedTaps, setFeedTaps] = useState<RecentUnifiedTapRecord[]>([]);
 
-  // Mini Counter Sesi Ini
+  const { data: terminalFeedRes } = useQuery({
+    queryKey: ['unified-terminal-feed', jenisKegiatan, jadwalKegiatanId ?? null],
+    queryFn: () =>
+      getUnifiedTerminalFeed({
+        jadwal_kegiatan_id: jadwalKegiatanId ?? undefined,
+        jenis_kegiatan: jenisKegiatan,
+      }),
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  });
+
+  useEffect(() => {
+    const dbFeed = terminalFeedRes?.data?.feed;
+    if (Array.isArray(dbFeed) && dbFeed.length > 0) {
+      setFeedTaps((prev) => {
+        // Pertahankan tap terbaru yang belum masuk/baru saja di-tap jika id berbeda, lalu gabungkan dengan DB
+        const dbIds = new Set(dbFeed.map((item) => item.id));
+        const localFresh = prev.filter((item) => item.id.startsWith('tap-kegiatan-') && !dbIds.has(item.id));
+        // Jika sudah ada di DB (berdasarkan nama + idNumber yang baru di-tap), pakai data DB agar tidak dobel
+        const dbKeys = new Set(dbFeed.map((item) => `${item.entityType}_${item.nama}_${item.idNumber || ''}`));
+        const dedupLocal = localFresh.filter(
+          (item) => !dbKeys.has(`${item.entityType}_${item.nama}_${item.idNumber || ''}`)
+        );
+        return [...dedupLocal, ...dbFeed].slice(0, 30);
+      });
+    }
+  }, [terminalFeedRes]);
+
+  // Mini Counter Sesi Ini (Terhubung ke summary DB + local state)
   const miniStats = React.useMemo(() => {
-    const hadir = feedTaps.length;
+    const dbTotal = terminalFeedRes?.data?.summary?.total_hadir ?? 0;
+    const hadir = Math.max(dbTotal, feedTaps.length);
     const kbmOpened = feedTaps.filter((t) => t.syncedKbm).length;
     return { hadir, kbmOpened };
-  }, [feedTaps]);
+  }, [terminalFeedRes, feedTaps]);
 
   // Camera QR State
   const qrScannerRef = useRef<Html5Qrcode | null>(null);
@@ -253,6 +286,7 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
             });
           }
 
+          qc.invalidateQueries({ queryKey: ['unified-terminal-feed'] });
           onSuccessTap?.(res);
         } else {
           const errMsg = res.message || 'Gagal memproses presensi kegiatan';
@@ -871,48 +905,93 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
               </div>
             ) : (
               <div className="space-y-2 max-h-[320px] overflow-y-auto no-scrollbar pr-1">
-                {feedTaps.map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-2.5 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-white dark:hover:bg-slate-800 flex items-center justify-between transition-colors text-xs"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-xl bg-slate-200 dark:bg-slate-700 overflow-hidden shrink-0 flex items-center justify-center font-bold text-[10px] text-slate-700 dark:text-slate-300">
-                        {item.foto ? (
-                          <img
-                            src={resolveProfilePhotoUrl(item.foto)}
-                            alt={item.nama}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          item.nama.charAt(0)
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="font-bold text-slate-800 dark:text-slate-200 truncate text-xs">
-                            {item.nama}
-                          </p>
-                          <Badge variant="outline" className="text-[8px] py-0 px-1 font-mono">
-                            {item.metode}
-                          </Badge>
-                        </div>
-                        <p className="text-[10px] text-slate-400 truncate">
-                          {item.subLabel} {item.idNumber ? `• ${item.idNumber}` : ''}
-                        </p>
-                      </div>
-                    </div>
+                {feedTaps.map((item) => {
+                  const isLate = item.status === 'TERLAMBAT';
+                  const isKbm = Boolean(item.syncedKbm);
+                  const isGuru = item.entityType === 'GURU';
 
-                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                      {item.syncedKbm && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 flex items-center gap-0.5">
-                          <Zap size={10} className="text-amber-500" /> KBM
-                        </span>
+                  return (
+                    <div
+                      key={item.id}
+                      className={cn(
+                        "p-2.5 rounded-2xl border flex items-center justify-between transition-colors text-xs",
+                        isLate
+                          ? "bg-rose-50/75 dark:bg-rose-950/25 border-rose-200/90 dark:border-rose-800/60"
+                          : isKbm
+                          ? "bg-indigo-50/70 dark:bg-indigo-950/25 border-indigo-200/90 dark:border-indigo-800/60"
+                          : "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200/80 dark:border-emerald-800/50"
                       )}
-                      <span className="text-[10px] font-mono text-slate-400">{item.jam}</span>
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div
+                          className={cn(
+                            "w-8 h-8 rounded-xl overflow-hidden shrink-0 flex items-center justify-center font-black text-xs border",
+                            isLate
+                              ? "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-900/60 dark:text-rose-200 dark:border-rose-700"
+                              : isKbm || isGuru
+                              ? "bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/60 dark:text-indigo-200 dark:border-indigo-700"
+                              : "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-200 dark:border-emerald-700"
+                          )}
+                        >
+                          {item.foto ? (
+                            <img
+                              src={resolveProfilePhotoUrl(item.foto)}
+                              alt={item.nama}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            item.nama.charAt(0)
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="font-bold text-slate-800 dark:text-slate-100 truncate text-xs">
+                              {item.nama}
+                            </p>
+                            <span
+                              className={cn(
+                                "text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full",
+                                isLate
+                                  ? "bg-rose-600 text-white"
+                                  : isKbm
+                                  ? "bg-indigo-600 text-white"
+                                  : "bg-emerald-600 text-white"
+                              )}
+                            >
+                              {isLate ? 'Terlambat' : isKbm ? '⚡ KBM' : 'Hadir'}
+                            </span>
+                            <span
+                              className={cn(
+                                "text-[8px] font-bold uppercase px-1.5 py-0.2 rounded-md border",
+                                isGuru
+                                  ? "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800"
+                                  : "bg-white/80 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
+                              )}
+                            >
+                              {isGuru ? 'Guru' : 'Taruna'}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                            {item.subLabel} {item.idNumber ? `• ${item.idNumber}` : ''} • {item.metode}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-end shrink-0 ml-2">
+                        <span
+                          className={cn(
+                            "text-[10px] font-mono font-bold",
+                            isLate
+                              ? "text-rose-700 dark:text-rose-300"
+                              : "text-slate-600 dark:text-slate-300"
+                          )}
+                        >
+                          {item.jam}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

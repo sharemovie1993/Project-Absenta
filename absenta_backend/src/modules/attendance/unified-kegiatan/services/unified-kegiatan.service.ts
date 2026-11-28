@@ -397,6 +397,207 @@ export class UnifiedKegiatanService {
   }
 
   /**
+   * 2b. Live Terminal Feed & Unified Counter Sesi Hari Ini (Guru + Siswa)
+   * Mengembalikan daftar tap terbaru & total hadir gabungan agar tahan reload browser.
+   */
+  async getTerminalFeed(
+    tenantId: string,
+    params?: { tanggal?: string; jadwal_kegiatan_id?: string; jenis_kegiatan?: string }
+  ) {
+    const dateRange = this.getDateRange(params?.tanggal);
+    const targetHari = this.getHariEnum(params?.tanggal);
+    const jenis = params?.jenis_kegiatan || 'KETARUNAAN';
+
+    let targetJadwalId = params?.jadwal_kegiatan_id;
+    let resolvedSiklus: Awaited<ReturnType<typeof this.resolveSiklusJadwal>> | null = null;
+
+    if (!targetJadwalId && jenis.toUpperCase() === 'KETARUNAAN') {
+      resolvedSiklus = await this.resolveSiklusJadwal(tenantId, jenis, targetHari);
+      if (resolvedSiklus.jadwal?.id) {
+        targetJadwalId = resolvedSiklus.jadwal.id;
+      }
+    }
+
+    const searchTerms =
+      jenis.toUpperCase() === 'KETARUNAAN'
+        ? [
+            resolvedSiklus?.jadwal?.nama,
+            'KETARUNAAN',
+            'UPACARA',
+            'DUHA',
+            'DHUHA',
+            'APEL',
+          ].filter(Boolean) as string[]
+        : [jenis];
+
+    const sesiList = await prisma.sesiAbsensi.findMany({
+      where: {
+        tenant_id: tenantId,
+        tanggal: { gte: dateRange.gte, lte: dateRange.lte },
+        OR: [
+          ...(targetJadwalId ? [{ jadwal_kegiatan_id: targetJadwalId }] : []),
+          ...searchTerms.flatMap((term) => [
+            { jenis_kegiatan: { contains: term, mode: 'insensitive' as const } },
+            { JadwalKegiatan: { nama: { contains: term, mode: 'insensitive' as const } } },
+          ]),
+        ],
+      },
+      select: { id: true },
+    });
+
+    const sesiIds = sesiList.map((s) => s.id);
+    if (sesiIds.length === 0) {
+      return {
+        feed: [],
+        summary: {
+          siswa_hadir: 0,
+          siswa_terlambat: 0,
+          guru_hadir: 0,
+          total_hadir: 0,
+        },
+      };
+    }
+
+    const [siswaRows, guruRows, siswaHadirCount, siswaTerlambatCount, guruHadirCount] = await Promise.all([
+      prisma.absenSiswa.findMany({
+        where: {
+          sesi_id: { in: sesiIds },
+          status: { in: ['HADIR', 'TERLAMBAT'] },
+        },
+        include: {
+          Siswa: {
+            select: {
+              id: true,
+              nama_siswa: true,
+              nis: true,
+              nisn: true,
+              foto: true,
+              Kelas: { select: { nama_kelas: true } },
+            },
+          },
+        },
+        orderBy: [{ waktu_tap: 'desc' }, { updated_at: 'desc' }],
+        take: 30,
+      }),
+      prisma.absenGuru.findMany({
+        where: {
+          sesi_id: { in: sesiIds },
+          status: { in: ['HADIR', 'TERLAMBAT'] },
+        },
+        include: {
+          Guru: {
+            select: {
+              id: true,
+              nama_guru: true,
+              nip: true,
+              foto: true,
+              jenis_ptk: true,
+            },
+          },
+        },
+        orderBy: [{ waktu_tap: 'desc' }, { updated_at: 'desc' }],
+        take: 30,
+      }),
+      prisma.absenSiswa.count({
+        where: {
+          sesi_id: { in: sesiIds },
+          status: { in: ['HADIR', 'TERLAMBAT'] },
+        },
+      }),
+      prisma.absenSiswa.count({
+        where: {
+          sesi_id: { in: sesiIds },
+          OR: [{ is_terlambat: true }, { status: 'TERLAMBAT' }],
+        },
+      }),
+      prisma.absenGuru.count({
+        where: {
+          sesi_id: { in: sesiIds },
+          status: { in: ['HADIR', 'TERLAMBAT'] },
+        },
+      }),
+    ]);
+
+    const formatJam = (dt: Date | null | undefined) => {
+      if (!dt) return '--:--:--';
+      return new Date(dt).toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+    };
+
+    const detectMetode = (catatan?: string | null): 'RFID' | 'QR' | 'MANUAL' => {
+      const c = (catatan || '').toUpperCase();
+      if (c.includes('QR')) return 'QR';
+      if (c.includes('RFID') || c.includes('SCANNER')) return 'RFID';
+      return 'MANUAL';
+    };
+
+    const combined: Array<{
+      id: string;
+      nama: string;
+      idNumber?: string;
+      subLabel?: string;
+      entityType: 'GURU' | 'SISWA';
+      status: string;
+      jam: string;
+      foto?: string;
+      syncedKbm?: boolean;
+      metode: 'RFID' | 'QR' | 'MANUAL';
+      sortTime: number;
+    }> = [];
+
+    for (const row of siswaRows) {
+      const ts = row.waktu_tap || row.updated_at || new Date(0);
+      const isLate = Boolean(row.is_terlambat || row.status === 'TERLAMBAT');
+      combined.push({
+        id: `siswa-${row.id}`,
+        nama: row.Siswa?.nama_siswa || 'Siswa',
+        idNumber: row.Siswa?.nisn || row.Siswa?.nis || undefined,
+        subLabel: row.kelas_nama_snapshot || row.Siswa?.Kelas?.nama_kelas || 'Taruna',
+        entityType: 'SISWA',
+        status: isLate ? 'TERLAMBAT' : 'HADIR',
+        jam: formatJam(row.waktu_tap || row.updated_at),
+        foto: row.Siswa?.foto || undefined,
+        syncedKbm: false,
+        metode: detectMetode(row.catatan),
+        sortTime: new Date(ts).getTime(),
+      });
+    }
+
+    for (const row of guruRows) {
+      const ts = row.waktu_tap || row.updated_at || new Date(0);
+      const isLate = Boolean(row.status === 'TERLAMBAT');
+      combined.push({
+        id: `guru-${row.id}`,
+        nama: row.Guru?.nama_guru || 'Guru / Pembina',
+        idNumber: row.Guru?.nip || undefined,
+        subLabel: (row.Guru as any)?.jenis_ptk || 'Pembina / Pendamping',
+        entityType: 'GURU',
+        status: isLate ? 'TERLAMBAT' : 'HADIR',
+        jam: formatJam(row.waktu_tap || row.updated_at),
+        foto: row.Guru?.foto || undefined,
+        syncedKbm: Boolean((row.catatan || '').toUpperCase().includes('KBM')),
+        metode: detectMetode(row.catatan),
+        sortTime: new Date(ts).getTime(),
+      });
+    }
+
+    combined.sort((a, b) => b.sortTime - a.sortTime);
+
+    return {
+      feed: combined.slice(0, 30).map(({ sortTime: _st, ...item }) => item),
+      summary: {
+        siswa_hadir: siswaHadirCount,
+        siswa_terlambat: siswaTerlambatCount,
+        guru_hadir: guruHadirCount,
+        total_hadir: siswaHadirCount + guruHadirCount,
+      },
+    };
+  }
+
+  /**
    * 3. Pendamping & Unsur Beririsan: Ambil daftar seluruh unsur pendamping & status tap hari ini
    */
   async getPendamping(tenantId: string, params: { tanggal?: string; sesi_id?: string; jadwal_kegiatan_id?: string; jenis_kegiatan?: string }) {

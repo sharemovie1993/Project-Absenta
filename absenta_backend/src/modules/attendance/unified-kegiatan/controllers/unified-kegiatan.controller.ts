@@ -31,6 +31,20 @@ export const unifiedKegiatanController = {
     }
   },
 
+  async getTerminalFeed(request: any, reply: any) {
+    try {
+      const scope = request.dataScope as DataScope;
+      if (!scope?.tenantId) {
+        return reply.status(400).send({ message: 'Tenant ID required' });
+      }
+
+      const data = await unifiedKegiatanService.getTerminalFeed(scope.tenantId, request.query);
+      return reply.send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  },
+
   async getPendamping(request: any, reply: any) {
     try {
       const scope = request.dataScope as DataScope;

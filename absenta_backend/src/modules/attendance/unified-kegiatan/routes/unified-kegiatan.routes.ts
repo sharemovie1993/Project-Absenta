@@ -21,6 +21,15 @@ export async function unifiedKegiatanRoutes(fastify: any) {
     handler: unifiedKegiatanController.getSesiHariIni,
   });
 
+  // 2b. Live Terminal Feed & Unified Counter Hari Ini
+  fastify.get('/terminal-feed', {
+    preHandler: [
+      requireCapability(['attendance.sessions.view.list', 'dashboard.view.kesiswaan']),
+      determineDataScope(),
+    ],
+    handler: unifiedKegiatanController.getTerminalFeed,
+  });
+
   // 3. Pendamping & Unsur Beririsan
   fastify.get('/pendamping', {
     preHandler: [

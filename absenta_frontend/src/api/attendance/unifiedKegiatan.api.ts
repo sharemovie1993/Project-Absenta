@@ -389,6 +389,44 @@ export async function getUnifiedSesiHariIni(params?: {
   ).catch(() => ({ success: false, data: null }));
 }
 
+export interface UnifiedTerminalFeedItem {
+  id: string;
+  nama: string;
+  idNumber?: string;
+  subLabel?: string;
+  entityType: 'GURU' | 'SISWA';
+  status: string;
+  jam: string;
+  foto?: string;
+  syncedKbm?: boolean;
+  metode: 'RFID' | 'QR' | 'MANUAL';
+}
+
+export interface UnifiedTerminalFeedResponse {
+  feed: UnifiedTerminalFeedItem[];
+  summary: {
+    siswa_hadir: number;
+    siswa_terlambat: number;
+    guru_hadir: number;
+    total_hadir: number;
+  };
+}
+
+export async function getUnifiedTerminalFeed(params?: {
+  tanggal?: string;
+  jadwal_kegiatan_id?: string;
+  jenis_kegiatan?: string;
+}): Promise<{ success: boolean; data: UnifiedTerminalFeedResponse }> {
+  return requestWithFallback<{ success: boolean; data: UnifiedTerminalFeedResponse }>(
+    'get',
+    '/attendance/unified-kegiatan/terminal-feed',
+    { params, headers: { 'X-Skip-403-Redirect': 'true' } }
+  ).catch(() => ({
+    success: false,
+    data: { feed: [], summary: { siswa_hadir: 0, siswa_terlambat: 0, guru_hadir: 0, total_hadir: 0 } },
+  }));
+}
+
 export async function getUnifiedPendamping(params: {
   tanggal?: string;
   sesi_id?: string;

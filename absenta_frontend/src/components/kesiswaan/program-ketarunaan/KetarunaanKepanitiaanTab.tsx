@@ -36,6 +36,7 @@ import {
   type KetarunaanPendamping,
   type KetarunaanPanitiaMember,
 } from '@/api/kesiswaan/programKetarunaan.api';
+import { getUnifiedTerminalFeed } from '@/api/attendance/unifiedKegiatan.api';
 import { UnifiedKegiatanTerminalPanel } from '@/components/attendance/unified-kegiatan/UnifiedKegiatanTerminalPanel';
 import { KetarunaanOrgChart } from './KetarunaanOrgChart';
 import { KetarunaanPanitiaTable } from './KetarunaanPanitiaTable';
@@ -179,7 +180,8 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
   const handleRefresh = useCallback(() => {
     refetch();
     refetchSesi();
-  }, [refetch, refetchSesi]);
+    qc.invalidateQueries({ queryKey: ['unified-terminal-feed'] });
+  }, [refetch, refetchSesi, qc]);
 
   const handleTap = useCallback((guruId: string, status: 'HADIR' | 'IZIN' | 'SAKIT' | 'DINAS_LUAR' | 'ALPA' = 'HADIR') => {
     if (!isScheduledDay && !forceIncidentalMode) {
@@ -239,12 +241,32 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
     return Object.entries(map).filter(([_, list]) => list.length > 0);
   }, [waliKelasList]);
 
-  // Statistik Utama
+  // Query Feed & Summary Unified Terminal (Guru + Siswa) — berbagi cache dengan UnifiedKegiatanTerminalPanel
+  const { data: terminalFeedRes } = useQuery({
+    queryKey: ['unified-terminal-feed', 'KETARUNAAN', effectiveJadwalId ?? null],
+    queryFn: () =>
+      getUnifiedTerminalFeed({
+        jadwal_kegiatan_id: effectiveJadwalId ?? undefined,
+        jenis_kegiatan: 'KETARUNAAN',
+      }),
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  });
+
+  const feedSummary = terminalFeedRes?.data?.summary ?? {
+    siswa_hadir: 0,
+    siswa_terlambat: 0,
+    guru_hadir: 0,
+    total_hadir: 0,
+  };
+
+  // Statistik Utama (Unified Guru + Siswa)
   const totalCount = pendamping.length;
   const hadirCount = useMemo(() => pendamping.filter(p => p.status === 'HADIR').length, [pendamping]);
   const belumHadirCount = Math.max(0, totalCount - hadirCount);
   const persenHadir = totalCount > 0 ? Math.round((hadirCount / totalCount) * 100) : 0;
   const guruMapelHadirCount = useMemo(() => guruMapelList.filter(p => p.status === 'HADIR').length, [guruMapelList]);
+  const totalUnifiedHadir = Math.max(feedSummary.total_hadir, hadirCount + feedSummary.siswa_hadir);
 
   // Filter list untuk di dalam Modal
   const filteredModalList = useMemo(() => {
@@ -409,7 +431,7 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
       {/* ── VIEW 3: TERMINAL PRESENSI & POS LAPANGAN (EXISTING) ── */}
       {viewMode === 'PRESENSI' && (
         <div className="space-y-3 animate-in fade-in duration-150">
-          {/* Stat bar ringkas */}
+          {/* Stat bar ringkas — Unified Terminal (Guru/Panitia + Taruna) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <button
               type="button"
@@ -420,24 +442,35 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
               <div className="flex items-center gap-2 min-w-0">
                 <Users className="w-4 h-4 text-amber-500 shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-[10px] text-slate-400 font-bold truncate">Panitia</p>
-                  <span className="text-sm font-black text-slate-800 dark:text-slate-100">{totalCount}</span>
+                  <p className="text-[10px] text-slate-400 font-bold truncate">Panitia Hadir</p>
+                  <span className="text-sm font-black text-slate-800 dark:text-slate-100">
+                    {hadirCount}<span className="text-[10px] font-bold text-slate-400">/{totalCount} ({persenHadir}%)</span>
+                  </span>
                 </div>
               </div>
               <ExternalLink className="w-3.5 h-3.5 text-slate-300 group-hover:text-indigo-500 transition-colors shrink-0" />
             </button>
+            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-sky-200/80 dark:border-sky-800/60 flex items-center gap-2">
+              <Award className="w-4 h-4 text-sky-500 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[10px] text-slate-400 font-bold truncate">Taruna Hadir</p>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-black text-sky-600 dark:text-sky-400">{feedSummary.siswa_hadir}</span>
+                  {feedSummary.siswa_terlambat > 0 && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
+                      {feedSummary.siswa_terlambat} telat
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
             <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200/80 dark:border-emerald-800/60 flex items-center gap-2">
               <UserCheck className="w-4 h-4 text-emerald-500 shrink-0" />
               <div className="min-w-0">
-                <p className="text-[10px] text-slate-400 font-bold truncate">Hadir</p>
-                <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{hadirCount} <span className="text-[10px] font-bold text-slate-400">({persenHadir}%)</span></span>
-              </div>
-            </div>
-            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-slate-400 shrink-0" />
-              <div className="min-w-0">
-                <p className="text-[10px] text-slate-400 font-bold truncate">Menunggu</p>
-                <span className="text-sm font-black text-slate-700 dark:text-slate-200">{belumHadirCount}</span>
+                <p className="text-[10px] text-slate-400 font-bold truncate">Total Hadir Sesi</p>
+                <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                  {totalUnifiedHadir} <span className="text-[10px] font-bold text-slate-400">Tap</span>
+                </span>
               </div>
             </div>
             <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200/80 dark:border-indigo-800/60 flex items-center gap-2">
