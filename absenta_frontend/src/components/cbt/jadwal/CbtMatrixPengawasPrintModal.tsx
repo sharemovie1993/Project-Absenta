@@ -438,9 +438,9 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
       showLogoSekolah={showLogoSekolah}
       onToggleLogoDaerah={setShowLogoDaerah}
       onToggleLogoSekolah={setShowLogoSekolah}
-      isExportingPdf={isExportingPdf}
-      onExportPdf={handleExportPdf}
-      extraControls={
+      onDownloadPdf={handleExportPdf}
+      downloadPdfText={isExportingPdf ? 'Mengekspor PDF...' : 'Unduh PDF'}
+      extraActions={
         <div className="flex items-center gap-3 flex-wrap">
           {tingkatSheets.length > 1 && (
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs">
