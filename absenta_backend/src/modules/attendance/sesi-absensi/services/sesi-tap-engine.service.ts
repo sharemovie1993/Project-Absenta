@@ -662,6 +662,80 @@ export class SesiTapEngineService {
             menitKeterlambatan = Math.max(0, diffMinutes);
           }
         }
+
+        // 🛡️ Pengampunan Keterlambatan Tugas Kegiatan (Ketarunaan / Dhuha / Upacara / Apel):
+        // Jika guru tercatat HADIR pada sesi kegiatan hari ini yang jamnya beririsan dengan KBM ini,
+        // keterlambatan saat membuka sesi / retake foto KBM pertamanya diampuni (is_terlambat = false).
+        if (isTerlambat && sesi.jenis_kegiatan === 'KBM') {
+          const startOfDay = new Date(`${todayDateStr}T00:00:00.000${tzOffset}`);
+          const endOfDay = new Date(`${todayDateStr}T23:59:59.999${tzOffset}`);
+          const kegiatanHadirList = await prisma.absenGuru.findMany({
+            where: {
+              tenant_id: tenantId,
+              guru_id: effectiveGuruId,
+              status: 'HADIR',
+              SesiAbsensi: {
+                tanggal: { gte: startOfDay, lte: endOfDay },
+                jenis_kegiatan: { not: 'KBM' },
+              },
+            },
+            include: {
+              SesiAbsensi: {
+                select: {
+                  jenis_kegiatan: true,
+                  waktu_mulai: true,
+                  waktu_selesai: true,
+                  JadwalKegiatan: {
+                    select: {
+                      nama: true,
+                      waktu_mulai: true,
+                      waktu_selesai: true,
+                    },
+                  },
+                },
+              },
+            },
+          });
+
+          const toMinutes = (hhmm?: string | null) => {
+            if (!hhmm || !hhmm.includes(':')) return null;
+            const [h, m] = hhmm.split(':').map(Number);
+            if (Number.isNaN(h) || Number.isNaN(m)) return null;
+            return h * 60 + m;
+          };
+          const formatHHMM = (dt?: Date | null) => {
+            if (!dt) return null;
+            return new Intl.DateTimeFormat('en-GB', {
+              timeZone: tz,
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+            }).format(dt);
+          };
+
+          const kbmStartMin = toMinutes(jadwalJamMulaiGuru);
+          const kbmEndMin = toMinutes(sesi.JadwalKBM?.jam_selesai || formatHHMM(sesi.waktu_selesai)) ?? (kbmStartMin !== null ? kbmStartMin + 90 : null);
+
+          const overlappingKegiatan = kegiatanHadirList.find((kg) => {
+            const s = kg.SesiAbsensi;
+            if (!s) return false;
+            const kgStartStr = s.JadwalKegiatan?.waktu_mulai || formatHHMM(s.waktu_mulai) || '06:30';
+            const kgEndStr = s.JadwalKegiatan?.waktu_selesai || formatHHMM(s.waktu_selesai) || '08:00';
+            const kgStartMin = toMinutes(kgStartStr);
+            const kgEndMin = toMinutes(kgEndStr);
+            if (kbmStartMin === null || kbmEndMin === null || kgStartMin === null || kgEndMin === null) return false;
+            return Math.max(kgStartMin, kbmStartMin) < Math.min(kgEndMin, kbmEndMin);
+          });
+
+          if (overlappingKegiatan) {
+            const kgNama = overlappingKegiatan.SesiAbsensi?.JadwalKegiatan?.nama || overlappingKegiatan.SesiAbsensi?.jenis_kegiatan || 'Kegiatan';
+            isTerlambat = false;
+            menitKeterlambatan = 0;
+            if (!autoCatatan) {
+              autoCatatan = `Hadir tepat waktu (Pengampunan tugas ${kgNama})`;
+            }
+          }
+        }
       }
     } else {
       effectiveTapTime = existing?.waktu_tap || null;

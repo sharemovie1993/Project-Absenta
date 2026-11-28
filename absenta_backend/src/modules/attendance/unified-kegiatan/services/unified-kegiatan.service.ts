@@ -997,252 +997,40 @@ export class UnifiedKegiatanService {
       },
     });
 
-    // 2. Eksekusi 1 Tap 2 Record HANYA jika guru berstatus HADIR
-    let syncedKbm = false;
-    let kbmSesiId: string | undefined;
+    // 2. Grace Period / Pengampunan Telat KBM (TIDAK langsung membuka/menghadirkan guru di KBM!)
+    // Guru wajib membuka sesi atau retake foto langsung di sesi KBM pertamanya agar tidak menjadi celah mangkir.
+    let hasOverlappingKbm = false;
 
     if (payload.status === 'HADIR') {
       const kegiatanMulai = parentSesi.JadwalKegiatan?.waktu_mulai || '06:30';
       const kegiatanSelesai = parentSesi.JadwalKegiatan?.waktu_selesai || '08:00';
 
-      // Cari jadwal KBM guru hari ini
       const overlappingKbms = await prisma.jadwalKBM.findMany({
         where: {
           tenant_id: tenantId,
           guru_id: payload.guru_id,
           hari: hariEnum,
         },
+        select: {
+          id: true,
+          jam_mulai: true,
+          jam_selesai: true,
+        },
       });
 
-      // Filter jadwal yang bersinggungan jam
-      const overlappingKbm = overlappingKbms.find((kbm) =>
+      hasOverlappingKbm = overlappingKbms.some((kbm) =>
         this.isTimeOverlapping(kegiatanMulai, kegiatanSelesai, kbm.jam_mulai, kbm.jam_selesai)
       );
-
-      if (overlappingKbm) {
-        // Multi-JP Slot Resolution: Cari seluruh slot berurutan untuk kelas, guru, mapel ini
-        const relatedSlots = await prisma.jadwalKBM.findMany({
-          where: {
-            tenant_id: tenantId,
-            kelas_id: overlappingKbm.kelas_id,
-            guru_id: overlappingKbm.guru_id,
-            mapel_id: overlappingKbm.mapel_id,
-            hari: hariEnum,
-          },
-          orderBy: { slot_index: 'asc' },
-        });
-
-        // Bentuk grup slot yang contiguous / berurutan (gap antar-slot <= 35 menit)
-        const groups: (typeof relatedSlots)[] = [];
-        let currentGroup: typeof relatedSlots = [];
-
-        for (const slot of relatedSlots) {
-          if (currentGroup.length === 0) {
-            currentGroup.push(slot);
-          } else {
-            const prev = currentGroup[currentGroup.length - 1];
-            const isConsecutiveSlot = (slot.slot_index !== undefined && prev.slot_index !== undefined && slot.slot_index === prev.slot_index + 1);
-
-            const [prevH, prevM] = (prev.jam_selesai || '').split(':').map(Number);
-            const [currH, currM] = (slot.jam_mulai || '').split(':').map(Number);
-            const prevMins = (prevH || 0) * 60 + (prevM || 0);
-            const currMins = (currH || 0) * 60 + (currM || 0);
-            const gap = currMins - prevMins;
-
-            if (isConsecutiveSlot || (gap >= 0 && gap <= 35)) {
-              currentGroup.push(slot);
-            } else {
-              groups.push(currentGroup);
-              currentGroup = [slot];
-            }
-          }
-        }
-        if (currentGroup.length > 0) {
-          groups.push(currentGroup);
-        }
-
-        const activeGroup = groups.find(g => g.some(s => s.id === overlappingKbm.id)) || [overlappingKbm];
-        const firstSlot = activeGroup[0];
-        const lastSlot = activeGroup[activeGroup.length - 1];
-        const activeScheduleIds = activeGroup.map(s => s.id);
-
-        const tz = await getTenantTimezone(tenantId);
-        const tzOffset = getTenantOffsetString(tz);
-
-        const waktuMulaiSesi = new Date(`${todayStr}T${firstSlot.jam_mulai}:00.000${tzOffset}`);
-        const waktuSelesaiSesi = new Date(`${todayStr}T${lastSlot.jam_selesai}:00.000${tzOffset}`);
-
-        // Cari sesi KBM reguler kelas & mapel tersebut hari ini
-        let kbmSesi = await prisma.sesiAbsensi.findFirst({
-          where: {
-            tenant_id: tenantId,
-            OR: [
-              { jadwal_kbm_id: { in: activeScheduleIds } },
-              {
-                kelas_id: overlappingKbm.kelas_id,
-                mapel_id: overlappingKbm.mapel_id,
-                jenis_kegiatan: 'KBM',
-              },
-            ],
-            tanggal: new Date(todayStr),
-          },
-        });
-
-        // Jika belum ada, materialisasi sesi KBM dengan status BERLANGSUNG
-        if (!kbmSesi) {
-          kbmSesi = await prisma.sesiAbsensi.create({
-            data: {
-              tenant_id: tenantId,
-              jadwal_kbm_id: firstSlot.id,
-              kelas_id: overlappingKbm.kelas_id,
-              guru_id: overlappingKbm.guru_id,
-              mapel_id: overlappingKbm.mapel_id,
-              tahun_pelajaran_id: overlappingKbm.tahun_pelajaran_id,
-              semester_id: overlappingKbm.semester_id,
-              jenis_kegiatan: 'KBM',
-              status: 'BERLANGSUNG',
-              tanggal: new Date(todayStr),
-              waktu_mulai: waktuMulaiSesi,
-              waktu_selesai: waktuSelesaiSesi,
-              foto_kegiatan: parentSesi.foto_kegiatan || undefined,
-              created_at: now,
-              updated_at: now,
-            },
-          });
-        } else {
-          // Buka sesi KBM yang masih MENDATANG / BELUM_DIMULAI dan pastikan waktu_selesai presisi
-          const updateData: any = { updated_at: now };
-          if (kbmSesi.status === 'MENDATANG' || kbmSesi.status === 'BELUM_DIMULAI') {
-            updateData.status = 'BERLANGSUNG';
-            if (!kbmSesi.waktu_mulai) updateData.waktu_mulai = waktuMulaiSesi;
-            if (parentSesi.foto_kegiatan && !kbmSesi.foto_kegiatan) updateData.foto_kegiatan = parentSesi.foto_kegiatan;
-          }
-          if (!kbmSesi.waktu_selesai) {
-            updateData.waktu_selesai = waktuSelesaiSesi;
-          }
-          if (Object.keys(updateData).length > 1) {
-            kbmSesi = await prisma.sesiAbsensi.update({
-              where: { id: kbmSesi.id },
-              data: updateData,
-            });
-          }
-        }
-
-        // Upsert AbsenGuru di sesi KBM reguler
-        await prisma.absenGuru.upsert({
-          where: {
-            sesi_id_guru_id: {
-              sesi_id: kbmSesi.id,
-              guru_id: payload.guru_id,
-            },
-          },
-          update: {
-            status: 'HADIR',
-            waktu_tap: now,
-            is_terlambat: false,
-            catatan: `Hadir mendampingi ${namaKegiatan} (Terminal Kegiatan Terpadu)`,
-            updated_at: now,
-          },
-          create: {
-            tenant_id: tenantId,
-            sesi_id: kbmSesi.id,
-            guru_id: payload.guru_id,
-            status: 'HADIR',
-            waktu_tap: now,
-            is_terlambat: false,
-            catatan: `Hadir mendampingi ${namaKegiatan} (Terminal Kegiatan Terpadu)`,
-            tahun_pelajaran_id: overlappingKbm.tahun_pelajaran_id,
-            semester_id: overlappingKbm.semester_id,
-            created_at: now,
-            updated_at: now,
-          },
-        });
-
-        // 🛡️ PEWARISAN KETIDAKHADIRAN GERBANG (SAKIT, IZIN, ALPA, DISPEN):
-        // Siswa yang di gerbang tercatat SAKIT, IZIN, ALPA, atau DISPEN otomatis diwariskan ke sesi KBM.
-        // Siswa yang berstatus HADIR / TERLAMBAT di gerbang TIDAK diwariskan (wajib diverifikasi fisik di kelas).
-        try {
-          const startOfDay = new Date(`${todayStr}T00:00:00.000${tzOffset}`);
-          const endOfDay = new Date(`${todayStr}T23:59:59.999${tzOffset}`);
-
-          const gateAbsences = await prisma.absenGerbangSiswa.findMany({
-            where: {
-              tenant_id: tenantId,
-              created_at: { gte: startOfDay, lte: endOfDay },
-              status: { in: ['SAKIT', 'IZIN', 'ALPA', 'ALFA', 'DISPEN'] },
-              OR: [
-                { kelas_id_snapshot: overlappingKbm.kelas_id },
-                { Siswa: { kelas_id: overlappingKbm.kelas_id } }
-              ],
-            },
-            select: {
-              siswa_id: true,
-              status: true,
-              waktu_tap: true,
-              catatan: true,
-            },
-          });
-
-          for (const ga of gateAbsences) {
-            const sa = await prisma.siswaAkademik.findFirst({
-              where: {
-                siswa_id: ga.siswa_id,
-                kelas_id: overlappingKbm.kelas_id,
-                status: 'AKTIF',
-              },
-              select: { id: true },
-            });
-            if (!sa) continue;
-
-            const normalizedStatus = String(ga.status || '').toUpperCase() === 'ALFA' ? 'ALPA' : ga.status;
-
-            const existing = await prisma.absenSiswa.findFirst({
-              where: { sesi_id: kbmSesi.id, siswa_akademik_id: sa.id },
-            });
-
-            if (existing) {
-              await prisma.absenSiswa.update({
-                where: { id_created_at: { id: existing.id, created_at: (existing as any).created_at } },
-                data: {
-                  status: normalizedStatus as any,
-                  waktu_tap: ga.waktu_tap || waktuMulaiSesi,
-                  asal_gerbang: true,
-                  catatan: ga.catatan || `Tercatat ${normalizedStatus} dari Presensi Gerbang`,
-                  updated_at: now,
-                },
-              });
-            } else {
-              await prisma.absenSiswa.create({
-                data: {
-                  tenant_id: tenantId,
-                  sesi_id: kbmSesi.id,
-                  siswa_akademik_id: sa.id,
-                  status: normalizedStatus as any,
-                  waktu_tap: ga.waktu_tap || waktuMulaiSesi,
-                  asal_gerbang: true,
-                  kelas_id_snapshot: overlappingKbm.kelas_id,
-                  tahun_pelajaran_id_snapshot: overlappingKbm.tahun_pelajaran_id,
-                  catatan: ga.catatan || `Tercatat ${normalizedStatus} dari Presensi Gerbang`,
-                },
-              });
-            }
-          }
-        } catch (gateSyncErr: any) {
-          console.warn('[UnifiedKegiatanService] Gate non-present sync warning:', gateSyncErr?.message);
-        }
-
-        syncedKbm = true;
-        kbmSesiId = kbmSesi.id;
-      }
     }
 
     return {
       success: true,
-      message: syncedKbm
-        ? `Presensi dicatat & Sesi KBM reguler berhasil dibuka otomatis (1 Tap 2 Record)`
+      message: hasOverlappingKbm
+        ? `Presensi kegiatan dicatat — pengampunan keterlambatan aktif saat guru membuka sesi KBM pertamanya`
         : `Presensi pendamping berhasil dicatat`,
-      synced_kbm: syncedKbm,
-      kbm_sesi_id: kbmSesiId,
+      synced_kbm: false,
+      grace_kbm_applied: hasOverlappingKbm,
+      kbm_sesi_id: undefined,
     };
   }
 
