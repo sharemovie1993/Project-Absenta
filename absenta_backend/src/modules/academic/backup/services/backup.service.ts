@@ -24,6 +24,7 @@ export const backupService = {
       jadwalKBM,
       jadwalKegiatan,
       jadwalKegiatanWajibPositions,
+      periodeOperasionalKbm,
       pelanggaranSiswa,
       supervisiGuru
     ] = await Promise.all([
@@ -52,6 +53,7 @@ export const backupService = {
       prisma.jadwalKBM.findMany({ where: { tenant_id: tenantId } }),
       prisma.jadwalKegiatan.findMany({ where: { tenant_id: tenantId } }),
       prisma.jadwalKegiatanWajibPosition.findMany({ where: { tenant_id: tenantId } }),
+      prisma.periodeOperasionalKbm.findMany({ where: { tenant_id: tenantId } }),
       prisma.pelanggaranSiswa.findMany({ where: { tenant_id: tenantId } }),
       prisma.supervisiGuru.findMany({ where: { tenant_id: tenantId } }),
     ]);
@@ -80,6 +82,7 @@ export const backupService = {
         jadwalKBM,
         jadwalKegiatan,
         jadwalKegiatanWajibPositions,
+        periodeOperasionalKbm,
         pelanggaranSiswa,
         supervisiGuru
       }
@@ -111,6 +114,7 @@ export const backupService = {
       jadwalKBM,
       jadwalKegiatan,
       jadwalKegiatanWajibPositions,
+      periodeOperasionalKbm,
       pelanggaranSiswa,
       supervisiGuru
     } = backupData.data;
@@ -158,6 +162,7 @@ export const backupService = {
       jadwalKBM: 0,
       jadwalKegiatan: 0,
       jadwalKegiatanWajibPositions: 0,
+      periodeOperasionalKbm: 0,
       pelanggaran: 0,
       supervisi: 0,
       siswaAkademik: 0
@@ -207,6 +212,10 @@ export const backupService = {
       if (jadwalKegiatanWajibPositions?.length) {
         const res = await tx.jadwalKegiatanWajibPosition.createMany({ data: sanitize(jadwalKegiatanWajibPositions), skipDuplicates: true });
         counts.jadwalKegiatanWajibPositions = res.count;
+      }
+      if (periodeOperasionalKbm?.length) {
+        const res = await tx.periodeOperasionalKbm.createMany({ data: sanitizeWithUpdatedAt(periodeOperasionalKbm), skipDuplicates: true });
+        counts.periodeOperasionalKbm = res.count;
       }
       if (organizationalAssignments?.length) {
         const res = await tx.organizationalAssignment.createMany({ data: sanitizeWithUpdatedAt(organizationalAssignments), skipDuplicates: true });

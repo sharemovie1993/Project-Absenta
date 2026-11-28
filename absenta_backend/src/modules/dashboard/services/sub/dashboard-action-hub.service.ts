@@ -290,14 +290,20 @@ export class DashboardActionHubService {
       if (activeTp?.id) kbmWhere.tahun_pelajaran_id = activeTp.id;
       if (activeSem?.id) kbmWhere.semester_id = activeSem.id;
 
-      const kbmList = await prisma.jadwalKBM.findMany({
-        where: kbmWhere,
-        include: {
-          Mapel: { select: { nama_mapel: true } },
-          Kelas: { select: { nama_kelas: true } },
-        },
-        orderBy: { jam_mulai: 'asc' },
-      });
+      const { resolveKbmOperationalFilter } = await import('@/modules/attendance/helpers/kbm-operational-period.helper');
+      const [rawKbmList, kbmOpFilter] = await Promise.all([
+        prisma.jadwalKBM.findMany({
+          where: kbmWhere,
+          include: {
+            Mapel: { select: { id: true, nama_mapel: true, kelompok_mapel: true } },
+            Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
+          },
+          orderBy: { jam_mulai: 'asc' },
+        }),
+        resolveKbmOperationalFilter(tenantId, new Date().toISOString().slice(0, 10)),
+      ]);
+
+      const kbmList = kbmOpFilter.filterActiveSchedules(rawKbmList);
 
       if (kbmList.length === 0) return [];
 

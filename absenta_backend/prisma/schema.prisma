@@ -80,6 +80,7 @@ model Tenant {
   JadwalKBM                   JadwalKBM[]
   JadwalKegiatan              JadwalKegiatan[]
   JadwalKegiatanWajibPosition JadwalKegiatanWajibPosition[]
+  PeriodeOperasionalKbm       PeriodeOperasionalKbm[]
   JadwalPembinaUpacara        JadwalPembinaUpacara[]
   AnggotaKegiatanEskul      AnggotaKegiatanEskul[]
 
@@ -1007,6 +1008,7 @@ model TahunPelajaran {
   JadwalPembinaUpacara   JadwalPembinaUpacara[]
   JadwalPiketGuru        JadwalPiketGuru[]
   StrukturKurikulum      StrukturKurikulum[]
+  PeriodeOperasionalKbm  PeriodeOperasionalKbm[]
   NilaiSiswa             NilaiSiswa[]
   RaporSiswa             RaporSiswa[]
   P5Projek               P5Projek[]
@@ -1055,6 +1057,7 @@ model Semester {
   NilaiSiswa             NilaiSiswa[]
   RaporSiswa             RaporSiswa[]
   P5Projek               P5Projek[]
+  PeriodeOperasionalKbm  PeriodeOperasionalKbm[]
   NilaiEskul             NilaiEskul[]
   PerangkatAjar          PerangkatAjar[]
   GuruMapel              GuruMapel[]
@@ -5582,6 +5585,32 @@ model KalenderAkademik {
   @@index([tenant_id])
   @@index([tahun_pelajaran_id])
   @@index([tanggal_mulai, tanggal_selesai])
+}
+
+model PeriodeOperasionalKbm {
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  tahun_pelajaran_id String
+  semester_id        String?
+  nama               String
+  tipe               String   // "PKL" | "KBM_BLOK" | "NON_KBM"
+  kelompok_aktif     String?  // Khusus KBM_BLOK: "PRODUKTIF" | "UMUM" | "MUATAN_LOKAL"
+  tanggal_mulai      DateTime @db.Date
+  tanggal_selesai    DateTime @db.Date
+  target_semua_kelas Boolean  @default(false)
+  target_kelas_ids   String[] @default([])
+  keterangan         String?  @db.Text
+  aktif              Boolean  @default(true)
+  dibuat_oleh        String?
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  Tenant         Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  TahunPelajaran TahunPelajaran @relation(fields: [tahun_pelajaran_id], references: [id], onDelete: Cascade)
+  Semester       Semester?      @relation(fields: [semester_id], references: [id], onDelete: SetNull)
+
+  @@index([tenant_id, aktif, tanggal_mulai, tanggal_selesai])
+  @@index([tahun_pelajaran_id])
 }
 
 model GuruDocument {

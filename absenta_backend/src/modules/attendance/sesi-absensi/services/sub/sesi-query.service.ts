@@ -628,12 +628,13 @@ export class SesiQueryService {
     }
 
     const targetDateUtc = new Date(`${dateStr}T00:00:00.000Z`);
-    const [rawSchedulesFetched, activeLeavesToday, pjjEventsToday] = await Promise.all([
+    const { resolveKbmOperationalFilter } = await import('@/modules/attendance/helpers/kbm-operational-period.helper');
+    const [rawSchedulesFetchedAll, activeLeavesToday, pjjEventsToday, kbmOpFilter] = await Promise.all([
       (prisma as any).jadwalKBM.findMany({
         where: scheduleWhere,
         include: {
-          Kelas: { select: { id: true, nama_kelas: true } },
-          Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
+          Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
+          Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true, kelompok_mapel: true } },
           UnitPengajaran: { select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true, foto: true } } } },
           Guru: { select: { id: true, nama_guru: true, nip: true, no_hp: true, foto: true } },
           GuruPelaksana: { select: { id: true, nama_guru: true, nip: true, no_hp: true } }
@@ -657,8 +658,12 @@ export class SesiQueryService {
           tanggal: targetDateUtc,
           mode_kejadian: 'PJJ_DARING'
         }
-      })
+      }),
+      resolveKbmOperationalFilter(tenantId, dateStr),
     ]);
+
+    // Saring jadwal KBM yang sedang ditangguhkan oleh Periode Operasional KBM (PKL, KBM Blok Kelompok Mapel, Non-KBM)
+    const rawSchedulesFetched = kbmOpFilter.filterActiveSchedules(rawSchedulesFetchedAll);
 
     // 🔑 Apply day_patterns shift config enrichment — same as JadwalKBMService.enrichJadwalWithDayTimes
     // This ensures jam_mulai/jam_selesai are resolved identically across Siswa, Guru, Ops, and Monitoring modules.
@@ -857,9 +862,19 @@ export class SesiQueryService {
 
     // 🛡️ Push physical activity sessions AND real started/finished sessions that did not match schedule slots.
     // Unmatched out-of-bounds KBM sessions remain blocked when include_scheduled = true only if never started.
+    // Jika kelas/mapel sedang ditangguhkan PKL / KBM Blok, sesi KBM kosong (tanpa kehadiran guru riil) juga dilewati agar tidak memicu ALPA palsu.
     physicalSessions.forEach((ps: any) => {
       if (!matchedPhysicalIds.has(ps.id)) {
         const isActivitySession = !!ps.jadwal_kegiatan_id || (ps.jenis_kegiatan && String(ps.jenis_kegiatan).toUpperCase() !== 'KBM');
+        const hasRealTeacherEvidence =
+          Boolean(ps.foto_kegiatan) ||
+          Boolean(ps.waktu_tap) ||
+          (Array.isArray(ps.AbsenGuru) && ps.AbsenGuru.some((ag: any) => Boolean(ag.waktu_tap) || String(ag.status || '').toUpperCase() === 'HADIR'));
+
+        if (!isActivitySession && !hasRealTeacherEvidence && kbmOpFilter.checkSchedule(ps).suspended) {
+          return;
+        }
+
         const isStartedOrFinished = ps.status === 'BERLANGSUNG' || ps.status === 'SELESAI' || Boolean(ps.foto_kegiatan);
         if (isActivitySession || isStartedOrFinished || !include_scheduled) {
           unifiedList.push(ps);

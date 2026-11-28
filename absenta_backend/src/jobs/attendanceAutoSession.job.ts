@@ -160,25 +160,35 @@ export async function generateSessionsForTenantDirect(
     // --- KBM GENERATION SECTION ---
     // Hanya generate KBM jika hari ini adalah Hari Sekolah/Operasional Tenant
     if (tenant.hari_sekolah.includes(hariEnum)) {
-      // 3. Cari semua jadwal pelajaran (Jadwal KBM) untuk hari ini (Hanya jenis_kegiatan = KBM, kelas aktif, guru aktif)
-      const schedules = await prisma.jadwalKBM.findMany({
-        where: {
-          tenant_id: tenantId,
-          tahun_pelajaran_id: activeYear.id,
-          semester_id: activeSemester.id,
-          hari: hariEnum,
-          jenis_kegiatan: 'KBM',
-          Kelas: { is_active: true },
-          OR: [
-            { guru_id: null },
-            {
-              Guru: {
-                User: { status: 'ACTIVE' }
+      const { resolveKbmOperationalFilter } = await import('@/modules/attendance/helpers/kbm-operational-period.helper');
+      const [rawKbmSchedules, kbmOpFilter] = await Promise.all([
+        prisma.jadwalKBM.findMany({
+          where: {
+            tenant_id: tenantId,
+            tahun_pelajaran_id: activeYear.id,
+            semester_id: activeSemester.id,
+            hari: hariEnum,
+            jenis_kegiatan: 'KBM',
+            Kelas: { is_active: true },
+            OR: [
+              { guru_id: null },
+              {
+                Guru: {
+                  User: { status: 'ACTIVE' }
+                }
               }
-            }
-          ]
-        }
-      });
+            ]
+          },
+          include: {
+            Kelas: { select: { id: true, tingkat: true } },
+            Mapel: { select: { id: true, nama_mapel: true, kelompok_mapel: true } },
+          },
+        }),
+        resolveKbmOperationalFilter(tenantId, dateStr),
+      ]);
+
+      // Skip jadwal KBM yang sedang ditangguhkan oleh Periode PKL / KBM Blok / Non-KBM
+      const schedules = kbmOpFilter.filterActiveSchedules(rawKbmSchedules);
 
       if (schedules.length > 0) {
         // 🔑 Enrich with day_patterns shift config before merging

@@ -861,22 +861,27 @@ export class UnifiedKegiatanService {
       });
     }
 
-    // 2. Guru Mapel KBM yang Jadwalnya BERIRISAN Jam dengan Kegiatan (dan mengajar di rombel target kegiatan)
+    // 2. Guru Mapel KBM yang Jadwalnya BERIRISAN Jam dengan Kegiatan (dan mengajar di rombel target kegiatan yang aktif operasional)
     // Aktif jika kebijakan JadwalKegiatan mengaktifkan wajib_guru_beririsan dan kegiatan bukan Apel Pulang (APEL_SORE).
     if (!isApelPulang && kegiatanPolicy.wajibGuruBeririsan) {
-      const allKbmHariIni = await prisma.jadwalKBM.findMany({
-        where: {
-          tenant_id: tenantId,
-          hari: kbmHariQuery,
-          guru_id: { not: null },
-          ...(hasRestrictedKelasScope ? { kelas_id: { in: Array.from(jadwalTargetKelasSet) } } : {}),
-        },
-        include: {
-          Guru: { select: { id: true, nama_guru: true } },
-          Kelas: { select: { id: true, nama_kelas: true } },
-          Mapel: { select: { id: true, nama_mapel: true } },
-        },
-      });
+      const { resolveKbmOperationalFilter } = await import('@/modules/attendance/helpers/kbm-operational-period.helper');
+      const [rawKbmHariIni, kbmOpFilter] = await Promise.all([
+        prisma.jadwalKBM.findMany({
+          where: {
+            tenant_id: tenantId,
+            hari: kbmHariQuery,
+            guru_id: { not: null },
+            ...(hasRestrictedKelasScope ? { kelas_id: { in: Array.from(jadwalTargetKelasSet) } } : {}),
+          },
+          include: {
+            Guru: { select: { id: true, nama_guru: true } },
+            Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
+            Mapel: { select: { id: true, nama_mapel: true, kelompok_mapel: true } },
+          },
+        }),
+        resolveKbmOperationalFilter(tenantId, targetDateStr),
+      ]);
+      const allKbmHariIni = kbmOpFilter.filterActiveSchedules(rawKbmHariIni);
 
       // Ambil sesi KBM fisik yang sudah ada hari ini untuk mengetahui status live (MENDATANG / BERLANGSUNG)
       const kbmSesiHariIni = await prisma.sesiAbsensi.findMany({

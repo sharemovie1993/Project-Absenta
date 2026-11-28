@@ -382,7 +382,8 @@ export class GuruRekapService {
     const hariEnumMap = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'] as const;
     const hariIni = hariEnumMap[dateObj.getDay()];
 
-    const [jadwalHariIni, absGuruList, sesiList, fallbackTotalGuru] = await Promise.all([
+    const { resolveKbmOperationalFilter } = await import('@/modules/attendance/helpers/kbm-operational-period.helper');
+    const [rawJadwalHariIni, absGuruList, sesiList, fallbackTotalGuru, kbmOpFilter] = await Promise.all([
       activeTp && activeSem
         ? prisma.jadwalKBM.findMany({
             where: {
@@ -391,7 +392,14 @@ export class GuruRekapService {
               semester_id: activeSem.id,
               hari: hariIni as any,
             },
-            select: { id: true, guru_id: true },
+            select: {
+              id: true,
+              guru_id: true,
+              kelas_id: true,
+              mapel_id: true,
+              Kelas: { select: { id: true, tingkat: true } },
+              Mapel: { select: { id: true, nama_mapel: true, kelompok_mapel: true } },
+            },
           })
         : Promise.resolve([]),
       prisma.absenGuru.findMany({
@@ -423,7 +431,10 @@ export class GuruRekapService {
         },
       }),
       prisma.guru.count({ where: { tenant_id: tenantId } }),
+      resolveKbmOperationalFilter(tenantId, tanggal),
     ]);
+
+    const jadwalHariIni = kbmOpFilter.filterActiveSchedules(rawJadwalHariIni);
 
     const scheduledGuruIds = new Set<string>();
     for (const j of jadwalHariIni) {

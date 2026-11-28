@@ -84,6 +84,7 @@ async function extractTenantData(tenantId: string) {
     'OrganizationalAssignment': 'organizationalAssignment',
     'JadwalKegiatan': 'jadwalKegiatan',
     'JadwalKegiatanWajibPosition': 'jadwalKegiatanWajibPosition',
+    'PeriodeOperasionalKbm': 'periodeOperasionalKbm',
     'StrukturKurikulum': 'strukturKurikulum',
     'ProgresMateri': 'progresMateri',
     'AbsensiKejadianKhusus': 'absensiKejadianKhusus',

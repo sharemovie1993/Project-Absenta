@@ -738,6 +738,10 @@ export async function registerRoutes(fastify: any, prisma: any) {
       await fastify.register(jadwalKBMRoutes, { prefix: '/kurikulum/jadwal-kbm' });
       await fastify.register(jadwalKBMRoutes, { prefix: '/kurikulum/jadwal' });
 
+      // Periode Operasional KBM (PKL, KBM Blok Kelompok Mapel, Non-KBM — 2 arah Kurikulum & Hubin)
+      const { periodeOperasionalKbmRoutes } = await import('../modules/kurikulum/periode-kbm/routes/periode-kbm.routes');
+      await fastify.register(periodeOperasionalKbmRoutes, { prefix: '/kurikulum/periode-kbm' });
+
       // Guru Mapel (Kurikulum)
       const { default: guruMapelRoutes } = await import('../modules/kurikulum/guru-mapel/routes/guru-mapel.routes');
       await fastify.register(guruMapelRoutes, { prefix: '/kurikulum/guru-mapel' });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -30,6 +30,10 @@ import { HubinYearConfigModal } from './HubinYearConfigModal';
 import { HubinSkemaRekapTable } from './HubinSkemaRekapTable';
 import { HubinSiklusRekapTable } from './HubinSiklusRekapTable';
 
+const PeriodeOperasionalKbmView = lazy(
+  () => import('@/components/kurikulum/periode-kbm/PeriodeOperasionalKbmView')
+);
+
 // Zod Schema Validation Guard (Pilar 25)
 const storageSettingsSchema = z.object({
   folderUrl: z.string().url('URL Google Drive tidak valid').or(z.literal('')),
@@ -53,7 +57,7 @@ export interface UniversalHubinSettingsViewProps {
 
   // 3. Event Callbacks
   onClose?: () => void;
-  defaultTab?: 'sertifikat' | 'skema' | 'siklus' | 'storage';
+  defaultTab?: 'periode_pkl' | 'sertifikat' | 'skema' | 'siklus' | 'storage';
 }
 
 export const HubinSettingsView: React.FC<UniversalHubinSettingsViewProps> = React.memo(({
@@ -73,12 +77,12 @@ export const HubinSettingsView: React.FC<UniversalHubinSettingsViewProps> = Reac
   const urlTab = searchParams.get(hideLayout ? 'hubin_tab' : 'tab');
 
   const [activeTab, setActiveTab] = useState<string>(() => {
-    if (urlTab && ['sertifikat', 'skema', 'siklus', 'storage'].includes(urlTab)) return urlTab;
+    if (urlTab && ['periode_pkl', 'sertifikat', 'skema', 'siklus', 'storage'].includes(urlTab)) return urlTab;
     return defaultTab;
   });
 
   useEffect(() => {
-    if (!isModal && urlTab && ['sertifikat', 'skema', 'siklus', 'storage'].includes(urlTab)) {
+    if (!isModal && urlTab && ['periode_pkl', 'sertifikat', 'skema', 'siklus', 'storage'].includes(urlTab)) {
       setActiveTab(urlTab);
     }
   }, [urlTab, isModal]);
@@ -190,6 +194,7 @@ export const HubinSettingsView: React.FC<UniversalHubinSettingsViewProps> = Reac
   }, [readOnly, folderUrl, driveMode, saveStorageMutation]);
 
   const tabs = useMemo(() => [
+    { id: 'periode_pkl', label: isMobile ? '📅 Periode PKL' : '📅 Periode PKL (Bebas KBM)' },
     { id: 'sertifikat', label: isMobile ? '📜 Sertifikat' : '📜 Nomor Surat & Sertifikat' },
     { id: 'skema', label: isMobile ? '⚖️ Skema Nilai' : '⚖️ Skema & Bobot Penilaian' },
     { id: 'siklus', label: isMobile ? '🔄 Siklus Kunjungan' : '🔄 Siklus Kunjungan Industri' },
@@ -259,6 +264,18 @@ export const HubinSettingsView: React.FC<UniversalHubinSettingsViewProps> = Reac
           </Button>
         </div>
       </div>
+
+      {/* TAB 0: PERIODE PKL (SINKRON 2 ARAH DENGAN KURIKULUM — BEBAS KBM VIRTUAL & ALPA) */}
+      {activeTab === 'periode_pkl' && (
+        <Suspense fallback={null}>
+          <PeriodeOperasionalKbmView
+            hideLayout={true}
+            scope="PKL"
+            tahunPelajaranId={tahunPelajaranId}
+            readOnly={readOnly}
+          />
+        </Suspense>
+      )}
 
       {/* TAB 1: REKAP TABEL SERTIFIKAT & NOMOR SURAT RESMI TU */}
       {activeTab === 'sertifikat' && (
