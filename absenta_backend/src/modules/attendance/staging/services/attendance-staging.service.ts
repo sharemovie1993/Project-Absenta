@@ -1290,10 +1290,11 @@ export class AttendanceStagingService {
           const sessKey = `${sess.dateIso}_${sess.sessionCode}`;
 
           // Cek apakah siswa ada di daftar pengecualian (non-hadir)
+          // Mendukung pencocokan spesifik sesi (`YYYY-MM-DD_PAGI` / `YYYY-MM-DD_SORE`) maupun tanggal penuh (`YYYY-MM-DD`)
           const matchedEx = (payload.exceptions || []).find((ex) => {
             if (ex.siswa_id !== s.siswa_id) return false;
             if (!ex.dates || ex.dates.length === 0) return true;
-            return ex.dates.includes(sess.dateIso);
+            return ex.dates.includes(sessKey) || ex.dates.includes(sess.dateIso);
           });
 
           if (matchedEx) {

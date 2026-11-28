@@ -143,7 +143,7 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
   const [lateMinutes, setLateMinutes] = useState<number>(15);
 
   const [exceptionsList, setExceptionsList] = useState<ManualBackfillException[]>([]);
-  const [activeChecklistDate, setActiveChecklistDate] = useState<string>('ALL_DATES');
+  const [activeBrushStatus, setActiveBrushStatus] = useState<'SAKIT' | 'IZIN' | 'ALPA' | 'TERLAMBAT' | 'DISPENSASI'>('SAKIT');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // ── Step 3: Preview State ──
@@ -396,15 +396,16 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
     );
   }, [previewClassStudents, previewSearchStudent]);
 
-  // Helper status per cell di matriks preview
+  // Helper status per cell di matriks preview & matriks ceklis (mendukung key sesi YYYY-MM-DD_PAGI / YYYY-MM-DD_SORE maupun tanggal YYYY-MM-DD)
   const getStudentSessionStatus = useCallback((siswaId: string, sess: typeof generatedSessions[0]): {
     status: 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPENSASI' | 'TERLAMBAT';
     isException: boolean;
   } => {
+    const sessKey = `${sess.dateIso}_${sess.sessionCode}`;
     const matched = exceptionsList.find((ex) => {
       if (ex.siswa_id !== siswaId) return false;
       if (!ex.dates || ex.dates.length === 0) return true;
-      return ex.dates.includes(sess.dateIso);
+      return ex.dates.includes(sessKey) || ex.dates.includes(sess.dateIso);
     });
     if (matched) {
       return { status: matched.status, isException: true };
@@ -458,15 +459,6 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
     if (selectedKelasIds.length === 0) {
       toast.error('Mohon pilih minimal 1 rombel kelas sasaran.');
       return;
-    }
-    // Jika tanggal lebih dari 1, defaultkan fokus tab tanggal ke tanggal pertama agar dinamis per tanggal (atau tetap jika sudah valid)
-    const sorted = [...new Set(selectedDates)].sort();
-    if (sorted.length === 1) {
-      setActiveChecklistDate(sorted[0]);
-    } else if (activeChecklistDate !== 'ALL_DATES' && !sorted.includes(activeChecklistDate)) {
-      setActiveChecklistDate(sorted[0]);
-    } else if (activeChecklistDate === 'ALL_DATES' && sorted.length > 1) {
-      setActiveChecklistDate(sorted[0]);
     }
     setCurrentStep(2);
   };
@@ -842,125 +834,66 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
         )}
 
         {/* ═══════════════════════════════════════════════════════════════════════════ */}
-        {/* ── STEP 2: CEKLIS CEPAT SISWA NON-HADIR (DINAMIS PER TANGGAL & AGENDA) ── */}
+        {/* ── STEP 2: MATRIKS CEKLIS LANGSUNG (2 X 5 SIKLUS BLOK TERBUKA) ── */}
         {/* ═══════════════════════════════════════════════════════════════════════════ */}
         {currentStep === 2 && (
-          <div className="space-y-3.5">
+          <div className="space-y-3">
             <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3">
-              {/* Top Info & Counter */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
+              {/* Top Toolbar: Mode Kuas Status (S/I/A/T/D) + Search + Counter */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100 dark:border-slate-800">
                 <div>
                   <h4 className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-                    <Check className="w-4 h-4 text-amber-600" />
-                    Ceklis Siswa Non-Hadir Dinamis Sesuai Jadwal &amp; Rombel Terpilih
+                    <Table className="w-4 h-4 text-amber-600" />
+                    Matriks Ceklis Kehadiran Terbuka ({selectedDates.length} Hari &times; Siklus Sesi = {generatedSessions.length} Blok Sesi)
                   </h4>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Pilih <strong>Tab Tanggal Sesi</strong> di bawah untuk menceklis siswa pada tanggal tersebut, atau pilih <strong>Semua Tanggal ({selectedDates.length} Hari)</strong> untuk menerapkan sekaligus.
+                    Seluruh blok sesi terbuka sekaligus tanpa perlu pindah tab tanggal. Pilih <strong>Kuas Status</strong> lalu klik kotak sesi siswa yang tidak hadir (atau klik <strong>1 Hari / Semua</strong>).
                   </p>
                 </div>
-                <Badge variant="warning" className="text-xs font-extrabold shrink-0 self-start sm:self-center">
-                  {exceptionsList.length} Pengecualian Tercatat
-                </Badge>
-              </div>
 
-              {/* ── DYNAMIC DATE & AGENDA TABS (FOLLOWING STEP 1 RULES) ── */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-amber-600" />
-                    Pilih Tanggal Sesi yang Sedang Diceklis:
+                {/* Kuas Status Aktif (1-Click Paint Mode) */}
+                <div className="flex items-center gap-1.5 flex-wrap shrink-0 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-xl border border-slate-200/80 dark:border-slate-700">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 px-1.5">
+                    Kuas Ceklis:
                   </span>
-                  <span className="text-slate-400 font-semibold">
-                    Total {generatedSessions.length} Sesi dari {selectedDates.length} Tanggal
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                  {[...new Set(selectedDates)].sort().map((dStr) => {
-                    const isSelectedDate = activeChecklistDate === dStr;
-                    const sessionsForDate = generatedSessions.filter((s) => s.dateIso === dStr);
-                    const agendaLabels = Array.from(new Set(sessionsForDate.map((s) => s.sessionLabel))).join(' + ');
-                    const countOnDate = exceptionsList.filter(
-                      (ex) => !ex.dates || ex.dates.length === 0 || ex.dates.includes(dStr)
-                    ).length;
-
+                  {(
+                    [
+                      { code: 'SAKIT', short: 'S', label: 'Sakit (S)', activeCls: 'bg-amber-600 text-white border-amber-600 shadow-xs' },
+                      { code: 'IZIN', short: 'I', label: 'Izin (I)', activeCls: 'bg-blue-600 text-white border-blue-600 shadow-xs' },
+                      { code: 'ALPA', short: 'A', label: 'Alpa (A)', activeCls: 'bg-rose-600 text-white border-rose-600 shadow-xs' },
+                      { code: 'TERLAMBAT', short: 'T', label: 'Telat (T)', activeCls: 'bg-orange-600 text-white border-orange-600 shadow-xs' },
+                      { code: 'DISPENSASI', short: 'D', label: 'Dispen (D)', activeCls: 'bg-purple-600 text-white border-purple-600 shadow-xs' },
+                    ] as const
+                  ).map((b) => {
+                    const isActiveBrush = activeBrushStatus === b.code;
                     return (
                       <button
-                        key={dStr}
+                        key={b.code}
                         type="button"
-                        onClick={() => setActiveChecklistDate(dStr)}
-                        className={`px-3 py-1.5 rounded-xl border text-left transition-all shrink-0 cursor-pointer flex items-center gap-2 ${
-                          isSelectedDate
-                            ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                            : 'bg-slate-50 dark:bg-slate-800/70 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400'
+                        onClick={() => setActiveBrushStatus(b.code)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-extrabold border transition-all cursor-pointer ${
+                          isActiveBrush
+                            ? b.activeCls
+                            : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-amber-400'
                         }`}
                       >
-                        <div>
-                          <div className="text-xs font-extrabold leading-tight flex items-center gap-1.5">
-                            <span>{formatTanggalIndo(dStr)}</span>
-                            {countOnDate > 0 && (
-                              <span
-                                className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                                  isSelectedDate
-                                    ? 'bg-white text-amber-800'
-                                    : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                                }`}
-                              >
-                                {countOnDate}
-                              </span>
-                            )}
-                          </div>
-                          <span
-                            className={`text-[10px] font-bold block ${
-                              isSelectedDate ? 'text-amber-100' : 'text-indigo-600 dark:text-indigo-400'
-                            }`}
-                          >
-                            {agendaLabels || 'Sesi Kegiatan'}
-                          </span>
-                        </div>
+                        {b.label}
                       </button>
                     );
                   })}
-
-                  {selectedDates.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => setActiveChecklistDate('ALL_DATES')}
-                      className={`px-3 py-1.5 rounded-xl border text-left transition-all shrink-0 cursor-pointer ${
-                        activeChecklistDate === 'ALL_DATES'
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                          : 'bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-800 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 hover:border-indigo-400'
-                      }`}
-                    >
-                      <div className="text-xs font-extrabold leading-tight">
-                        ⚡ Berlaku Semua Tanggal
-                      </div>
-                      <span
-                        className={`text-[10px] font-bold block ${
-                          activeChecklistDate === 'ALL_DATES' ? 'text-indigo-100' : 'text-indigo-600/80 dark:text-indigo-400'
-                        }`}
-                      >
-                        Terapkan ke {selectedDates.length} Hari Sekaligus
-                      </span>
-                    </button>
-                  )}
                 </div>
               </div>
 
               {/* ── ROMBEL QUICK PILLS & SEARCH BAR ── */}
-              <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+                <div className="flex items-center gap-1.5 flex-wrap flex-1">
                   <span className="text-[11px] font-extrabold text-slate-400 uppercase shrink-0 mr-1">
                     Rombel ({selectedKelasIds.length}):
                   </span>
                   {selectedKelasIds.map((kId) => {
                     const c = classOptions.find((opt) => opt.id === kId);
                     const isCurrentKelas = (activeFilterKelasId || selectedKelasIds[0]) === kId;
-                    const countInClass = exceptionsList.filter((ex) => {
-                      if (ex.nama_kelas !== c?.nama_kelas) return false;
-                      if (activeChecklistDate === 'ALL_DATES') return true;
-                      return !ex.dates || ex.dates.length === 0 || ex.dates.includes(activeChecklistDate);
-                    }).length;
+                    const countInClass = exceptionsList.filter((ex) => ex.nama_kelas === c?.nama_kelas).length;
 
                     return (
                       <button
@@ -988,263 +921,311 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                   })}
                 </div>
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
-                    <span>Sedang Menceklis:</span>
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-extrabold border border-emerald-200 dark:border-emerald-800">
-                      Rombel {classOptions.find((c) => c.id === (activeFilterKelasId || selectedKelasIds[0]))?.nama_kelas}
-                    </span>
-                    <span>&bull;</span>
-                    <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-extrabold border border-amber-200 dark:border-amber-800">
-                      {activeChecklistDate === 'ALL_DATES'
-                        ? `Semua Tanggal (${selectedDates.length} Hari)`
-                        : formatTanggalIndo(activeChecklistDate)}
-                    </span>
-                  </div>
-
-                  <div className="relative w-full sm:w-64">
-                    <input
-                      type="text"
-                      value={studentChecklistSearch}
-                      onChange={(e) => setStudentChecklistSearch(e.target.value)}
-                      placeholder="Cari cepat nama atau NIS siswa..."
-                      className="w-full h-8 pl-8 pr-3 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-                    />
-                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
-                  </div>
+                <div className="relative w-full lg:w-64 shrink-0">
+                  <input
+                    type="text"
+                    value={studentChecklistSearch}
+                    onChange={(e) => setStudentChecklistSearch(e.target.value)}
+                    placeholder="Cari cepat nama atau NIS siswa..."
+                    className="w-full h-8 pl-8 pr-3 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                  />
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
                 </div>
               </div>
 
-              {/* Interactive Student Checklist Table (Dynamic per activeChecklistDate - Full Workspace Height) */}
-              <div className="border border-slate-200/80 dark:border-slate-800 rounded-xl divide-y divide-slate-100 dark:divide-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
+              {/* ── DIRECT INTERACTIVE 2 X N SIKLUS BLOCK MATRIX TABLE ── */}
+              <div className="border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-x-auto bg-white dark:bg-slate-900">
                 {loadingStudents ? (
-                  <div className="p-8 text-center text-xs text-slate-400">Memuat daftar siswa rombel...</div>
+                  <div className="p-10 text-center text-xs text-slate-400">Memuat matriks siswa rombel...</div>
                 ) : currentAvailableStudents.length === 0 ? (
-                  <div className="p-8 text-center text-xs text-slate-400">Tidak ada data siswa pada rombel ini.</div>
+                  <div className="p-10 text-center text-xs text-slate-400">Tidak ada data siswa pada rombel ini.</div>
                 ) : (
-                  currentAvailableStudents
-                    .filter((st) => {
-                      if (!studentChecklistSearch.trim()) return true;
-                      const q = studentChecklistSearch.toLowerCase();
-                      return st.nama_siswa.toLowerCase().includes(q) || (st.nis && st.nis.toLowerCase().includes(q));
-                    })
-                    .map((st, sIdx) => {
-                      const kId = activeFilterKelasId || selectedKelasIds[0];
-                      const kObj = classOptions.find((c) => c.id === kId);
-
-                      // Cari exception siswa ini yang berlaku pada activeChecklistDate
-                      const matchingExOnActiveDate = exceptionsList.find((e) => {
-                        if (e.siswa_id !== st.siswa_id) return false;
-                        if (activeChecklistDate === 'ALL_DATES') {
-                          return !e.dates || e.dates.length === 0 || e.dates.length === selectedDates.length;
-                        }
-                        return !e.dates || e.dates.length === 0 || e.dates.includes(activeChecklistDate);
-                      });
-
-                      // Semua exception siswa ini di tanggal-tanggal lain (untuk ditampilkan sebagai mini badge)
-                      const allStudentExceptions = exceptionsList.filter((e) => e.siswa_id === st.siswa_id);
-
-                      const toggleStudentExceptionForActiveDate = (
-                        status: 'SAKIT' | 'IZIN' | 'ALPA' | 'TERLAMBAT' | 'DISPENSASI'
-                      ) => {
-                        if (activeChecklistDate === 'ALL_DATES') {
-                          // Mode Berlaku Semua Tanggal
-                          setExceptionsList((prev) => {
-                            const withoutStudent = prev.filter((e) => e.siswa_id !== st.siswa_id);
-                            if (matchingExOnActiveDate && matchingExOnActiveDate.status === status) {
-                              return withoutStudent;
-                            }
-                            return [
-                              {
-                                siswa_id: st.siswa_id,
-                                nama_siswa: st.nama_siswa,
-                                nis: st.nis,
-                                nama_kelas: kObj?.nama_kelas || '',
-                                status,
-                                dates: undefined, // Berlaku seluruh tanggal
-                                catatan: matchingExOnActiveDate?.catatan,
-                              },
-                              ...withoutStudent,
-                            ];
-                          });
-                          return;
-                        }
-
-                        // Mode Tanggal Spesifik (activeChecklistDate)
-                        setExceptionsList((prev) => {
-                          const next: ManualBackfillException[] = [];
-                          let wasSameStatusOnThisDate = false;
-                          let existingNote: string | undefined;
-
-                          for (const ex of prev) {
-                            if (ex.siswa_id !== st.siswa_id) {
-                              next.push(ex);
-                              continue;
-                            }
-
-                            const exDates = ex.dates && ex.dates.length > 0 ? ex.dates : [...selectedDates];
-                            if (exDates.includes(activeChecklistDate)) {
-                              if (ex.status === status) {
-                                wasSameStatusOnThisDate = true;
-                              }
-                              existingNote = ex.catatan;
-                              const remainingDates = exDates.filter((d) => d !== activeChecklistDate);
-                              if (remainingDates.length > 0) {
-                                next.push({ ...ex, dates: remainingDates });
-                              }
-                            } else {
-                              next.push(ex);
-                            }
-                          }
-
-                          // Jika belum berstatus sama pada tanggal ini, tambahkan atau gabungkan
-                          if (!wasSameStatusOnThisDate) {
-                            const sameStatusEntryIdx = next.findIndex(
-                              (e) => e.siswa_id === st.siswa_id && e.status === status
-                            );
-                            if (sameStatusEntryIdx >= 0) {
-                              const target = next[sameStatusEntryIdx];
-                              const mergedDates = Array.from(
-                                new Set([...(target.dates || selectedDates), activeChecklistDate])
-                              ).sort();
-                              next[sameStatusEntryIdx] = {
-                                ...target,
-                                dates: mergedDates,
-                              };
-                            } else {
-                              next.unshift({
-                                siswa_id: st.siswa_id,
-                                nama_siswa: st.nama_siswa,
-                                nis: st.nis,
-                                nama_kelas: kObj?.nama_kelas || '',
-                                status,
-                                dates: [activeChecklistDate],
-                                catatan: existingNote,
-                              });
-                            }
-                          }
-
-                          return next;
-                        });
+                  (() => {
+                    // Kelompokkan generatedSessions per tanggal untuk membentuk Header Grup Hari (1 Hari = Pagi & Sore)
+                    const sortedUniqueDates = [...new Set(generatedSessions.map((s) => s.dateIso))];
+                    const dateGroups = sortedUniqueDates.map((dIso) => {
+                      const sessList = generatedSessions.filter((s) => s.dateIso === dIso);
+                      return {
+                        dateIso: dIso,
+                        dayName: sessList[0]?.dayName || '',
+                        dateFormatted: sessList[0]?.dateFormatted || dIso,
+                        sessions: sessList,
                       };
+                    });
 
-                      return (
-                        <div
-                          key={st.siswa_id}
-                          className={`flex items-center justify-between gap-2 px-3.5 py-2 text-xs transition-colors ${
-                            matchingExOnActiveDate
-                              ? 'bg-amber-50/90 dark:bg-amber-950/30'
-                              : 'hover:bg-white dark:hover:bg-slate-800/60'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                            <span className="text-[11px] font-bold text-slate-400 w-5 shrink-0">{sIdx + 1}.</span>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-bold text-slate-800 dark:text-slate-100 truncate">
-                                  {st.nama_siswa}
+                    const allSessionKeys = generatedSessions.map((s) => `${s.dateIso}_${s.sessionCode}`);
+                    const kId = activeFilterKelasId || selectedKelasIds[0];
+                    const kObj = classOptions.find((c) => c.id === kId);
+
+                    // Helper untuk mengubah status sejumlah sessionKeys sekaligus pada 1 siswa
+                    const applyStudentSessionKeys = (
+                      st: ClassStudentOption,
+                      targetSessKeys: string[],
+                      targetStatus: 'SAKIT' | 'IZIN' | 'ALPA' | 'TERLAMBAT' | 'DISPENSASI' | 'HADIR'
+                    ) => {
+                      setExceptionsList((prev) => {
+                        // Ekspansi seluruh exception siswa ini ke map sessionKey -> status
+                        const studentSessMap: Record<string, 'SAKIT' | 'IZIN' | 'ALPA' | 'TERLAMBAT' | 'DISPENSASI'> = {};
+                        let existingNote: string | undefined;
+
+                        for (const ex of prev) {
+                          if (ex.siswa_id !== st.siswa_id) continue;
+                          if (ex.catatan) existingNote = ex.catatan;
+                          const rawKeys = ex.dates && ex.dates.length > 0 ? ex.dates : allSessionKeys;
+                          for (const rk of rawKeys) {
+                            if (rk.includes('_')) {
+                              studentSessMap[rk] = ex.status;
+                            } else {
+                              // Jika masih format dateIso penuh, ekspansi ke seluruh sesi di tanggal tsb
+                              for (const gs of generatedSessions) {
+                                if (gs.dateIso === rk) {
+                                  studentSessMap[`${gs.dateIso}_${gs.sessionCode}`] = ex.status;
+                                }
+                              }
+                            }
+                          }
+                        }
+
+                        // Cek apakah seluruh targetSessKeys sudah memiliki status yang sama dengan targetStatus
+                        const allAlreadySame =
+                          targetStatus !== 'HADIR' &&
+                          targetSessKeys.every((k) => studentSessMap[k] === targetStatus);
+
+                        for (const k of targetSessKeys) {
+                          if (targetStatus === 'HADIR' || allAlreadySame) {
+                            delete studentSessMap[k];
+                          } else {
+                            studentSessMap[k] = targetStatus;
+                          }
+                        }
+
+                        // Re-group kembali per status
+                        const otherStudentsEx = prev.filter((e) => e.siswa_id !== st.siswa_id);
+                        const groupedByStatus: Record<string, string[]> = {};
+                        for (const [sKey, stVal] of Object.entries(studentSessMap)) {
+                          if (!groupedByStatus[stVal]) groupedByStatus[stVal] = [];
+                          groupedByStatus[stVal].push(sKey);
+                        }
+
+                        const rebuiltStudentEx: ManualBackfillException[] = Object.entries(groupedByStatus).map(
+                          ([stVal, keys]) => ({
+                            siswa_id: st.siswa_id,
+                            nama_siswa: st.nama_siswa,
+                            nis: st.nis,
+                            nama_kelas: kObj?.nama_kelas || '',
+                            status: stVal as any,
+                            dates: keys.sort(),
+                            catatan: existingNote,
+                          })
+                        );
+
+                        return [...rebuiltStudentEx, ...otherStudentsEx];
+                      });
+                    };
+
+                    return (
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 uppercase text-[10px] font-black sticky top-0 z-20">
+                          {/* Row 1: Grouped Date Headers (Misal: 5 Hari Siklus) */}
+                          <tr className="border-b border-slate-200 dark:border-slate-700">
+                            <th
+                              rowSpan={2}
+                              className="px-2.5 py-2 w-9 text-center border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800"
+                            >
+                              No
+                            </th>
+                            <th
+                              rowSpan={2}
+                              className="px-3 py-2 min-w-[200px] border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800"
+                            >
+                              Nama Siswa &amp; NIS
+                            </th>
+                            {dateGroups.map((dg) => (
+                              <th
+                                key={dg.dateIso}
+                                colSpan={dg.sessions.length}
+                                className="px-2 py-1.5 text-center border-r border-slate-200 dark:border-slate-700 bg-slate-200/70 dark:bg-slate-800/90"
+                              >
+                                <span className="text-amber-700 dark:text-amber-400 font-black">
+                                  {dg.dayName}
+                                </span>{' '}
+                                <span className="text-slate-800 dark:text-slate-100 font-extrabold">
+                                  {dg.dateFormatted}
                                 </span>
-                                {/* Tampilkan ringkasan badge tanggal jika siswa memiliki status non-hadir di tanggal tertentu */}
-                                {allStudentExceptions.map((exItem, exIdx) => (
-                                  <span
-                                    key={exIdx}
-                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 text-[9px] font-extrabold"
-                                  >
-                                    <span>{exItem.status}:</span>
-                                    <span>
-                                      {!exItem.dates || exItem.dates.length === 0 || exItem.dates.length === selectedDates.length
-                                        ? `Semua (${selectedDates.length} Hari)`
-                                        : exItem.dates
-                                            .map((d) =>
-                                              new Date(`${d}T00:00:00Z`).toLocaleDateString('id-ID', {
-                                                day: '2-digit',
-                                                month: 'short',
-                                                timeZone: 'UTC',
-                                              })
-                                            )
-                                            .join(', ')}
-                                    </span>
-                                  </span>
-                                ))}
-                              </div>
-                              {st.nis && <span className="text-[10px] text-slate-400 font-mono">NIS: {st.nis}</span>}
-                            </div>
-                          </div>
+                              </th>
+                            ))}
+                            <th
+                              rowSpan={2}
+                              className="px-2.5 py-2 text-center min-w-[90px] bg-slate-100 dark:bg-slate-800"
+                            >
+                              Ceklis Baris
+                            </th>
+                          </tr>
 
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {!matchingExOnActiveDate ? (
-                              <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 text-[10px] font-extrabold mr-1">
-                                HADIR
-                              </span>
-                            ) : (
-                              <input
-                                type="text"
-                                placeholder="Catatan (opsional)..."
-                                value={matchingExOnActiveDate.catatan || ''}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setExceptionsList((prev) =>
-                                    prev.map((item) =>
-                                      item === matchingExOnActiveDate ? { ...item, catatan: val || undefined } : item
-                                    )
-                                  );
-                                }}
-                                className="hidden md:block w-36 px-2 py-1 text-[11px] rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 mr-1"
-                              />
+                          {/* Row 2: Individual Session Blocks (2 x 5 Siklus Blok: Pagi & Sore) */}
+                          <tr className="border-b border-slate-200 dark:border-slate-700">
+                            {dateGroups.map((dg) =>
+                              dg.sessions.map((sess, sIdx) => (
+                                <th
+                                  key={`${sess.dateIso}_${sess.sessionCode}_${sIdx}`}
+                                  className="px-1.5 py-1.5 text-center min-w-[64px] border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"
+                                >
+                                  <span
+                                    className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-black ${
+                                      sess.sessionCode === 'PAGI'
+                                        ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300'
+                                        : 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300'
+                                    }`}
+                                  >
+                                    {sess.sessionLabel}
+                                  </span>
+                                </th>
+                              ))
                             )}
-                            {(
-                              [
-                                { code: 'SAKIT', short: 'S', label: 'Sakit', activeCls: 'bg-amber-600 text-white border-amber-600' },
-                                { code: 'IZIN', short: 'I', label: 'Izin', activeCls: 'bg-blue-600 text-white border-blue-600' },
-                                { code: 'ALPA', short: 'A', label: 'Alpa', activeCls: 'bg-rose-600 text-white border-rose-600' },
-                                { code: 'TERLAMBAT', short: 'T', label: 'Telat', activeCls: 'bg-orange-600 text-white border-orange-600' },
-                                { code: 'DISPENSASI', short: 'D', label: 'Dispen', activeCls: 'bg-purple-600 text-white border-purple-600' },
-                              ] as const
-                            ).map((btn) => {
-                              const isSelected = matchingExOnActiveDate?.status === btn.code;
+                          </tr>
+                        </thead>
+
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {currentAvailableStudents
+                            .filter((st) => {
+                              if (!studentChecklistSearch.trim()) return true;
+                              const q = studentChecklistSearch.toLowerCase();
                               return (
-                                <button
-                                  key={btn.code}
-                                  type="button"
-                                  onClick={() => toggleStudentExceptionForActiveDate(btn.code)}
-                                  title={`Tandai ${btn.label} pada ${
-                                    activeChecklistDate === 'ALL_DATES'
-                                      ? 'Semua Tanggal'
-                                      : formatTanggalIndo(activeChecklistDate)
-                                  }`}
-                                  className={`w-7 h-7 rounded-lg text-[10px] font-black border transition-all cursor-pointer flex items-center justify-center ${
-                                    isSelected
-                                      ? `${btn.activeCls} shadow-2xs`
-                                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-amber-400'
+                                st.nama_siswa.toLowerCase().includes(q) ||
+                                (st.nis && st.nis.toLowerCase().includes(q))
+                              );
+                            })
+                            .map((st, sIdx) => {
+                              const hasAnyException = exceptionsList.some((e) => e.siswa_id === st.siswa_id);
+
+                              return (
+                                <tr
+                                  key={st.siswa_id}
+                                  className={`transition-colors ${
+                                    hasAnyException
+                                      ? 'bg-amber-50/60 dark:bg-amber-950/20 hover:bg-amber-50/90'
+                                      : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'
                                   }`}
                                 >
-                                  {btn.short}
-                                </button>
+                                  <td className="px-2 py-1.5 text-center font-bold text-slate-400 border-r border-slate-100 dark:border-slate-800">
+                                    {sIdx + 1}
+                                  </td>
+                                  <td className="px-3 py-1.5 border-r border-slate-100 dark:border-slate-800">
+                                    <span className="font-bold text-slate-800 dark:text-slate-100 block truncate max-w-[210px]">
+                                      {st.nama_siswa}
+                                    </span>
+                                    {st.nis && (
+                                      <span className="text-[10px] text-slate-400 font-mono block">
+                                        NIS: {st.nis}
+                                      </span>
+                                    )}
+                                  </td>
+
+                                  {/* 2 x N Siklus Block Interactive Cells */}
+                                  {dateGroups.map((dg) =>
+                                    dg.sessions.map((sess, sessIdx) => {
+                                      const sessKey = `${sess.dateIso}_${sess.sessionCode}`;
+                                      const { status } = getStudentSessionStatus(st.siswa_id, sess);
+
+                                      const badgeStyle =
+                                        status === 'HADIR'
+                                          ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/70'
+                                          : status === 'SAKIT'
+                                          ? 'bg-amber-500 text-white border-amber-600 shadow-2xs'
+                                          : status === 'IZIN'
+                                          ? 'bg-blue-600 text-white border-blue-700 shadow-2xs'
+                                          : status === 'ALPA'
+                                          ? 'bg-rose-600 text-white border-rose-700 shadow-2xs'
+                                          : status === 'TERLAMBAT'
+                                          ? 'bg-orange-500 text-white border-orange-600 shadow-2xs'
+                                          : 'bg-purple-600 text-white border-purple-700 shadow-2xs';
+
+                                      const shortCode =
+                                        status === 'HADIR'
+                                          ? 'H'
+                                          : status === 'SAKIT'
+                                          ? 'S'
+                                          : status === 'IZIN'
+                                          ? 'I'
+                                          : status === 'ALPA'
+                                          ? 'A'
+                                          : status === 'TERLAMBAT'
+                                          ? 'T'
+                                          : 'D';
+
+                                      return (
+                                        <td
+                                          key={`${sessKey}_${sessIdx}`}
+                                          className="p-1 text-center border-r border-slate-100 dark:border-slate-800"
+                                        >
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              applyStudentSessionKeys(st, [sessKey], activeBrushStatus)
+                                            }
+                                            title={`${st.nama_siswa} • ${sess.dayName}, ${sess.dateFormatted} (${sess.sessionLabel})\nStatus saat ini: ${status}\nKlik untuk tandai [${activeBrushStatus}] (atau klik lagi untuk kembali HADIR)`}
+                                            className={`w-full h-7 rounded-lg border font-black text-[11px] transition-all cursor-pointer flex items-center justify-center ${badgeStyle}`}
+                                          >
+                                            {shortCode}
+                                          </button>
+                                        </td>
+                                      );
+                                    })
+                                  )}
+
+                                  {/* Quick Row Action: Tandai Semua Blok / Reset ke Hadir */}
+                                  <td className="px-2 py-1 text-center">
+                                    <div className="flex items-center justify-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          applyStudentSessionKeys(st, allSessionKeys, activeBrushStatus)
+                                        }
+                                        title={`Tandai [${activeBrushStatus}] ke seluruh ${allSessionKeys.length} blok sesi untuk ${st.nama_siswa}`}
+                                        className="px-2 py-1 rounded-md text-[10px] font-extrabold bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-900 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                                      >
+                                        Semua
+                                      </button>
+                                      {hasAnyException && (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            applyStudentSessionKeys(st, allSessionKeys, 'HADIR')
+                                          }
+                                          title="Reset kembali menjadi HADIR di semua sesi"
+                                          className="p-1 rounded-md text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer"
+                                        >
+                                          <X className="w-3.5 h-3.5" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
                               );
                             })}
-                          </div>
-                        </div>
-                      );
-                    })
+                        </tbody>
+                      </table>
+                    );
+                  })()
                 )}
               </div>
 
-              {/* Ringkasan Chips Siswa Non-Hadir Terpilih Lintas Rombel & Tanggal */}
+              {/* Ringkasan Chips Siswa Non-Hadir Terpilih Lintas Rombel & Sesi */}
               {exceptionsList.length > 0 && (
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-slate-500">
-                      Ringkasan Pengecualian Non-Hadir Lintas Tanggal &amp; Rombel ({exceptionsList.length}):
+                      Ringkasan Siswa Non-Hadir Terpilih ({exceptionsList.length}):
                     </span>
                     <button
                       type="button"
                       onClick={() => setExceptionsList([])}
                       className="text-[11px] text-rose-600 hover:underline font-bold cursor-pointer"
                     >
-                      Hapus Semua Pengecualian
+                      Reset Semua ke HADIR
                     </button>
                   </div>
-                  <div className="flex items-center gap-1.5 flex-wrap max-h-24 overflow-y-auto">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     {exceptionsList.map((ex, idx) => (
                       <span
                         key={`${ex.siswa_id}_${idx}`}
@@ -1256,10 +1237,7 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                         <span>{ex.nama_siswa}</span>
                         <span className="text-[10px] text-slate-400">({ex.nama_kelas})</span>
                         <span className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold">
-                          &bull;{' '}
-                          {!ex.dates || ex.dates.length === 0 || ex.dates.length === selectedDates.length
-                            ? 'Semua Tanggal'
-                            : `${ex.dates.length} Tgl`}
+                          &bull; {ex.dates ? `${ex.dates.length} Blok Sesi` : 'Semua Sesi'}
                         </span>
                         <button
                           type="button"
