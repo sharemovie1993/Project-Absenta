@@ -9,6 +9,7 @@ import {
 import type { CbtJadwalUjian, CbtEventItem } from '@/types/cbt.types';
 import { formatLocalDateIndo, formatLocalTimeFromISO, toLocalDate } from '@/utils/attendance/time';
 import { detectNodeTingkat } from '@/components/spasial/denahTingkatHelper';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
 // ─────────────────────────────────────────────────────────────────
@@ -35,16 +36,24 @@ interface CbtMatrixPengawasPrintModalProps {
 
 export interface RoomColumnHeader {
   roomCode: string;   // misal: "R.01"
-  namaKelas: string;  // misal: "X AKL 1"
+  namaKelas: string;  // misal: "X TJKT 1"
   tingkat: number;    // 10, 11, 12
+}
+
+export interface AssignmentInfo {
+  pengawasId: string;
+  pengawasNama: string;
+  pengawasFoto: string;
+  proktorId: string;
+  proktorNama: string;
 }
 
 export interface DayRowData {
   dateKey: string;     // YYYY-MM-DD
   dayName: string;     // "Senin", "Selasa", dst
   fullLabel: string;   // "Senin, 02 Des 2026"
-  // roomCode -> { pengawas: string, proktor: string }
-  roomAssignments: Record<string, { pengawas: string; proktor: string }>;
+  // roomCode -> AssignmentInfo
+  roomAssignments: Record<string, AssignmentInfo>;
 }
 
 export interface TingkatMatrixSheet {
@@ -96,6 +105,13 @@ function parseScheduleMeta(j: CbtJadwalUjian, draftRoom?: string) {
     rombel,
     tingkat: detectedTingkat,
   };
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  Helper Natural Sort untuk Nama Kelas (misal: X TJKT 1, X TJKT 2, X AKL 1)
+// ─────────────────────────────────────────────────────────────────
+function compareKelasNatural(a: string, b: string): number {
+  return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -165,7 +181,6 @@ function buildTingkatMatrices(
           tingkat,
         });
       } else {
-        // Update nama rombel jika sebelumnya '-'
         const existing = roomHeaderMap.get(meta.roomCode)!;
         if (existing.namaKelas === '-' && meta.rombel !== '-') {
           existing.namaKelas = meta.rombel;
@@ -173,12 +188,11 @@ function buildTingkatMatrices(
       }
     });
 
-    // Urutkan kolom Ruang secara natural (R.01, R.02, R.03 ...)
+    // Urutkan kolom terutama berdasarkan KELAS (X TJKT 1, X TJKT 2, X AKL 1 ...)
     const columns = Array.from(roomHeaderMap.values()).sort((a, b) => {
-      const numA = parseInt(a.roomCode.replace(/\D/g, '') || '0', 10);
-      const numB = parseInt(b.roomCode.replace(/\D/g, '') || '0', 10);
-      if (numA !== numB) return numA - numB;
-      return a.roomCode.localeCompare(b.roomCode);
+      const cmpKelas = compareKelasNatural(a.namaKelas, b.namaKelas);
+      if (cmpKelas !== 0) return cmpKelas;
+      return a.roomCode.localeCompare(b.roomCode, undefined, { numeric: true });
     });
 
     if (columns.length === 0) return;
@@ -187,7 +201,7 @@ function buildTingkatMatrices(
     const days: DayRowData[] = sortedDateKeys.map((dk) => {
       const dayName = getDayNameIndo(dk);
       const fullLabel = dateKeyMap.get(dk) || dk;
-      const roomAssignments: Record<string, { pengawas: string; proktor: string }> = {};
+      const roomAssignments: Record<string, AssignmentInfo> = {};
 
       // Cari jadwal pada hari dk dan tingkat ini
       jadwalList.forEach((j) => {
@@ -202,18 +216,20 @@ function buildTingkatMatrices(
         const p1Id = (draft?.pengawas_1_id !== undefined ? draft.pengawas_1_id : j.setting_keamanan?.pengawas_1_id) || '';
         const prId = (draft?.proktor_id !== undefined ? draft.proktor_id : (j.setting_keamanan?.proktor_id || j.setting_keamanan?.pengawas_2_id)) || '';
 
-        const p1Name = p1Id
-          ? (guruMap.get(p1Id)?.nama_guru || j.setting_keamanan?.pengawas_1_nama || '')
-          : (j.setting_keamanan?.pengawas_1_nama || '');
-        const prName = prId
-          ? (guruMap.get(prId)?.nama_guru || j.setting_keamanan?.proktor_nama || '')
-          : (j.setting_keamanan?.proktor_nama || '');
+        const guruP1 = p1Id ? guruMap.get(p1Id) : null;
+        const p1Name = guruP1?.nama_guru || j.setting_keamanan?.pengawas_1_nama || '';
+        const p1Foto = guruP1?.foto || guruP1?.foto_url || guruP1?.avatar || '';
 
-        // Karena skema 1 guru mengawas 1 ruang seharian penuh, ambil assignment pertama yang terisi
-        if (!roomAssignments[meta.roomCode] || (!roomAssignments[meta.roomCode].pengawas && p1Name)) {
+        const guruPr = prId ? guruMap.get(prId) : null;
+        const prName = guruPr?.nama_guru || j.setting_keamanan?.proktor_nama || '';
+
+        if (!roomAssignments[meta.roomCode] || (!roomAssignments[meta.roomCode].pengawasNama && p1Name)) {
           roomAssignments[meta.roomCode] = {
-            pengawas: p1Name || '',
-            proktor: prName || '',
+            pengawasId: p1Id,
+            pengawasNama: p1Name,
+            pengawasFoto: p1Foto,
+            proktorId: prId,
+            proktorNama: prName,
           };
         }
       });
@@ -253,6 +269,7 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
   const sheetContainerRef = useRef<HTMLDivElement>(null);
   const [showLogoDaerah, setShowLogoDaerah] = useState(true);
   const [showLogoSekolah, setShowLogoSekolah] = useState(true);
+  const [showPhotos, setShowPhotos] = useState(true);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [selectedTingkatTab, setSelectedTingkatTab] = useState<number | 'ALL'>('ALL');
   const [showProktor, setShowProktor] = useState(
@@ -264,7 +281,7 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
 
   const namaEvent = activeEvent?.nama_event || eventName || 'Ujian CBT';
 
-  // Build matriks per tingkat (Kolom = Ruang/Kelas, Baris = Hari)
+  // Build matriks per tingkat (Kolom = Kelas/Ruang tersortir, Baris = Hari)
   const tingkatSheets = useMemo(
     () => buildTingkatMatrices(jadwalList, plottingDrafts, guruMap, targetTingkat),
     [jadwalList, plottingDrafts, guruMap, targetTingkat]
@@ -325,7 +342,7 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
       }
 
       const safeName = namaEvent.replace(/[^a-zA-Z0-9]/g, '_');
-      pdf.save(`Matrix_Pengawas_Ruang_${safeName}.pdf`);
+      pdf.save(`Matrix_Pengawas_Kelas_${safeName}.pdf`);
     } catch (err) {
       console.error('PDF export error', err);
     } finally {
@@ -337,7 +354,8 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
     <UniversalDocumentModal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Cetak Matrix Pengawas (Kolom: Ruang/Kelas, Baris: Hari) — ${namaEvent}`}
+      size="full"
+      title={`Cetak Matrix Pengawas (Urut Kelas: X TJKT 1, X AKL 1 ...) — ${namaEvent}`}
       allowLogoToggles
       showLogoDaerah={showLogoDaerah}
       showLogoSekolah={showLogoSekolah}
@@ -346,14 +364,14 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
       isExportingPdf={isExportingPdf}
       onExportPdf={handleExportPdf}
       extraControls={
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           {tingkatSheets.length > 1 && (
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs">
               <button
                 type="button"
                 onClick={() => setSelectedTingkatTab('ALL')}
                 className={cn(
-                  'px-2.5 py-1 rounded-md font-bold transition-all',
+                  'px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer',
                   selectedTingkatTab === 'ALL'
                     ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
@@ -367,7 +385,7 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
                   type="button"
                   onClick={() => setSelectedTingkatTab(s.tingkat)}
                   className={cn(
-                    'px-2 py-1 rounded-md font-bold transition-all',
+                    'px-2 py-1 rounded-md font-bold transition-all cursor-pointer',
                     selectedTingkatTab === s.tingkat
                       ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
@@ -378,6 +396,16 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
               ))}
             </div>
           )}
+
+          <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showPhotos}
+              onChange={(e) => setShowPhotos(e.target.checked)}
+              className="w-3.5 h-3.5 rounded accent-indigo-600"
+            />
+            Sertakan Foto Pengawas
+          </label>
 
           <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 cursor-pointer select-none">
             <input
@@ -414,7 +442,7 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
               />
 
               {/* JUDUL DOKUMEN */}
-              <div className="text-center mb-2.5 mt-0.5">
+              <div className="text-center mb-2 mt-0.5">
                 <h2
                   className="font-bold uppercase tracking-wide text-slate-900"
                   style={{ fontSize: '11pt', letterSpacing: '0.04em' }}
@@ -425,7 +453,7 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
                   {sheet.labelTingkat} — {namaEvent}
                   {activeEvent?.semester ? ` Semester ${activeEvent.semester}` : ''}
                 </p>
-                <p className="text-slate-500 italic text-[7.5pt]">
+                <p className="text-slate-500 italic text-[7pt]">
                   * Skema Ploting: 1 Guru mengawas 1 Ruang/Kelas penuh seharian (Full-Day Single Supervisor)
                 </p>
               </div>
@@ -435,22 +463,22 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
                 <table
                   className="w-full border-collapse"
                   style={{
-                    fontSize: '7.5pt',
+                    fontSize: '7pt',
                     tableLayout: 'fixed',
                   }}
                 >
                   <colgroup>
                     {/* Kolom Hari & Tanggal */}
-                    <col style={{ width: '90px' }} />
-                    {/* Kolom Ruang / Kelas */}
+                    <col style={{ width: '82px' }} />
+                    {/* Kolom Kelas & Ruang (dibagi proporsional) */}
                     {sheet.columns.map((col) => (
                       <col key={col.roomCode} />
                     ))}
                   </colgroup>
 
-                  {/* HEADER TABEL: RUANG & KELAS */}
+                  {/* HEADER TABEL: KELAS DI ATAS, RUANG DI BAWAH */}
                   <thead>
-                    {/* Baris 1: Kode Ruang (R.01, R.02 ...) */}
+                    {/* Baris 1 (Paling Atas): LABEL KELAS */}
                     <tr>
                       <th
                         rowSpan={2}
@@ -461,7 +489,7 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
                           textAlign: 'center',
                           fontWeight: 700,
                           color: '#0f172a',
-                          fontSize: '8pt',
+                          fontSize: '7.5pt',
                         }}
                       >
                         HARI &amp; TANGGAL
@@ -471,35 +499,39 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
                           key={col.roomCode}
                           style={{
                             border: '1.2px solid #334155',
-                            padding: '3px 2px',
+                            padding: '4px 2px',
                             backgroundColor: '#e0e7ff',
                             textAlign: 'center',
                             fontWeight: 800,
                             color: '#1e3a8a',
-                            fontSize: '8pt',
+                            fontSize: '7.5pt',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
                           }}
+                          title={col.namaKelas}
                         >
-                          {col.roomCode}
+                          {col.namaKelas}
                         </th>
                       ))}
                     </tr>
-                    {/* Baris 2: Nama Rombel Kelas (X AKL 1, X TKJ 2 ...) */}
+
+                    {/* Baris 2 (Di Bawah Kelas): KODE RUANG */}
                     <tr>
                       {sheet.columns.map((col) => (
                         <th
                           key={col.roomCode}
                           style={{
                             border: '1.2px solid #334155',
-                            padding: '3px 2px',
+                            padding: '2px 2px',
                             backgroundColor: '#eef2ff',
                             textAlign: 'center',
                             fontWeight: 700,
-                            color: '#312e81',
-                            fontSize: '7pt',
-                            wordBreak: 'break-word',
+                            color: '#3730a3',
+                            fontSize: '6.5pt',
                           }}
                         >
-                          {col.namaKelas}
+                          {col.roomCode}
                         </th>
                       ))}
                     </tr>
@@ -515,24 +547,25 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
                           <td
                             style={{
                               border: '1px solid #64748b',
-                              padding: '5px 4px',
+                              padding: '4px 3px',
                               textAlign: 'center',
                               fontWeight: 700,
                               backgroundColor: isEven ? '#f8fafc' : '#ffffff',
                               color: '#0f172a',
                             }}
                           >
-                            <div style={{ fontSize: '8pt', color: '#1e293b' }}>{day.dayName}</div>
-                            <div style={{ fontSize: '6.5pt', color: '#64748b', fontWeight: 500 }}>
+                            <div style={{ fontSize: '7.5pt', color: '#1e293b' }}>{day.dayName}</div>
+                            <div style={{ fontSize: '6pt', color: '#64748b', fontWeight: 500 }}>
                               {day.dateKey}
                             </div>
                           </td>
 
-                          {/* Sel per Ruang: Nama Guru Pengawas */}
+                          {/* Sel per Ruang: Foto + Nama Pengawas (1 Line) */}
                           {sheet.columns.map((col) => {
                             const assign = day.roomAssignments[col.roomCode];
-                            const p1 = assign?.pengawas || '';
-                            const pr = assign?.proktor || '';
+                            const p1 = assign?.pengawasNama || '';
+                            const fotoUrl = assign?.pengawasFoto ? resolveProfilePhotoUrl(assign.pengawasFoto) : '';
+                            const pr = assign?.proktorNama || '';
                             const isUnassigned = !p1;
 
                             return (
@@ -540,7 +573,7 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
                                 key={col.roomCode}
                                 style={{
                                   border: '1px solid #94a3b8',
-                                  padding: '4px 3px',
+                                  padding: '3px 2px',
                                   textAlign: 'center',
                                   backgroundColor: isUnassigned
                                     ? '#fff1f2'
@@ -549,8 +582,6 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
                                       : '#fafafa',
                                   color: isUnassigned ? '#ef4444' : '#0f172a',
                                   verticalAlign: 'middle',
-                                  wordBreak: 'break-word',
-                                  lineHeight: '1.25',
                                 }}
                               >
                                 {isUnassigned ? (
@@ -558,13 +589,59 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
                                     (Kosong)
                                   </span>
                                 ) : (
-                                  <div>
-                                    <div style={{ fontWeight: 600, fontSize: '7.5pt' }}>
+                                  <div className="flex flex-col items-center justify-center gap-0.5">
+                                    {/* Foto Pengawas (Opsional via toggle) */}
+                                    {showPhotos && (
+                                      <div className="w-6 h-6 rounded-full overflow-hidden bg-slate-200 border border-slate-300 shrink-0 flex items-center justify-center shadow-2xs">
+                                        {fotoUrl ? (
+                                          <img
+                                            src={fotoUrl}
+                                            alt={p1}
+                                            className="w-full h-full object-cover"
+                                            crossOrigin="anonymous"
+                                            onError={(e) => {
+                                              // Fallback initial huruf jika gagal load
+                                              (e.currentTarget as HTMLElement).style.display = 'none';
+                                            }}
+                                          />
+                                        ) : (
+                                          <span className="text-[7pt] font-bold text-slate-500 uppercase">
+                                            {p1.charAt(0)}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {/* Nama Pengawas: 1 Line dengan Ellipsis & Native Tooltip Hover */}
+                                    <div
+                                      style={{
+                                        fontWeight: 600,
+                                        fontSize: '6.5pt',
+                                        maxWidth: '100%',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        lineHeight: '1.2',
+                                      }}
+                                      title={p1}
+                                    >
                                       {p1}
                                     </div>
+
+                                    {/* Nama Proktor (Jika diaktifkan) */}
                                     {showProktor && pr && (
-                                      <div style={{ fontSize: '6.5pt', color: '#6b21a8', marginTop: '1px' }}>
-                                        Proktor: {pr}
+                                      <div
+                                        style={{
+                                          fontSize: '5.5pt',
+                                          color: '#6b21a8',
+                                          maxWidth: '100%',
+                                          whiteSpace: 'nowrap',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                        }}
+                                        title={`Proktor: ${pr}`}
+                                      >
+                                        P: {pr}
                                       </div>
                                     )}
                                   </div>
@@ -580,7 +657,7 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
               </div>
 
               {/* TANDA TANGAN RESMI UNIVERSAL DOCUMENT PRINTING */}
-              <div className="mt-5 pt-1 w-full page-break-inside-avoid">
+              <div className="mt-4 pt-1 w-full page-break-inside-avoid">
                 <UniversalDocumentSignatures
                   layout="dual_cbt_pengawas"
                   titimangsaCity={
@@ -614,13 +691,13 @@ export const CbtMatrixPengawasPrintModal: React.FC<CbtMatrixPengawasPrintModalPr
                         '-',
                     },
                   }}
-                  spacingHeightMm={14}
+                  spacingHeightMm={13}
                 />
               </div>
 
               {/* FOOTER LEMBAR */}
               <div
-                className="mt-3 pt-1 border-t border-slate-300 flex items-center justify-between text-slate-500"
+                className="mt-2 pt-1 border-t border-slate-300 flex items-center justify-between text-slate-500"
                 style={{ fontSize: '6.5pt' }}
               >
                 <span>
