@@ -664,11 +664,24 @@ export class UnifiedKegiatanService {
       }
     }
 
-    // Ambil struktur penugasan kepanitiaan (Ketua Pembina Taruna, Pembina Rohis, Kaprog, Wali Kelas, Pembina OSIS)
+    // Ambil struktur penugasan kepanitiaan & jabatan organisasi pendamping kegiatan
+    // (Pembina Taruna, Koordinator Dhuha/Rohis, Kesiswaan, Kaprog, Guru BK/BPBK, Wali Kelas)
     const positions = await prisma.organizationalPosition.findMany({
       where: {
         tenant_id: tenantId,
-        code: { in: ['KETUA_PEMBINA_TARUNA', 'PEMBINA_ROHIS', 'KAPROG', 'WALIKELAS', 'PEMBINA_ESKUL'] },
+        code: {
+          in: [
+            'KETUA_PEMBINA_TARUNA',
+            'PEMBINA_TARUNA',
+            'KOORDINATOR_DHUHA',
+            'PEMBINA_ROHIS',
+            'KESISWAAN',
+            'KAPROG',
+            'BPBK',
+            'WALIKELAS',
+            'PEMBINA_ESKUL',
+          ],
+        },
         is_active: true,
       },
       include: {
@@ -710,7 +723,7 @@ export class UnifiedKegiatanService {
 
     const seenGuruIds = new Set<string>();
 
-    // 1. Pembina Khusus (Taruna & Rohis terintegrasi)
+    // 1. Pembina Khusus (Taruna, Kesiswaan & Rohis/Dhuha terintegrasi)
     const tarunaPos = positions.find(p => p.code === 'KETUA_PEMBINA_TARUNA');
     if (tarunaPos && tarunaPos.organizationalAssigns.length > 0) {
       tarunaPos.organizationalAssigns.forEach((a, idx) => {
@@ -732,9 +745,9 @@ export class UnifiedKegiatanService {
       });
     }
 
-    const rohisPos = positions.find(p => p.code === 'PEMBINA_ROHIS');
-    if (rohisPos && rohisPos.organizationalAssigns.length > 0 && (activeSiklusType === 'DUHA' || jenis.toUpperCase().includes('DUHA'))) {
-      rohisPos.organizationalAssigns.forEach((a, idx) => {
+    const pembinaTarunaPos = positions.find(p => p.code === 'PEMBINA_TARUNA');
+    if (pembinaTarunaPos && pembinaTarunaPos.organizationalAssigns.length > 0) {
+      pembinaTarunaPos.organizationalAssigns.forEach((a) => {
         const g = a.User?.Guru;
         if (g && !seenGuruIds.has(g.id)) {
           seenGuruIds.add(g.id);
@@ -742,8 +755,52 @@ export class UnifiedKegiatanService {
           result.push({
             guru_id: g.id,
             nama_guru: g.nama_guru,
-            jabatan: idx === 0 ? '🕌 Koordinator Pembina Dhuha / Rohis' : `Pembina Rohis ${idx}`,
-            jabatan_kode: 'KETUA_PEMBINA_TARUNA',
+            jabatan: '🎖️ Pembina Ketarunaan',
+            jabatan_kode: 'PEMBINA_TARUNA',
+            status: (rec?.status as any) || 'BELUM_TAP',
+            waktu_tap: rec?.waktu_tap ? rec.waktu_tap.toISOString() : null,
+            catatan: rec?.catatan || null,
+            sesi_id: sesiId || null,
+          });
+        }
+      });
+    }
+
+    const dhuhaPositions = positions.filter(p => p.code === 'KOORDINATOR_DHUHA' || p.code === 'PEMBINA_ROHIS');
+    if (dhuhaPositions.length > 0 && (activeSiklusType === 'DUHA' || jenis.toUpperCase().includes('DUHA'))) {
+      dhuhaPositions.forEach((pos) => {
+        pos.organizationalAssigns.forEach((a, idx) => {
+          const g = a.User?.Guru;
+          if (g && !seenGuruIds.has(g.id)) {
+            seenGuruIds.add(g.id);
+            const rec = absenMap.get(g.id);
+            result.push({
+              guru_id: g.id,
+              nama_guru: g.nama_guru,
+              jabatan: idx === 0 ? '🕌 Koordinator Pembina Dhuha / Rohis' : `Pembina Rohis ${idx}`,
+              jabatan_kode: 'KOORDINATOR_DHUHA',
+              status: (rec?.status as any) || 'BELUM_TAP',
+              waktu_tap: rec?.waktu_tap ? rec.waktu_tap.toISOString() : null,
+              catatan: rec?.catatan || null,
+              sesi_id: sesiId || null,
+            });
+          }
+        });
+      });
+    }
+
+    const kesiswaanPos = positions.find(p => p.code === 'KESISWAAN');
+    if (kesiswaanPos) {
+      kesiswaanPos.organizationalAssigns.forEach((a) => {
+        const g = a.User?.Guru;
+        if (g && !seenGuruIds.has(g.id)) {
+          seenGuruIds.add(g.id);
+          const rec = absenMap.get(g.id);
+          result.push({
+            guru_id: g.id,
+            nama_guru: g.nama_guru,
+            jabatan: '🧑‍🎓 Waka Kesiswaan & Staf',
+            jabatan_kode: 'KESISWAAN',
             status: (rec?.status as any) || 'BELUM_TAP',
             waktu_tap: rec?.waktu_tap ? rec.waktu_tap.toISOString() : null,
             catatan: rec?.catatan || null,
@@ -764,8 +821,30 @@ export class UnifiedKegiatanService {
           result.push({
             guru_id: g.id,
             nama_guru: g.nama_guru,
-            jabatan: `🏛️ Kaprog ${a.Unit?.nama || ''}`,
+            jabatan: `🏛️ Kaprog ${a.Unit?.nama || ''}`.trim(),
             jabatan_kode: 'KAPROG',
+            status: (rec?.status as any) || 'BELUM_TAP',
+            waktu_tap: rec?.waktu_tap ? rec.waktu_tap.toISOString() : null,
+            catatan: rec?.catatan || null,
+            sesi_id: sesiId || null,
+          });
+        }
+      });
+    }
+
+    // 2b. Guru BK / Koordinator BP-BK
+    const bpbkPos = positions.find(p => p.code === 'BPBK');
+    if (bpbkPos) {
+      bpbkPos.organizationalAssigns.forEach(a => {
+        const g = a.User?.Guru;
+        if (g && !seenGuruIds.has(g.id)) {
+          seenGuruIds.add(g.id);
+          const rec = absenMap.get(g.id);
+          result.push({
+            guru_id: g.id,
+            nama_guru: g.nama_guru,
+            jabatan: '🧠 Guru BK / BP-BK',
+            jabatan_kode: 'BPBK',
             status: (rec?.status as any) || 'BELUM_TAP',
             waktu_tap: rec?.waktu_tap ? rec.waktu_tap.toISOString() : null,
             catatan: rec?.catatan || null,
@@ -786,7 +865,7 @@ export class UnifiedKegiatanService {
           result.push({
             guru_id: g.id,
             nama_guru: g.nama_guru,
-            jabatan: `🏫 Wali Kelas ${a.Kelas?.nama_kelas || ''}`,
+            jabatan: `🏫 Wali Kelas ${a.Kelas?.nama_kelas || ''}`.trim(),
             jabatan_kode: 'WALIKELAS',
             kelas_nama: a.Kelas?.nama_kelas || undefined,
             status: (rec?.status as any) || 'BELUM_TAP',
@@ -802,9 +881,10 @@ export class UnifiedKegiatanService {
     const wajibTapTerminalGuru = await this.isWajibTapTerminalKegiatanGuru(tenantId);
 
     // 4. Guru Mapel KBM yang Jadwalnya BERIRISAN Jam dengan Kegiatan
-    // Khusus Apel Pulang (APEL_SORE) ATAU jika Admin menonaktifkan mode Wajib Tap Terminal,
-    // guru mapel TIDAK dimasukkan ke daftar wajib tap terminal (saat nonaktif, guru selfie mandiri di kartu kegiatan Universal KBM).
-    if (!isApelPulang && wajibTapTerminalGuru) {
+    // Khusus Apel Pulang (APEL_SORE), guru mapel TIDAK diwajibkan.
+    // Untuk kegiatan non-Apel Pulang, seluruh unsur (Jabatan Organisasi + Guru Beririsan) tetap dipantau status hadirnya
+    // baik saat mode Wajib Tap Terminal (ON) maupun Selfie Mandiri di Universal KBM (OFF).
+    if (!isApelPulang) {
       const allKbmHariIni = await prisma.jadwalKBM.findMany({
         where: {
           tenant_id: tenantId,

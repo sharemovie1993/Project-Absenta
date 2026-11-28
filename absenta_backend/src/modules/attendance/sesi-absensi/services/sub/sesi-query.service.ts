@@ -890,7 +890,7 @@ export class SesiQueryService {
         const dayUtcStart = new Date(`${dateStr}T00:00:00.000Z`);
         const dayUtcEnd = new Date(`${dateStr}T23:59:59.999Z`);
 
-        const [cfgWajibTap, guruKegiatanAbsens, activeKegiatansHariIni] = await Promise.all([
+        const [cfgWajibTap, guruKegiatanAbsens, activeKegiatansHariIni, guruRecord] = await Promise.all([
           prisma.config.findFirst({
             where: { tenant_id: tenantId, key: 'WAJIB_TAP_TERMINAL_KEGIATAN_GURU' },
             select: { value: true },
@@ -939,7 +939,54 @@ export class SesiQueryService {
               ],
             },
           }),
+          prisma.guru.findFirst({
+            where: { id: schedTargetGuruId, tenant_id: tenantId },
+            select: { id: true, user_id: true },
+          }),
         ]);
+
+        // Ambil posisi jabatan aktif di OrganizationalAssignment milik guru ini
+        // Cakupan wajib: Wali Kelas, Kaprog, Guru BK (BPBK), Pembina Taruna, Kesiswaan, Koordinator Dhuha/Rohis
+        const MANDATORY_ORG_CODES = [
+          'KETUA_PEMBINA_TARUNA',
+          'PEMBINA_TARUNA',
+          'KOORDINATOR_DHUHA',
+          'PEMBINA_ROHIS',
+          'KESISWAAN',
+          'KAPROG',
+          'BPBK',
+          'WALIKELAS',
+        ];
+        const guruOrgAssignments = guruRecord?.user_id
+          ? await prisma.organizationalAssignment.findMany({
+              where: {
+                tenant_id: tenantId,
+                user_id: guruRecord.user_id,
+                is_active: true,
+                Position: {
+                  is_active: true,
+                  code: { in: MANDATORY_ORG_CODES },
+                },
+              },
+              include: {
+                Position: { select: { code: true, name: true } },
+                Kelas: { select: { nama_kelas: true } },
+                Unit: { select: { nama: true } },
+              },
+            })
+          : [];
+
+        const formatOrgDutyLabel = (assign: any): string => {
+          const code = String(assign.Position?.code || '').toUpperCase();
+          if (code === 'WALIKELAS') return `Wali Kelas ${assign.Kelas?.nama_kelas || ''}`.trim();
+          if (code === 'KAPROG') return `Kaprog ${assign.Unit?.nama || ''}`.trim();
+          if (code === 'BPBK') return 'Guru BK / BP-BK';
+          if (code === 'KETUA_PEMBINA_TARUNA') return 'Ketua Pembina Taruna';
+          if (code === 'PEMBINA_TARUNA') return 'Pembina Ketarunaan';
+          if (code === 'KESISWAAN') return 'Waka Kesiswaan';
+          if (code === 'KOORDINATOR_DHUHA' || code === 'PEMBINA_ROHIS') return 'Pembina Dhuha / Rohis';
+          return assign.Position?.name || code;
+        };
 
         wajibTapTerminalKegiatanGuru = cfgWajibTap?.value !== 'false';
 
@@ -959,9 +1006,13 @@ export class SesiQueryService {
           }
         });
 
-        // Jika Mode Selfie Mandiri aktif (wajibTapTerminalKegiatanGuru === false),
-        // suntikkan 1 kartu Sesi Kegiatan untuk setiap JadwalKegiatan non-APEL_SORE yang beririsan dengan KBM guru hari ini.
-        if (!wajibTapTerminalKegiatanGuru && activeKegiatansHariIni.length > 0) {
+        // Cakupan Kegiatan Guru:
+        // 1. Guru yang memiliki JadwalKBM beririsan dengan kegiatan (non-APEL_SORE)
+        // 2. Guru yang memegang jabatan di OrganizationalAssignment (Wali Kelas, Kaprog, Guru BK, Pembina, Kesiswaan)
+        // - Mode OFF (Selfie Mandiri): suntikkan kartu kegiatan (dengan tombol Selfie) bagi SEMUA cakupan di atas.
+        // - Mode ON (Wajib Tap Terminal): suntikkan kartu info wajib tap terminal bagi pemegang jabatan organisasi
+        //   yang belum terwakili oleh kartu KBM beririsan (mis. Guru BK / Wali Kelas / Kaprog tanpa KBM di jam tsb).
+        if (activeKegiatansHariIni.length > 0) {
           const guruKbmSlots = unifiedList
             .filter((it: any) => !it.jadwal_kegiatan_id && (!it.jenis_kegiatan || String(it.jenis_kegiatan).toUpperCase() === 'KBM'))
             .map((it: any) => {
@@ -971,7 +1022,7 @@ export class SesiQueryService {
             })
             .filter((x: any) => x.sMin !== null && x.eMin !== null);
 
-          if (guruKbmSlots.length > 0) {
+          if (guruKbmSlots.length > 0 || guruOrgAssignments.length > 0) {
             const existingActivityJadwalIds = new Set(
               unifiedList
                 .filter((it: any) => Boolean(it.jadwal_kegiatan_id))
@@ -1015,11 +1066,31 @@ export class SesiQueryService {
               const kegEndMin = toMin(kegSelesai);
               if (kegStartMin === null || kegEndMin === null) continue;
 
+              const isDhuhaKegiatan = /duha|dhuha|rohis/i.test(`${kegType} ${kegName}`);
+              const applicableOrgAssigns = guruOrgAssignments.filter((a: any) => {
+                const c = String(a.Position?.code || '').toUpperCase();
+                if (c === 'KOORDINATOR_DHUHA' || c === 'PEMBINA_ROHIS') return isDhuhaKegiatan;
+                return true;
+              });
+              const orgDutyLabels = Array.from(new Set(applicableOrgAssigns.map(formatOrgDutyLabel)));
+              const hasOrgDuty = orgDutyLabels.length > 0;
+
               // Cek apakah benar-benar beririsan dengan minimal 1 jadwal KBM guru hari ini
               const isOverlapping = guruKbmSlots.some(
                 (slot: any) => Math.max(kegStartMin, slot.sMin) < Math.min(kegEndMin, slot.eMin)
               );
-              if (!isOverlapping) continue;
+
+              if (!isOverlapping && !hasOrgDuty) continue;
+
+              // Mode ON (Wajib Tap Terminal): jika guru hanya guru mapel beririsan (tanpa jabatan organisasi),
+              // peringatan wajib tap sudah muncul langsung di kartu KBM beririsannya.
+              // Jika guru memegang jabatan organisasi (Wali Kelas / Kaprog / Guru BK / Pembina), tetap tampilkan kartu kegiatan
+              // agar mereka selalu melihat kewajiban & status hadirnya di dashboard (meski tidak punya KBM beririsan).
+              if (wajibTapTerminalKegiatanGuru && !hasOrgDuty) continue;
+
+              const dutyReasonLabel = hasOrgDuty
+                ? orgDutyLabels.join(' • ')
+                : 'Guru KBM Beririsan';
 
               // Cari apakah guru ini sudah pernah absen/selfie pada kegiatan ini hari ini
               const matchedAbsen = guruKegiatanAbsens.find(
@@ -1042,6 +1113,7 @@ export class SesiQueryService {
                 kegiatan: keg.nama || keg.jenis_kegiatan || 'Kegiatan',
                 mapel_nama: keg.nama || keg.jenis_kegiatan || 'Kegiatan',
                 kelas_nama: 'Kegiatan Sekolah',
+                jabatan_kegiatan_label: dutyReasonLabel,
                 tanggal: dayLocalStart,
                 waktu_mulai: `${dateStr}T${kegMulai}:00.000${tzOffset}`,
                 waktu_selesai: `${dateStr}T${kegSelesai}:00.000${tzOffset}`,
@@ -1071,7 +1143,7 @@ export class SesiQueryService {
                     ]
                   : [],
                 is_guru_kegiatan_selfie_card: true,
-                wajib_tap_terminal_kegiatan_guru: false,
+                wajib_tap_terminal_kegiatan_guru: wajibTapTerminalKegiatanGuru,
                 summary: { total: 0, HADIR: 0, IZIN: 0, SAKIT: 0, ALPA: 0, TERLAMBAT: 0 },
               });
             }

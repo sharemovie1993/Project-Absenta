@@ -472,14 +472,14 @@ const TenantAttendanceFormComponent: React.FC<UniversalAttendanceSettingsViewPro
               <div className="space-y-1 pr-2">
                 <div className="flex items-center gap-2 flex-wrap">
                   <Label htmlFor="wajib-tap-terminal-kegiatan-guru-field" className="text-xs font-bold text-slate-900 dark:text-slate-200 cursor-pointer">
-                    Wajib Tap Terminal Unified Kegiatan (Guru Beririsan KBM)
+                    Wajib Tap Terminal Unified Kegiatan (Guru Beririsan &amp; Jabatan Pendamping)
                   </Label>
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${formData.wajib_tap_terminal_kegiatan_guru ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'}`}>
                     {formData.wajib_tap_terminal_kegiatan_guru ? 'WAJIB TAP TERMINAL' : 'SELFIE MANDIRI DI KARTU KBM'}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Jika <strong>Aktif</strong>, guru yang jadwal KBM-nya beririsan dengan kegiatan pagi (selain Apel Pulang) wajib tap di <strong>Terminal Unified Kegiatan</strong> untuk mendapat pengampunan telat KBM pertama. Jika <strong>Nonaktif</strong>, sistem menyediakan kartu <strong>Sesi Kegiatan</strong> di dashboard KBM guru agar guru dapat selfie mandiri di lokasi kegiatan.
+                  Cakupan berlaku bagi <strong>Guru KBM Beririsan</strong> dan pemegang jabatan organisasi (<strong>Wali Kelas, Kaprog, Guru BK, Pembina Taruna/Dhuha, &amp; Kesiswaan</strong>) untuk kegiatan non-Apel Pulang. Jika <strong>Aktif</strong>, wajib tap di <strong>Terminal Unified Kegiatan</strong>. Jika <strong>Nonaktif</strong>, sistem menyediakan kartu <strong>Sesi Kegiatan</strong> di Universal KBM masing-masing untuk selfie mandiri di lokasi kegiatan.
                 </p>
               </div>
               <Switch

@@ -61,11 +61,14 @@ function statusBadge(status: string) {
 function jabatanLabel(kode: string) {
   const map: Record<string, string> = {
     KETUA_PEMBINA_TARUNA: '🎖️ Pembina Taruna & Staf',
-    KAPROG: '🏛️ Kepala Program Keahlian (Kajur)',
+    PEMBINA_TARUNA: '🎖️ Pembina Ketarunaan',
+    KOORDINATOR_DHUHA: '🕌 Koordinator Pembina Dhuha / Rohis',
+    KAPROG: '🏛️ Kepala Program Keahlian (Kaprog)',
+    BPBK: '🧠 Guru BK / BP-BK',
     WALIKELAS: '🏫 Wali Kelas',
-    GURU_MAPEL: '📚 Guru Mapel KBM Beririsan (1 Tap 2 Record)',
+    GURU_MAPEL: '📚 Guru Mapel KBM Beririsan',
     KEPALA_SEKOLAH: '👑 Kepala Sekolah',
-    KESISWAAN: '🧑‍🎓 Waka Kesiswaan',
+    KESISWAAN: '🧑‍🎓 Waka Kesiswaan & Staf',
     PEMBINA_ESKUL: '🚩 Pembina OSIS / Ekstrakurikuler',
   };
   return map[kode] || kode;

@@ -248,6 +248,8 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
   );
   const guruHadirKegiatanNama =
     item.guru_hadir_kegiatan_nama || item.session?.guru_hadir_kegiatan_nama || null;
+  const jabatanKegiatanLabel =
+    item.jabatan_kegiatan_label || item.session?.jabatan_kegiatan_label || null;
 
   const rawTeacherStatus = item.guru_status 
     || item.status?.teacherStatus 
@@ -478,7 +480,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
     if (onSelectSession) {
       onSelectSession(item);
     } else if (mode === 'GURU' && isGuruKegiatanSelfieCard) {
-      if (!isTeacherPresent && !isFinished && !isOverdue && canStartSessionNow && onOpenPhotoModal) {
+      if (!wajibTapTerminalGuru && !isTeacherPresent && !isFinished && !isOverdue && canStartSessionNow && onOpenPhotoModal) {
         onOpenPhotoModal(item);
       } else if (fotoKegiatanUrl && onViewPhoto) {
         onViewPhoto(item);
@@ -803,6 +805,12 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                   <h4 className="font-extrabold text-slate-900 dark:text-white text-sm sm:text-base leading-tight tracking-tight truncate">
                     {mapelNama}
                   </h4>
+                  {isGuruKegiatanSelfieCard && jabatanKegiatanLabel && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-violet-50 text-violet-800 dark:bg-violet-950/60 dark:text-violet-200 border border-violet-200 dark:border-violet-800 shrink-0">
+                      <ShieldCheck size={10} className="text-violet-600 dark:text-violet-400" />
+                      {jabatanKegiatanLabel}
+                    </span>
+                  )}
                   {unitNama && (
                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 shrink-0 shadow-2xs">
                       <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
@@ -1169,16 +1177,30 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
 
         {/* 3. POV GURU: Peringatan / Info Irisan Kegiatan + Tombol Aksi Guru */}
         {mode === 'GURU' && isGuruKegiatanSelfieCard && !isTeacherPresent && !isFinished && !isOverdue && (
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="p-2.5 sm:p-3 rounded-xl bg-violet-50/90 dark:bg-violet-950/35 border border-violet-300/80 dark:border-violet-800/70 flex items-start gap-2.5"
-          >
-            <Camera size={15} className="text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
-            <p className="text-[11px] sm:text-xs font-medium text-violet-950 dark:text-violet-100 leading-snug">
-              <span className="font-black">Selfie Mandiri Kegiatan:</span> Ambil foto selfie di lokasi{' '}
-              <strong className="font-bold">{kegiatanNamaLabel}</strong> untuk mencatat kehadiran dan mengaktifkan pengampunan keterlambatan pada sesi KBM pertama Anda yang beririsan.
-            </p>
-          </div>
+          wajibTapTerminalGuru ? (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="p-2.5 sm:p-3 rounded-xl bg-amber-50/90 dark:bg-amber-950/35 border border-amber-300/80 dark:border-amber-800/70 flex items-start gap-2.5"
+            >
+              <AlertCircle size={15} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-[11px] sm:text-xs font-medium text-amber-950 dark:text-amber-100 leading-snug">
+                <span className="font-black">Wajib Tap di Terminal Kegiatan{jabatanKegiatanLabel ? ` (${jabatanKegiatanLabel})` : ''}:</span>{' '}
+                Silakan hadir fisik di lokasi <strong className="font-bold">{kegiatanNamaLabel}</strong> dan lakukan presensi tap melalui{' '}
+                <strong className="font-bold">Terminal Unified Kegiatan</strong>.
+              </p>
+            </div>
+          ) : (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="p-2.5 sm:p-3 rounded-xl bg-violet-50/90 dark:bg-violet-950/35 border border-violet-300/80 dark:border-violet-800/70 flex items-start gap-2.5"
+            >
+              <Camera size={15} className="text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
+              <p className="text-[11px] sm:text-xs font-medium text-violet-950 dark:text-violet-100 leading-snug">
+                <span className="font-black">Selfie Mandiri Kegiatan{jabatanKegiatanLabel ? ` (${jabatanKegiatanLabel})` : ''}:</span>{' '}
+                Ambil foto selfie di lokasi <strong className="font-bold">{kegiatanNamaLabel}</strong> untuk mencatat kehadiran pendampingan dan mengaktifkan pengampunan keterlambatan sesi KBM beririsan.
+              </p>
+            </div>
+          )
         )}
 
         {mode === 'GURU' && !isGuruKegiatanSelfieCard && !isTeacherPresent && !isFinished && !isOverdue && prediksiRealtime?.kegiatanNama && (
@@ -1244,8 +1266,8 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                   <span>Bahan Ajar</span>
                 </Button>
               )}
-              {/* 1. Guru BELUM HADIR: Tombol Selfie Kegiatan / Foto Masuk Guru / Mulai KBM */}
-              {!isTeacherPresent && !isFinished && !isOverdue && onOpenPhotoModal && (
+              {/* 1. Guru BELUM HADIR: Tombol Selfie Kegiatan (hanya jika mode Selfie Mandiri) / Foto Masuk Guru / Mulai KBM */}
+              {!isTeacherPresent && !isFinished && !isOverdue && onOpenPhotoModal && (!isGuruKegiatanSelfieCard || !wajibTapTerminalGuru) && (
                 <Button
                   type="button"
                   size="sm"
@@ -1289,7 +1311,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
               )}
 
               {/* 2. Guru SUDAH HADIR: Tombol Ambil Foto / Foto Ulang */}
-              {isTeacherPresent && !isFinished && !isOverdue && onOpenPhotoModal && (
+              {isTeacherPresent && !isFinished && !isOverdue && onOpenPhotoModal && (!isGuruKegiatanSelfieCard || !wajibTapTerminalGuru) && (
                 <Button
                   type="button"
                   size="sm"
