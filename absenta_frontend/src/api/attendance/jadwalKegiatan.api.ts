@@ -13,6 +13,7 @@ export interface JadwalKegiatanItem {
   berlaku_mulai: string;
   berlaku_sampai?: string | null;
   aktif: boolean;
+  termasuk_siklus_ketarunaan?: boolean;
   wajib_tap_terminal_guru?: boolean;
   wajib_guru_beririsan?: boolean;
   wajib_positions_configured?: boolean;
@@ -39,6 +40,7 @@ export interface JadwalKegiatanPolicyItem {
   waktu_mulai: string;
   waktu_selesai?: string | null;
   aktif: boolean;
+  termasuk_siklus_ketarunaan?: boolean;
   is_apel_pulang: boolean;
   is_dhuha: boolean;
   wajib_tap_terminal_guru: boolean;

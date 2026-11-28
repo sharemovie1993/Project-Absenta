@@ -16,8 +16,9 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronUp,
+  Shield,
 } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { Button, Switch } from '@/components/ui';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Label } from '@/components/ui/Label';
 import type { JenisKegiatanMaster } from '@/api/academic/jenisKegiatanMaster.api';
@@ -56,6 +57,7 @@ export const jadwalKegiatanSchema = z.object({
   berlaku_mulai: z.string().min(1, 'Tanggal berlaku mulai wajib diisi'),
   berlaku_sampai: z.string().nullable().optional(),
   tahun_pelajaran_id: z.string().optional(),
+  termasuk_siklus_ketarunaan: z.boolean().optional(),
 }).superRefine((data, ctx) => {
   if (!data.target_semua_kelas && data.target_kelas_ids.length === 0) {
     ctx.addIssue({
@@ -114,6 +116,7 @@ interface JadwalKegiatanFormModalProps {
   presetNama?: string;
   presetDay?: string;
   focusDay?: string;
+  defaultSiklusKetarunaan?: boolean;
   conflictReferenceKegiatan?: JadwalKegiatanItem[];
   onClose: () => void;
   onSubmit: (payloads: JadwalKegiatanFormData[]) => Promise<void>;
@@ -157,6 +160,7 @@ export default React.memo(function JadwalKegiatanFormModal({
   presetNama = '',
   presetDay = '',
   focusDay = '',
+  defaultSiklusKetarunaan = false,
   conflictReferenceKegiatan = [],
   onClose,
   onSubmit,
@@ -176,6 +180,7 @@ export default React.memo(function JadwalKegiatanFormModal({
   const [targetKelasIds, setTargetKelasIds] = useState<string[]>([]);
   const [berlakuMulai, setBerlakuMulai] = useState(toLocalDate());
   const [berlakuSampai, setBerlakuSampai] = useState('');
+  const [termasukSiklusKetarunaan, setTermasukSiklusKetarunaan] = useState(false);
   const [masaBerlakuOption, setMasaBerlakuOption] = useState<'MANUAL' | 'GANJIL' | 'GENAP' | 'TAHUN_PELAJARAN'>('TAHUN_PELAJARAN');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -202,6 +207,10 @@ export default React.memo(function JadwalKegiatanFormModal({
       setTargetKelasIds(parseArray(primary.target_kelas_ids));
       setBerlakuMulai(primary.berlaku_mulai ? String(primary.berlaku_mulai).split('T')[0] : toLocalDate());
       setBerlakuSampai(primary.berlaku_sampai ? String(primary.berlaku_sampai).split('T')[0] : '');
+      const isCoreTaruna = /ketarunaan|taruna/i.test(`${primary.nama || ''} ${primary.jenis_kegiatan || ''}`);
+      setTermasukSiklusKetarunaan(
+        isCoreTaruna || items.some((it) => Boolean(it.termasuk_siklus_ketarunaan))
+      );
       setMasaBerlakuOption('MANUAL');
 
       // Check if multi-item matrix exists
@@ -255,12 +264,15 @@ export default React.memo(function JadwalKegiatanFormModal({
       setTargetSemuaKelas(true);
       setTargetKelasIds([]);
       setBerlakuSampai('');
+      setTermasukSiklusKetarunaan(
+        Boolean(defaultSiklusKetarunaan) || /ketarunaan|taruna/i.test(presetNama || '')
+      );
       setMasaBerlakuOption('TAHUN_PELAJARAN');
       setIsMatrixMode(false);
       setMatrixSchedule(presetDay ? { [presetDay.toUpperCase()]: { waktuMulai: '07:00', waktuSelesai: '07:15' } } : {});
     }
     setErrors({});
-  }, [editingItem, editingItems, presetNama, presetDay, focusDay]);
+  }, [editingItem, editingItems, presetNama, presetDay, focusDay, defaultSiklusKetarunaan]);
 
   // ── Sync matrixSchedule when days change ──
   const syncMatrixForDay = useCallback((day: string, fallbackMulai?: string, fallbackSelesai?: string) => {
@@ -453,15 +465,72 @@ export default React.memo(function JadwalKegiatanFormModal({
     }
   }, [activeFocusDay, focusScope, hari]);
 
-  // ── Conflict Check with Pembiasaan Kesiswaan ──
+  const masterTipeMap = useMemo(() => {
+    const map = new Map<string, string>();
+    masterKegiatans.forEach((m) => {
+      map.set(String(m.nama || '').trim().toLowerCase(), String(m.tipe || '').toUpperCase());
+    });
+    return map;
+  }, [masterKegiatans]);
+
+  const isCurrentEskul = useMemo(() => {
+    const jUpper = String(jenisKegiatan || '').trim().toUpperCase();
+    if (jUpper === 'ESKUL') return true;
+    const byJenis = masterTipeMap.get(String(jenisKegiatan || '').trim().toLowerCase());
+    if (byJenis) return byJenis === 'ESKUL';
+    const byNama = masterTipeMap.get(String(nama || '').trim().toLowerCase());
+    if (byNama) return byNama === 'ESKUL';
+    return false;
+  }, [jenisKegiatan, nama, masterTipeMap]);
+
+  const isCurrentCoreKetarunaan = useMemo(
+    () => /ketarunaan|taruna/i.test(`${nama || ''} ${jenisKegiatan || ''}`),
+    [nama, jenisKegiatan]
+  );
+
+  const editingIdSet = useMemo(() => {
+    const ids = new Set<string>();
+    if (editingItem?.id) ids.add(editingItem.id);
+    editingItems.forEach((it) => {
+      if (it?.id) ids.add(it.id);
+    });
+    return ids;
+  }, [editingItem, editingItems]);
+
+  // ── Conflict Check (1 Slot = 1 Agenda Fisik antar-Pembiasaan & Eskul vs Pembiasaan) ──
   const conflictWarning = useMemo(() => {
-    const isEskul = jenisKegiatan === 'ESKUL' || (!nama.toLowerCase().includes('upacara') && !nama.toLowerCase().includes('ketarunaan') && !nama.toLowerCase().includes('apel') && !nama.toLowerCase().includes('duha'));
-    if (!isEskul || !conflictReferenceKegiatan || conflictReferenceKegiatan.length === 0) return null;
+    if (!conflictReferenceKegiatan || conflictReferenceKegiatan.length === 0 || hari.length === 0) return null;
+
+    const isRefEskul = (ref: JadwalKegiatanItem) => {
+      const rUpper = String(ref.jenis_kegiatan || '').trim().toUpperCase();
+      if (rUpper === 'ESKUL') return true;
+      const byJenis = masterTipeMap.get(String(ref.jenis_kegiatan || '').trim().toLowerCase());
+      if (byJenis) return byJenis === 'ESKUL';
+      const byNama = masterTipeMap.get(String(ref.nama || '').trim().toLowerCase());
+      if (byNama) return byNama === 'ESKUL';
+      return false;
+    };
+
+    const candClassSet = new Set(targetKelasIds);
 
     for (const p of conflictReferenceKegiatan) {
+      if (editingIdSet.has(p.id)) continue;
+      if (p.aktif === false) continue;
+
+      const refIsEskul = isRefEskul(p);
+      // Eskul vs Eskul boleh paralel; Pembiasaan tidak diblokir oleh Eskul
+      if (refIsEskul) continue;
+
       const pDays = parseArray(p.hari).map(h => h.toUpperCase());
       const sharedDays = hari.filter(d => pDays.includes(d.toUpperCase()));
       if (sharedDays.length === 0) continue;
+
+      // Cek irisan masa berlaku jika tersedia
+      const candStart = berlakuMulai ? berlakuMulai.trim().split('T')[0] : '';
+      const candEnd = berlakuSampai && berlakuSampai.trim() !== '' ? berlakuSampai.trim().split('T')[0] : '9999-12-31';
+      const refStart = p.berlaku_mulai ? String(p.berlaku_mulai).split('T')[0] : '0000-01-01';
+      const refEnd = p.berlaku_sampai ? String(p.berlaku_sampai).split('T')[0] : '9999-12-31';
+      if (candStart && !(candStart <= refEnd && candEnd >= refStart)) continue;
 
       for (const day of sharedDays) {
         const dayTime = isMatrixMode && matrixSchedule[day] ? matrixSchedule[day] : { waktuMulai, waktuSelesai };
@@ -472,8 +541,28 @@ export default React.memo(function JadwalKegiatanFormModal({
         const pSelesai = p.waktu_selesai && p.waktu_selesai.trim() !== '' ? p.waktu_selesai.slice(0, 5) : '23:59';
 
         const isOverlap = propMulai < pSelesai && propSelesai > pMulai;
-        if (isOverlap) {
+        if (!isOverlap) continue;
+
+        if (isCurrentEskul) {
           return {
+            type: 'ESKUL_VS_PEMBIASAAN' as const,
+            kegiatanNama: p.nama,
+            day,
+            time: `${pMulai} – ${p.waktu_selesai || 'Selesai'}`,
+            proposedTime: `${propMulai} – ${dayTime.waktuSelesai || 'Selesai'}`,
+          };
+        }
+
+        // Sesama Pembiasaan: cek irisan target rombel (beda rombel diperbolehkan paralel)
+        const refClassIds = parseArray(p.target_kelas_ids);
+        const isRombelOverlap =
+          targetSemuaKelas ||
+          Boolean(p.target_semua_kelas) ||
+          refClassIds.some((cid) => candClassSet.has(cid));
+
+        if (isRombelOverlap) {
+          return {
+            type: 'PEMBIASAAN_OVERLAP' as const,
             kegiatanNama: p.nama,
             day,
             time: `${pMulai} – ${p.waktu_selesai || 'Selesai'}`,
@@ -483,7 +572,21 @@ export default React.memo(function JadwalKegiatanFormModal({
       }
     }
     return null;
-  }, [nama, jenisKegiatan, hari, isMatrixMode, matrixSchedule, waktuMulai, waktuSelesai, conflictReferenceKegiatan]);
+  }, [
+    isCurrentEskul,
+    masterTipeMap,
+    editingIdSet,
+    hari,
+    isMatrixMode,
+    matrixSchedule,
+    waktuMulai,
+    waktuSelesai,
+    targetSemuaKelas,
+    targetKelasIds,
+    berlakuMulai,
+    berlakuSampai,
+    conflictReferenceKegiatan,
+  ]);
 
   const otherDays = useMemo(() => {
     if (!activeFocusDay) return [];
@@ -611,6 +714,21 @@ export default React.memo(function JadwalKegiatanFormModal({
       failValidation({ target_kelas_ids: 'Pilih minimal satu kelas target yang valid' });
       return;
     }
+    if (conflictWarning) {
+      const dayLabel = getDayOption(conflictWarning.day)?.label || conflictWarning.day;
+      const conflictMsg =
+        conflictWarning.type === 'PEMBIASAAN_OVERLAP'
+          ? `Bentrok 1 Slot = 1 Agenda Fisik pada hari ${dayLabel} (${conflictWarning.proposedTime}) dengan "${conflictWarning.kegiatanNama}" (${conflictWarning.time}) di rombel yang sama.`
+          : `Jadwal eskul bentrok pada hari ${dayLabel} (${conflictWarning.proposedTime}) dengan "${conflictWarning.kegiatanNama}" (${conflictWarning.time}).`;
+      failValidation({ hari: conflictMsg }, conflictMsg);
+      return;
+    }
+
+    const effectiveSiklusKetarunaan = isCurrentEskul
+      ? false
+      : isCurrentCoreKetarunaan
+      ? true
+      : Boolean(termasukSiklusKetarunaan);
 
     let payloads: JadwalKegiatanFormData[] = [];
 
@@ -642,6 +760,7 @@ export default React.memo(function JadwalKegiatanFormModal({
         berlaku_mulai: cleanBerlakuMulai,
         berlaku_sampai: cleanBerlakuSampai,
         tahun_pelajaran_id: cleanTpId,
+        termasuk_siklus_ketarunaan: effectiveSiklusKetarunaan,
       };
 
       const result = jadwalKegiatanSchema.safeParse(payload);
@@ -700,6 +819,7 @@ export default React.memo(function JadwalKegiatanFormModal({
           berlaku_mulai: cleanBerlakuMulai,
           berlaku_sampai: cleanBerlakuSampai,
           tahun_pelajaran_id: cleanTpId,
+          termasuk_siklus_ketarunaan: effectiveSiklusKetarunaan,
         };
 
         const result = jadwalKegiatanSchema.safeParse(payload);
@@ -739,6 +859,10 @@ export default React.memo(function JadwalKegiatanFormModal({
     validClassIdSet,
     berlakuMulai,
     berlakuSampai,
+    termasukSiklusKetarunaan,
+    isCurrentEskul,
+    isCurrentCoreKetarunaan,
+    conflictWarning,
     editingItem,
     activeTahunPelajaranId,
     onSubmit,
@@ -805,19 +929,26 @@ export default React.memo(function JadwalKegiatanFormModal({
 
           {/* Section 1: Identitas Kegiatan */}
           <div className="space-y-4">
-            {/* Conflict Alert with Pembiasaan Kesiswaan */}
+            {/* Conflict Alert (1 Slot = 1 Agenda Fisik / Eskul vs Pembiasaan) */}
             {conflictWarning && (
               <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border-2 border-rose-300 dark:border-rose-900/70 flex items-start gap-3 text-rose-900 dark:text-rose-200 animate-in fade-in shadow-xs">
                 <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
                 <div className="text-xs space-y-1">
                   <div className="font-black text-rose-800 dark:text-rose-300 flex items-center gap-1.5">
-                    <span>Bentrok dengan Kegiatan Kesiswaan Sekolah!</span>
+                    <span>
+                      {conflictWarning.type === 'PEMBIASAAN_OVERLAP'
+                        ? 'Bentrok 1 Slot = 1 Agenda Fisik!'
+                        : 'Bentrok dengan Kegiatan Kesiswaan Sekolah!'}
+                    </span>
                   </div>
                   <p className="text-[11px] leading-relaxed">
-                    Hari <strong>{getDayOption(conflictWarning.day)?.label || conflictWarning.day}</strong> pada jam <strong>{conflictWarning.proposedTime}</strong> bertabrakan dengan kegiatan utama: <strong>{conflictWarning.kegiatanNama} ({conflictWarning.time})</strong>.
+                    Hari <strong>{getDayOption(conflictWarning.day)?.label || conflictWarning.day}</strong> pada jam <strong>{conflictWarning.proposedTime}</strong> beririsan dengan kegiatan <strong>{conflictWarning.kegiatanNama} ({conflictWarning.time})</strong>
+                    {conflictWarning.type === 'PEMBIASAAN_OVERLAP' ? ' pada rombel yang sama.' : '.'}
                   </p>
                   <p className="text-[10px] text-rose-600 dark:text-rose-400 font-semibold italic">
-                    *Kegiatan kesiswaan/pembiasaan bersifat prioritas. Silakan atur jam latihan eskul di luar waktu kegiatan kesiswaan.
+                    {conflictWarning.type === 'PEMBIASAAN_OVERLAP'
+                      ? '*Atur jam berurutan (tidak tumpang tindih), bedakan target rombel, atau cukup gunakan 1 agenda (mis. Upacara/Dhuha) lalu aktifkan "Masuk Siklus Ketarunaan".'
+                      : '*Kegiatan kesiswaan/pembiasaan bersifat prioritas. Silakan atur jam latihan eskul di luar waktu kegiatan kesiswaan.'}
                   </p>
                 </div>
               </div>
@@ -876,6 +1007,30 @@ export default React.memo(function JadwalKegiatanFormModal({
                 {errors.jenis_kegiatan && <p role="alert" className="mt-1 text-[11px] text-rose-500 font-medium">{errors.jenis_kegiatan}</p>}
               </div>
             </div>
+
+            {/* Penanda Siklus Program Ketarunaan (Single Tap, Multi-Credit untuk Pembiasaan non-Eskul) */}
+            {!isCurrentEskul && (nama.trim() !== '' || jenisKegiatan !== '') && (
+              <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40">
+                <div className="flex items-start gap-2.5 min-w-0">
+                  <Shield className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block">
+                      Masuk Siklus Program Ketarunaan
+                    </span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 block leading-snug">
+                      {isCurrentCoreKetarunaan
+                        ? 'Otomatis aktif untuk kegiatan inti Ketarunaan.'
+                        : '1× tap pada agenda ini otomatis terhitung memenuhi siklus Ketarunaan hari tersebut (tanpa jadwal ganda).'}
+                    </span>
+                  </div>
+                </div>
+                <Switch
+                  checked={isCurrentCoreKetarunaan ? true : termasukSiklusKetarunaan}
+                  disabled={isCurrentCoreKetarunaan}
+                  onCheckedChange={setTermasukSiklusKetarunaan}
+                />
+              </div>
+            )}
           </div>
 
           <hr className="border-slate-100 dark:border-slate-800" />

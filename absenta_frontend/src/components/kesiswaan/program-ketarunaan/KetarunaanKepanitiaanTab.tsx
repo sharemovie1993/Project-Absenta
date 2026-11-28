@@ -48,6 +48,7 @@ interface KetarunaanKepanitiaanTabProps {
   refetchSesi: () => void;
   guard?: any;
   mode?: 'PRESENSI' | 'STRUKTUR' | 'PLOTING';
+  onSelectJadwalId?: (id: string) => void;
 }
 
 function statusBadge(status: string) {
@@ -80,6 +81,7 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
   refetchSesi,
   guard,
   mode,
+  onSelectJadwalId,
 }) => {
   const qc = useQueryClient();
   const [panitiaModalOpen, setPanitiaModalOpen] = useState(false);
@@ -434,6 +436,40 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
       {/* ── VIEW 3: TERMINAL PRESENSI & POS LAPANGAN (EXISTING) ── */}
       {viewMode === 'PRESENSI' && (
         <div className="space-y-3 animate-in fade-in duration-150">
+          {/* Pemilih Slot Aktif Paralel Hari Ini (mis. Kelas X 06:30–07:50 & Kelas XI 06:30–07:30) */}
+          {Array.isArray(guard?.today_schedules) && guard.today_schedules.length > 1 && onSelectJadwalId && (
+            <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[11px] font-bold text-indigo-800 dark:text-indigo-200 mr-1">
+                  Slot Hari Ini:
+                </span>
+                {guard.today_schedules.map((slot: any) => {
+                  const isSelected = slot.id === effectiveJadwalId;
+                  return (
+                    <button
+                      key={slot.id}
+                      type="button"
+                      onClick={() => onSelectJadwalId(slot.id)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        isSelected
+                          ? 'bg-indigo-600 text-white shadow-2xs'
+                          : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-indigo-400'
+                      }`}
+                    >
+                      <span>{slot.nama}</span>
+                      <span className={`font-mono text-[10px] ${isSelected ? 'text-indigo-100' : 'text-slate-400'}`}>
+                        {String(slot.waktu_mulai || '').slice(0, 5)}–{String(slot.waktu_selesai || '').slice(0, 5)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <span className="text-[10px] font-medium text-indigo-700/80 dark:text-indigo-300/80">
+                Scan RFID siswa otomatis masuk ke slot rombel masing-masing
+              </span>
+            </div>
+          )}
+
           {/* Stat bar ringkas — Unified Terminal (Guru/Panitia + Taruna) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <button

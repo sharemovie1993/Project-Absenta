@@ -2731,6 +2731,7 @@ model JadwalKegiatan {
   tahun_pelajaran_id         String
   semester_id                String?
   aktif                      Boolean   @default(true)
+  termasuk_siklus_ketarunaan Boolean   @default(false)
   wajib_tap_terminal_guru    Boolean   @default(true)
   wajib_guru_beririsan       Boolean   @default(true)
   wajib_positions_configured Boolean   @default(false)

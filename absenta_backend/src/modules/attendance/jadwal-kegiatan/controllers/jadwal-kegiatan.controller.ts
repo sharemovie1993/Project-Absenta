@@ -13,6 +13,8 @@ export const createJadwalKegiatanSchema = z.object({
   berlaku_mulai: z.string().min(1, 'berlaku_mulai wajib diisi'),
   berlaku_sampai: z.string().optional().nullable(),
   tahun_pelajaran_id: z.string().optional(),
+  termasuk_siklus_ketarunaan: z.boolean().optional(),
+  aktif: z.boolean().optional(),
 });
 
 export const updateJadwalKegiatanPolicySchema = z.object({

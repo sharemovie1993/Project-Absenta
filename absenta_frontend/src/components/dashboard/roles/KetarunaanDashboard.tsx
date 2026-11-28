@@ -235,7 +235,12 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
     staleTime: 60 * 1000,
   });
 
-  const jadwalKegiatanId = guard?.jadwal_kegiatan_id ?? null;
+  const [selectedTodayJadwalId, setSelectedTodayJadwalId] = useState<string | null>(null);
+  const todaySchedules = guard?.today_schedules || [];
+  const isValidSelectedToday = Boolean(
+    selectedTodayJadwalId && todaySchedules.some((s) => s.id === selectedTodayJadwalId)
+  );
+  const jadwalKegiatanId = (isValidSelectedToday ? selectedTodayJadwalId : null) ?? guard?.jadwal_kegiatan_id ?? null;
 
   // 2. Sesi Hari Ini
   const { data: sesiData, isLoading: isSesiLoading, refetch: refetchSesi } = useQuery({
@@ -674,6 +679,7 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
                       refetchSesi={refetchSesi}
                       guard={guard}
                       mode="PRESENSI"
+                      onSelectJadwalId={setSelectedTodayJadwalId}
                     />
                   </div>
                 )}

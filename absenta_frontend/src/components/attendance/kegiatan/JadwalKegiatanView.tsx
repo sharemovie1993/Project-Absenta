@@ -70,7 +70,8 @@ function matchesActivityScope(
   nama?: string | null,
   jenis?: string | null,
   scope: JadwalKegiatanScope = 'ALL',
-  includeDhuha: boolean = false
+  includeDhuha: boolean = false,
+  termasukSiklusKetarunaan: boolean = false
 ): boolean {
   if (scope === 'ALL') return true;
   const text = `${nama || ''} ${jenis || ''}`.toLowerCase();
@@ -82,6 +83,7 @@ function matchesActivityScope(
   if (scope === 'DHUHA') return isDhuha;
   if (scope === 'KETARUNAAN') {
     if (isEskul) return false;
+    if (termasukSiklusKetarunaan) return true;
     if (isDhuha) return includeDhuha;
     return /apel|taruna|ketarunaan|upacara/i.test(text);
   }
@@ -153,7 +155,16 @@ export const JadwalKegiatanView: React.FC<UniversalJadwalKegiatanViewProps> = Re
   const { rawList: classes = [], isLoading: loadingClasses } = useKelasOptions();
 
   const scopedJadwalItems = useMemo(
-    () => jadwalItems.filter((j) => matchesActivityScope(j.nama, j.jenis_kegiatan, scope, includeDhuha)),
+    () =>
+      jadwalItems.filter((j) =>
+        matchesActivityScope(
+          j.nama,
+          j.jenis_kegiatan,
+          scope,
+          includeDhuha,
+          Boolean(j.termasuk_siklus_ketarunaan)
+        )
+      ),
     [jadwalItems, scope, includeDhuha]
   );
 
@@ -491,7 +502,8 @@ export const JadwalKegiatanView: React.FC<UniversalJadwalKegiatanViewProps> = Re
               presetNama={presetMasterNama}
               presetDay={presetDay}
               focusDay={focusDay}
-              conflictReferenceKegiatan={jadwalItems.filter(j => j.jenis_kegiatan === 'PEMBIASAAN' || (j.nama && (j.nama.toLowerCase().includes('ketarunaan') || j.nama.toLowerCase().includes('upacara') || j.nama.toLowerCase().includes('apel') || j.nama.toLowerCase().includes('duha'))))}
+              defaultSiklusKetarunaan={scope === 'KETARUNAAN'}
+              conflictReferenceKegiatan={jadwalItems.filter(j => j.aktif !== false)}
               onClose={handleCloseModal}
               onSubmit={handleFormSubmit}
             />
@@ -878,7 +890,8 @@ export const JadwalKegiatanView: React.FC<UniversalJadwalKegiatanViewProps> = Re
             presetNama={presetMasterNama}
             presetDay={presetDay}
             focusDay={focusDay}
-            conflictReferenceKegiatan={jadwalItems.filter(j => j.jenis_kegiatan === 'PEMBIASAAN' || (j.nama && (j.nama.toLowerCase().includes('ketarunaan') || j.nama.toLowerCase().includes('upacara') || j.nama.toLowerCase().includes('apel') || j.nama.toLowerCase().includes('duha'))))}
+            defaultSiklusKetarunaan={scope === 'KETARUNAAN'}
+            conflictReferenceKegiatan={jadwalItems.filter(j => j.aktif !== false)}
             onClose={handleCloseModal}
             onSubmit={handleFormSubmit}
           />

@@ -49,6 +49,15 @@ export interface UnifiedGuardStatus {
   is_today_scheduled_day?: boolean;
   is_within_time_window?: boolean;
   current_time?: string;
+  today_schedules?: Array<{
+    id: string;
+    nama: string;
+    siklus: string;
+    waktu_mulai: string;
+    waktu_selesai?: string | null;
+    target_semua_kelas: boolean;
+    target_kelas_ids: string[];
+  }>;
 }
 
 export interface UnifiedTapPayload {

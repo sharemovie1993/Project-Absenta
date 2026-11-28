@@ -147,6 +147,7 @@ export class UnifiedKegiatanService {
       return {
         jadwal,
         allActiveSchedules: jadwal && jadwal.aktif ? [jadwal] : [],
+        todaySchedules: isScheduled && jadwal && jadwal.aktif ? [jadwal] : [],
         hariAktif,
         unionHariAktif: hariAktif,
         isScheduledOnTargetDay: isScheduled,
@@ -156,18 +157,36 @@ export class UnifiedKegiatanService {
       };
     }
 
-    // Multi-Cycle 5 Siklus Ketarunaan
+    // Multi-Cycle 5 Siklus Ketarunaan (1 Slot = 1 Agenda Fisik)
+    // Mengambil jadwal inti KETARUNAAN + jadwal pembiasaan lain (Upacara/Apel/Dhuha) yang ditandai
+    // `termasuk_siklus_ketarunaan = true`.
+    // Backward-compatible: jika tenant belum pernah menyetel flag `termasuk_siklus_ketarunaan` sama sekali
+    // pada kegiatan non-Ketarunaan, tetap menyertakan Upacara/Apel/Dhuha agar sekolah eksisting tidak terputus.
     const cycleKeywords = ['UPACARA', 'KETARUNAAN', 'DUHA', 'DHUHA', 'APEL'];
-    const allCycleSchedules = await prisma.jadwalKegiatan.findMany({
+    const rawCandidateSchedules = await prisma.jadwalKegiatan.findMany({
       where: {
         tenant_id: tenantId,
-        OR: cycleKeywords.flatMap((kw) => [
-          { nama: { contains: kw, mode: 'insensitive' as const } },
-          { jenis_kegiatan: { contains: kw, mode: 'insensitive' as const } },
-        ]),
+        OR: [
+          { termasuk_siklus_ketarunaan: true },
+          ...cycleKeywords.flatMap((kw) => [
+            { nama: { contains: kw, mode: 'insensitive' as const } },
+            { jenis_kegiatan: { contains: kw, mode: 'insensitive' as const } },
+          ]),
+        ],
       },
       orderBy: { updated_at: 'desc' },
     });
+
+    const isCoreKetarunaan = (j: { nama?: string | null; jenis_kegiatan?: string | null }) =>
+      /ketarunaan|taruna/i.test(`${j.nama || ''} ${j.jenis_kegiatan || ''}`);
+
+    const hasExplicitNonCoreTag = rawCandidateSchedules.some(
+      (j) => !isCoreKetarunaan(j) && Boolean(j.termasuk_siklus_ketarunaan)
+    );
+
+    const allCycleSchedules = hasExplicitNonCoreTag
+      ? rawCandidateSchedules.filter((j) => isCoreKetarunaan(j) || Boolean(j.termasuk_siklus_ketarunaan))
+      : rawCandidateSchedules;
 
     const activeSchedules = allCycleSchedules.filter((j) => j.aktif);
     const dayOrder: Hari[] = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU'];
@@ -221,6 +240,7 @@ export class UnifiedKegiatanService {
     return {
       jadwal: selectedJadwal,
       allActiveSchedules: activeSchedules,
+      todaySchedules: matchingToday,
       hariAktif: jadwalHariAktif,
       unionHariAktif: unionHariAktif.length > 0 ? unionHariAktif : jadwalHariAktif,
       isScheduledOnTargetDay,
@@ -239,6 +259,7 @@ export class UnifiedKegiatanService {
     const {
       jadwal,
       allActiveSchedules,
+      todaySchedules,
       hariAktif,
       unionHariAktif,
       isScheduledOnTargetDay,
@@ -259,6 +280,7 @@ export class UnifiedKegiatanService {
         siklus_aktif: null,
         siklus_pilar_label: null,
         siklus_schedules: [],
+        today_schedules: [],
       };
     }
 
@@ -287,6 +309,17 @@ export class UnifiedKegiatanService {
         hari: Array.isArray(s.hari) ? s.hari : [],
         waktu_mulai: s.waktu_mulai,
         waktu_selesai: s.waktu_selesai,
+        target_semua_kelas: Boolean(s.target_semua_kelas),
+        target_kelas_ids: Array.isArray(s.target_kelas_ids) ? s.target_kelas_ids : [],
+      })),
+      today_schedules: (todaySchedules || []).map((s) => ({
+        id: s.id,
+        nama: s.nama,
+        siklus: this.classifySiklusType(s.nama || s.jenis_kegiatan),
+        waktu_mulai: s.waktu_mulai,
+        waktu_selesai: s.waktu_selesai,
+        target_semua_kelas: Boolean(s.target_semua_kelas),
+        target_kelas_ids: Array.isArray(s.target_kelas_ids) ? s.target_kelas_ids : [],
       })),
       today_hari: todayHari,
       is_today_scheduled_day: isScheduledOnTargetDay,
@@ -1417,8 +1450,51 @@ export class UnifiedKegiatanService {
     const dateRange = this.getDateRange(todayStr);
 
     // Resolusi siklus jadwal kegiatan hari ini (Upacara, Ketarunaan, Dhuha, Apel)
+    // Smart Rombel Routing: jika ada jadwal paralel beda rombel/tingkat (mis. Ketarunaan Kelas X 06:30–07:50
+    // dan Ketarunaan Kelas XI 06:30–07:30), otomatis arahkan siswa ke slot jadwal yang sesuai rombelnya.
     const resolvedSiklus = await this.resolveSiklusJadwal(tenantId, jenis, hariEnum);
-    const activeJadwal = resolvedSiklus.jadwal;
+    const todayCandidates = resolvedSiklus.todaySchedules || [];
+    const curTime = resolvedSiklus.currentTimeStr;
+
+    const matchesStudentRombel = (j: any) =>
+      !targetKelasId ||
+      Boolean(j.target_semua_kelas) ||
+      (Array.isArray(j.target_kelas_ids) && j.target_kelas_ids.includes(targetKelasId));
+
+    const isExactStudentRombel = (j: any) =>
+      Boolean(targetKelasId) &&
+      !j.target_semua_kelas &&
+      Array.isArray(j.target_kelas_ids) &&
+      j.target_kelas_ids.includes(targetKelasId);
+
+    const isInScheduleWindow = (j: any) => {
+      if (!j.waktu_mulai || !j.waktu_selesai) return false;
+      return curTime >= String(j.waktu_mulai).slice(0, 5) && curTime <= String(j.waktu_selesai).slice(0, 5);
+    };
+
+    const rombelMatchedToday = todayCandidates.filter(matchesStudentRombel);
+    let activeJadwal = resolvedSiklus.jadwal;
+
+    if (rombelMatchedToday.length === 1) {
+      activeJadwal = rombelMatchedToday[0];
+    } else if (rombelMatchedToday.length > 1) {
+      // 1. Utamakan slot yang sedang berlangsung & cocok rombel spesifik
+      const inWindowMatched = rombelMatchedToday.filter(isInScheduleWindow);
+      if (inWindowMatched.length > 0) {
+        activeJadwal = inWindowMatched.find(isExactStudentRombel) || inWindowMatched[0];
+      } else {
+        // 2. Utamakan pagi vs sore berdasarkan jam saat ini, lalu rombel spesifik
+        const isAfternoon = curTime >= '13:00';
+        const bucketMatched = rombelMatchedToday.filter((j) =>
+          isAfternoon
+            ? this.classifySiklusType(j.nama || j.jenis_kegiatan) === 'APEL_SORE'
+            : this.classifySiklusType(j.nama || j.jenis_kegiatan) !== 'APEL_SORE'
+        );
+        const pool = bucketMatched.length > 0 ? bucketMatched : rombelMatchedToday;
+        activeJadwal = pool.find(isExactStudentRombel) || pool[0];
+      }
+    }
+
     const effectiveJadwalId = activeJadwal?.id || payload.jadwal_kegiatan_id;
 
     // Cari sesi kegiatan yang sesuai untuk kelas siswa tersebut hari ini

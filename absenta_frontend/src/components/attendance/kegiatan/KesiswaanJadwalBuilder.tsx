@@ -14,6 +14,7 @@ import {
   Users,
   CheckCircle2,
   Filter,
+  AlertTriangle,
 } from 'lucide-react';
 import type { JadwalKegiatanItem } from '@/api/attendance/jadwalKegiatan.api';
 import { HARI_LIST as HARI_OPTION, WORKDAYS_HARI_KEYS as WORKDAYS } from '@/constants/day.constants';
@@ -66,6 +67,33 @@ function getTimeBucket(startStr?: string): 'PAGI' | 'SIANG' | 'SORE' {
   return 'SORE';
 }
 
+function getCompactRombelLabel(item: JadwalKegiatanItem, classes: any[]): string | null {
+  if (item.target_semua_kelas) return null;
+  const ids = parseArray(item.target_kelas_ids);
+  if (ids.length === 0) return null;
+
+  const matched = Array.isArray(classes)
+    ? classes.filter((c: any) => ids.includes(c.id))
+    : [];
+
+  if (matched.length > 0) {
+    const levels = new Set<string>();
+    matched.forEach((c: any) => {
+      const t = String(c.tingkat ?? '').trim().toUpperCase();
+      const nama = String(c.nama_kelas || c.nama || '').trim().toUpperCase();
+      if (t === '10' || t === 'X' || nama.startsWith('X ') || nama.startsWith('10 ')) levels.add('X');
+      else if (t === '11' || t === 'XI' || nama.startsWith('XI ') || nama.startsWith('11 ')) levels.add('XI');
+      else if (t === '12' || t === 'XII' || nama.startsWith('XII ') || nama.startsWith('12 ')) levels.add('XII');
+    });
+    if (levels.size > 0) {
+      const ordered = ['X', 'XI', 'XII'].filter((lvl) => levels.has(lvl));
+      return `Kls ${ordered.join(', ')}`;
+    }
+  }
+
+  return `${ids.length} Kls`;
+}
+
 export const KesiswaanJadwalBuilder: React.FC<KesiswaanJadwalBuilderProps> = React.memo(({
   jadwalItems,
   classes,
@@ -112,6 +140,54 @@ export const KesiswaanJadwalBuilder: React.FC<KesiswaanJadwalBuilderProps> = Rea
 
     return map;
   }, [jadwalItems, daysList, filterCategory]);
+
+  // Deteksi bentrok 1 Slot = 1 Agenda Fisik antar kegiatan pembiasaan di hari, jam, & rombel yang sama
+  const conflictMapByDay = useMemo(() => {
+    const result: Record<string, Record<string, string[]>> = {};
+
+    const isEskulItem = (it: JadwalKegiatanItem) =>
+      String(it.jenis_kegiatan || '').trim().toUpperCase() === 'ESKUL';
+
+    Object.entries(schedulesByDay).forEach(([day, dayItems]) => {
+      const pembiasaanItems = dayItems.filter((it) => it.aktif !== false && !isEskulItem(it));
+      const dayConflicts: Record<string, string[]> = {};
+
+      for (let i = 0; i < pembiasaanItems.length; i++) {
+        for (let j = i + 1; j < pembiasaanItems.length; j++) {
+          const a = pembiasaanItems[i];
+          const b = pembiasaanItems[j];
+          if (a.id === b.id) continue;
+
+          const aStart = (a.waktu_mulai || '07:00').slice(0, 5);
+          const aEnd = a.waktu_selesai && a.waktu_selesai.trim() !== '' ? a.waktu_selesai.slice(0, 5) : '23:59';
+          const bStart = (b.waktu_mulai || '07:00').slice(0, 5);
+          const bEnd = b.waktu_selesai && b.waktu_selesai.trim() !== '' ? b.waktu_selesai.slice(0, 5) : '23:59';
+
+          if (!(aStart < bEnd && aEnd > bStart)) continue;
+
+          const aClasses = parseArray(a.target_kelas_ids);
+          const bClasses = parseArray(b.target_kelas_ids);
+          const rombelOverlap =
+            a.target_semua_kelas ||
+            b.target_semua_kelas ||
+            aClasses.some((cid) => bClasses.includes(cid));
+
+          if (!rombelOverlap) continue;
+
+          if (!dayConflicts[a.id]) dayConflicts[a.id] = [];
+          if (!dayConflicts[b.id]) dayConflicts[b.id] = [];
+          dayConflicts[a.id].push(`${b.nama} (${bStart}–${b.waktu_selesai || 'Selesai'})`);
+          dayConflicts[b.id].push(`${a.nama} (${aStart}–${a.waktu_selesai || 'Selesai'})`);
+        }
+      }
+
+      if (Object.keys(dayConflicts).length > 0) {
+        result[day] = dayConflicts;
+      }
+    });
+
+    return result;
+  }, [schedulesByDay]);
 
   // Weekly Stats calculation
   const stats = useMemo(() => {
@@ -318,18 +394,28 @@ export const KesiswaanJadwalBuilder: React.FC<KesiswaanJadwalBuilderProps> = Rea
                       const isEskul = item.jenis_kegiatan === 'ESKUL';
                       const isUpacara = (item.nama || '').toLowerCase().includes('upacara');
                       const isDhuha = /duha|dhuha|rohis/i.test(`${item.nama || ''} ${item.jenis_kegiatan || ''}`);
+                      const isTaggedSiklusTaruna = !isKetarunaan && !isEskul && Boolean(item.termasuk_siklus_ketarunaan);
+                      const dayItemConflicts = conflictMapByDay[dayKey]?.[item.id] || [];
+                      const hasConflict = dayItemConflicts.length > 0;
+                      const conflictTooltip = hasConflict
+                        ? `Bentrok 1 Slot = 1 Agenda Fisik dengan: ${dayItemConflicts.join(', ')}`
+                        : undefined;
                       const bucket = getTimeBucket(item.waktu_mulai);
                       const dur = calculateDuration(item.waktu_mulai, item.waktu_selesai);
+                      const compactRombelLabel = getCompactRombelLabel(item, classes);
 
                       if (isCompact) {
                         return (
                           <div
                             key={`${dayKey}-${item.id}`}
+                            title={conflictTooltip}
                             onClick={() => !readOnly && onEditItem(item, dayKey)}
                             className={cn(
                               'px-2.5 py-2 rounded-xl border transition-all text-left group relative',
                               !readOnly && 'cursor-pointer hover:shadow-xs',
-                              isKetarunaan
+                              hasConflict
+                                ? 'bg-rose-50/80 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800 hover:border-rose-500'
+                                : isKetarunaan
                                 ? 'bg-blue-50/70 dark:bg-blue-950/30 border-blue-200/90 dark:border-blue-900/50 hover:border-blue-400'
                                 : isDhuha
                                 ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200/90 dark:border-emerald-900/50 hover:border-emerald-400'
@@ -338,13 +424,36 @@ export const KesiswaanJadwalBuilder: React.FC<KesiswaanJadwalBuilderProps> = Rea
                                 : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-indigo-400'
                             )}
                           >
-                            <h4 className="text-[11px] font-extrabold text-slate-800 dark:text-slate-100 line-clamp-1 leading-tight pr-4">
-                              {item.nama}
-                            </h4>
-                            <p className="text-[10px] font-mono font-semibold text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
-                              <Clock size={9} className="shrink-0 opacity-70" />
-                              <span>{item.waktu_mulai}–{item.waktu_selesai || 'Selesai'}</span>
-                            </p>
+                            <div className="flex items-center gap-1 pr-4">
+                              <h4 className="text-[11px] font-extrabold text-slate-800 dark:text-slate-100 line-clamp-1 leading-tight">
+                                {item.nama}
+                              </h4>
+                              {isTaggedSiklusTaruna && !hasConflict && (
+                                <span
+                                  title="Masuk Siklus Program Ketarunaan (1× tap)"
+                                  className="shrink-0 text-indigo-600 dark:text-indigo-400"
+                                >
+                                  <Shield size={10} />
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-0.5 flex items-center justify-between gap-1">
+                              <p className="text-[10px] font-mono font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1 truncate">
+                                <Clock size={9} className="shrink-0 opacity-70" />
+                                <span>{item.waktu_mulai}–{item.waktu_selesai || 'Selesai'}</span>
+                              </p>
+                              {compactRombelLabel && (
+                                <span className="shrink-0 px-1 py-0.2 rounded bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[9px] font-bold">
+                                  {compactRombelLabel}
+                                </span>
+                              )}
+                            </div>
+                            {hasConflict && (
+                              <span className="mt-1 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-200 text-[9px] font-bold">
+                                <AlertTriangle size={9} />
+                                Bentrok
+                              </span>
+                            )}
 
                             {!readOnly && (
                               <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 bg-white/95 dark:bg-slate-900/95 p-0.5 rounded-md border border-slate-200/80 dark:border-slate-700 shadow-2xs">
@@ -379,10 +488,13 @@ export const KesiswaanJadwalBuilder: React.FC<KesiswaanJadwalBuilderProps> = Rea
                       return (
                         <div
                           key={`${dayKey}-${item.id}`}
+                          title={conflictTooltip}
                           onClick={() => !readOnly && onEditItem(item, dayKey)}
                           className={cn(
                             'p-3 rounded-xl border transition-all text-left group cursor-pointer relative shadow-xs hover:shadow-md hover:scale-[1.01]',
-                            isKetarunaan
+                            hasConflict
+                              ? 'bg-rose-50/80 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800 hover:border-rose-500'
+                              : isKetarunaan
                               ? 'bg-blue-50/70 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900/50 hover:border-blue-400'
                               : isEskul
                               ? 'bg-violet-50/70 dark:bg-violet-950/30 border-violet-200 dark:border-violet-900/50 hover:border-violet-400'
@@ -407,15 +519,35 @@ export const KesiswaanJadwalBuilder: React.FC<KesiswaanJadwalBuilderProps> = Rea
                           </div>
 
                           {/* Activity Name */}
-                          <h4 className="text-xs font-black text-slate-800 dark:text-slate-100 line-clamp-1 leading-snug">
-                            {item.nama}
-                          </h4>
+                          <div className="flex items-center gap-1.5">
+                            <h4 className="text-xs font-black text-slate-800 dark:text-slate-100 line-clamp-1 leading-snug">
+                              {item.nama}
+                            </h4>
+                            {isTaggedSiklusTaruna && (
+                              <span
+                                title="Masuk Siklus Program Ketarunaan (1× tap)"
+                                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 text-[8.5px] font-bold shrink-0"
+                              >
+                                <Shield size={9} />
+                                Taruna
+                              </span>
+                            )}
+                          </div>
+
+                          {hasConflict && (
+                            <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-200 text-[9px] font-bold">
+                              <AlertTriangle size={10} />
+                              <span>Bentrok slot</span>
+                            </div>
+                          )}
 
                           {/* Target Class Pill */}
                           <div className="mt-1 flex items-center justify-between gap-1">
                             <span className="text-[9.5px] font-semibold text-slate-500 dark:text-slate-400 truncate">
                               {item.target_semua_kelas
                                 ? 'Seluruh Kelas'
+                                : compactRombelLabel
+                                ? `${compactRombelLabel} (${parseArray(item.target_kelas_ids).length} Rombel)`
                                 : `${parseArray(item.target_kelas_ids).length} Rombel`}
                             </span>
                             <span
