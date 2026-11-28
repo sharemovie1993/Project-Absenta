@@ -257,13 +257,23 @@ export const CbtMultiJurusanModal: React.FC<CbtMultiJurusanModalProps> = ({
       const normalized: Record<string, string> = {};
       jurusans.forEach((j) => {
         const val = rawAssignments[j.id] || rawAssignments[j.kode];
-        if (val) normalized[j.id] = val;
+        if (!val) return;
+        // ⛔ Validasi: jangan restore assignment jika bank soal yg tersimpan adalah mapel umum
+        // (misal: PKK / Projek Kreatif tersimpan salah di slot kejuruan sebelumnya)
+        const savedOpt = subjectOptions.find((o) => o.id === val);
+        if (savedOpt && isMapelUmum(savedOpt.namaMapel, savedOpt.kodeMapel, savedOpt.label)) {
+          return; // skip — kosongkan agar user melihat slot perlu dipilih ulang
+        }
+        normalized[j.id] = val;
       });
       // Pertahankan key lain jika ada (misal dari tingkat/periode berbeda) agar tidak hilang
       Object.entries(rawAssignments).forEach(([k, v]) => {
         if (!v) return;
         const matched = jurusans.find((j) => j.id === k || j.kode === k);
         if (!matched && !normalized[k]) {
+          // Validasi juga key lainnya
+          const savedOpt = subjectOptions.find((o) => o.id === v);
+          if (savedOpt && isMapelUmum(savedOpt.namaMapel, savedOpt.kodeMapel, savedOpt.label)) return;
           normalized[k] = v;
         }
       });
@@ -272,7 +282,7 @@ export const CbtMultiJurusanModal: React.FC<CbtMultiJurusanModalProps> = ({
       setTitle(defaultTitle);
       setAssignments({});
     }
-  }, [initialConfig, defaultTitle, isOpen, jurusans]);
+  }, [initialConfig, defaultTitle, isOpen, jurusans, subjectOptions]);
 
   // Total terpetakan
   const mappedCount = useMemo(() => {
