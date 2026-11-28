@@ -6,9 +6,12 @@ import {
   Calendar,
   RotateCcw,
   Check,
+  Minus,
   Copy,
   AlertCircle,
   Shield,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { Button, Switch } from '@/components/ui';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
@@ -170,6 +173,7 @@ export default React.memo(function JadwalKegiatanFormModal({
   const [waktuSelesai, setWaktuSelesai] = useState('07:15');
   const [targetSemuaKelas, setTargetSemuaKelas] = useState(true);
   const [targetKelasIds, setTargetKelasIds] = useState<string[]>([]);
+  const [expandedTingkatKey, setExpandedTingkatKey] = useState<string | null>(null);
   const [berlakuMulai, setBerlakuMulai] = useState(toLocalDate());
   const [berlakuSampai, setBerlakuSampai] = useState('');
   const [termasukSiklusKetarunaan, setTermasukSiklusKetarunaan] = useState(false);
@@ -1153,39 +1157,113 @@ export default React.memo(function JadwalKegiatanFormModal({
 
             {!targetSemuaKelas && (
               <div className="space-y-2.5">
-                <div className="flex items-center justify-end gap-2.5 text-[11px]">
-                  <button
-                    type="button"
-                    onClick={handleSelectAllClasses}
-                    className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
-                  >
-                    Pilih Semua
-                  </button>
-                  <span className="text-slate-300 dark:text-slate-700">·</span>
-                  <button
-                    type="button"
-                    onClick={handleClearClasses}
-                    className="font-semibold text-slate-500 hover:text-rose-600 hover:underline cursor-pointer"
-                  >
-                    Kosongkan
-                  </button>
+                {/* Tier 1: Checkbox Tingkat (Anti Human Error — 1 klik per tingkat) */}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                    Centang tingkat kelas yang mengikuti kegiatan:
+                  </span>
+                  <div className="flex items-center gap-2 text-[11px] shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleSelectAllClasses}
+                      className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                    >
+                      Semua
+                    </button>
+                    <span className="text-slate-300 dark:text-slate-700">·</span>
+                    <button
+                      type="button"
+                      onClick={handleClearClasses}
+                      className="font-semibold text-slate-500 hover:text-rose-600 hover:underline cursor-pointer"
+                    >
+                      Kosongkan
+                    </button>
+                  </div>
                 </div>
 
-                <div className="space-y-2.5 max-h-[240px] overflow-y-auto pr-1">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {groupedClasses.map(([tingkatKey, group]) => {
+                    const keyStr = String(tingkatKey);
                     const groupItemIds = group.items.map(c => c.id);
-                    const selectedInGroup = groupItemIds.filter(id => targetKelasIds.includes(id));
-                    const isAllInGroupSelected = groupItemIds.length > 0 && selectedInGroup.length === groupItemIds.length;
+                    const selectedCount = groupItemIds.filter(id => targetKelasIds.includes(id)).length;
+                    const isAllSelected = groupItemIds.length > 0 && selectedCount === groupItemIds.length;
+                    const isPartial = selectedCount > 0 && selectedCount < groupItemIds.length;
+                    const isExpanded = expandedTingkatKey === keyStr;
 
                     return (
-                      <div key={String(tingkatKey)} className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-950/30 space-y-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                            {group.label}{' '}
-                            <span className="font-normal text-slate-400">
-                              ({selectedInGroup.length}/{group.items.length})
-                            </span>
+                      <div
+                        key={keyStr}
+                        className={`rounded-xl border transition-all flex items-center justify-between gap-1.5 px-3 py-2.5 ${
+                          isAllSelected
+                            ? 'bg-indigo-50/70 dark:bg-indigo-950/35 border-indigo-400 dark:border-indigo-700'
+                            : isPartial
+                            ? 'bg-indigo-50/30 dark:bg-indigo-950/15 border-indigo-200 dark:border-indigo-800/80'
+                            : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          role="checkbox"
+                          aria-checked={isAllSelected ? true : isPartial ? 'mixed' : false}
+                          onClick={() => handleToggleTingkat(group.items)}
+                          className="flex items-center gap-2.5 min-w-0 flex-1 text-left cursor-pointer"
+                        >
+                          <span
+                            className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 transition-colors ${
+                              isAllSelected || isPartial
+                                ? 'bg-indigo-600 border-indigo-600 text-white'
+                                : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600'
+                            }`}
+                          >
+                            {isAllSelected ? <Check size={11} strokeWidth={3} /> : isPartial ? <Minus size={11} strokeWidth={3} /> : null}
                           </span>
+                          <div className="min-w-0">
+                            <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block leading-tight truncate">
+                              {group.label}
+                            </span>
+                            <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 block mt-0.5">
+                              {selectedCount}/{group.items.length} kelas
+                            </span>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setExpandedTingkatKey(prev => (prev === keyStr ? null : keyStr))}
+                          title={`Atur rincian kelas ${group.label}`}
+                          className={`p-1 rounded-lg text-[10px] font-semibold flex items-center gap-0.5 shrink-0 transition-colors cursor-pointer ${
+                            isExpanded
+                              ? 'bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300'
+                              : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800'
+                          }`}
+                        >
+                          <span className="text-[10px]">Rinci</span>
+                          {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Tier 2: Rincian Kelas (Opsional — hanya tampil untuk tingkat yang dibuka) */}
+                {expandedTingkatKey && (() => {
+                  const found = groupedClasses.find(([k]) => String(k) === expandedTingkatKey);
+                  if (!found) return null;
+                  const [, group] = found;
+                  const groupItemIds = group.items.map(c => c.id);
+                  const selectedInGroup = groupItemIds.filter(id => targetKelasIds.includes(id));
+                  const isAllInGroupSelected = groupItemIds.length > 0 && selectedInGroup.length === groupItemIds.length;
+
+                  return (
+                    <div className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30 space-y-2 animate-in fade-in duration-150">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                          Rincian {group.label}{' '}
+                          <span className="font-normal text-slate-400">
+                            ({selectedInGroup.length}/{group.items.length})
+                          </span>
+                        </span>
+                        <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => handleToggleTingkat(group.items)}
@@ -1197,33 +1275,40 @@ export default React.memo(function JadwalKegiatanFormModal({
                           >
                             {isAllInGroupSelected ? 'Batal Semua' : 'Pilih Semua'}
                           </button>
-                        </div>
-
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5">
-                          {group.items.map(cls => {
-                            const selected = targetKelasIds.includes(cls.id);
-                            return (
-                              <button
-                                key={cls.id}
-                                type="button"
-                                aria-pressed={selected}
-                                onClick={() => handleToggleClass(cls.id)}
-                                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium text-left border transition-all truncate flex items-center justify-between gap-1 cursor-pointer ${
-                                  selected
-                                    ? 'bg-indigo-600 border-indigo-600 text-white'
-                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 text-slate-700 dark:text-slate-300'
-                                }`}
-                              >
-                                <span className="truncate">{cls.nama_kelas}</span>
-                                {selected && <Check size={11} className="shrink-0" />}
-                              </button>
-                            );
-                          })}
+                          <button
+                            type="button"
+                            onClick={() => setExpandedTingkatKey(null)}
+                            className="text-[11px] font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                          >
+                            Tutup
+                          </button>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 max-h-[180px] overflow-y-auto pr-0.5">
+                        {group.items.map(cls => {
+                          const selected = targetKelasIds.includes(cls.id);
+                          return (
+                            <button
+                              key={cls.id}
+                              type="button"
+                              aria-pressed={selected}
+                              onClick={() => handleToggleClass(cls.id)}
+                              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium text-left border transition-all truncate flex items-center justify-between gap-1 cursor-pointer ${
+                                selected
+                                  ? 'bg-indigo-600 border-indigo-600 text-white'
+                                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 text-slate-700 dark:text-slate-300'
+                              }`}
+                            >
+                              <span className="truncate">{cls.nama_kelas}</span>
+                              {selected && <Check size={11} className="shrink-0" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
             {errors.target_kelas_ids && <p role="alert" className="text-[11px] text-rose-500 font-medium">{errors.target_kelas_ids}</p>}
