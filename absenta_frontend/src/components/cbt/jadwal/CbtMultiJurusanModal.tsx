@@ -58,7 +58,7 @@ export const JURUSAN_ALIASES: Record<string, string[]> = {
   KUL: ['kul', 'kuliner', 'boga', 'tata boga'],
   BOGA: ['boga', 'kul', 'kuliner', 'tata boga'],
   TAV: ['tav', 'audio video', 'audio-video', 'elektronika', 'te'],
-  TOI: ['toi', 'otomasi industri', 'otomasi', 'elektro'],
+  TOI: ['toi', 'otomasi industri', 'otomasi', 'elektro', 'otomasi industri'],
   TE: ['te', 'tav', 'toi', 'elektronika', 'audio video', 'otomasi'],
   TKJ: ['tkj', 'tjkt', 'tkt', 'komputer', 'jaringan', 'it'],
   TJKT: ['tjkt', 'tkj', 'tkt', 'komputer', 'jaringan', 'it'],
@@ -72,11 +72,15 @@ export const JURUSAN_ALIASES: Record<string, string[]> = {
 // Blacklist Mata Pelajaran Umum (Normatif / Adaptif) & Mapel Wajib Lintas Jurusan (seperti PKK)
 // agar tidak pernah salah dijaring Auto-Match ke slot spesialisasi kejuruan (DDPK / KK / MPP)
 const MAPEL_UMUM_REGEX =
-  /\b(bahasa\s+indonesia|bahasa\s+inggris|bahasa\s+sunda|muatan\s+lokal|matematika|pendidikan\s+agama|paibp|pai|pendidikan\s+pancasila|ppkn|pancasila|pendidikan\s+jasmani|pjok|penjas|orkes|projek\s+ilmu\s+pengetahuan\s+alam|ipas|sejarah|seni\s+budaya|informatika|bimbingan\s+konseling|bk|bp|projek\s+kreatif\s+dan\s+kewirausahaan|produk\s+kreatif\s+dan\s+kewirausahaan|kewirausahaan|pkk)\b/i;
+  /\b(bahasa\s+indonesia|bahasa\s+inggris|bahasa\s+sunda|muatan\s+lokal|matematika|pendidikan\s+agama|paibp|pai|pendidikan\s+pancasila|ppkn|pancasila|pendidikan\s+jasmani|pjok|penjas|orkes|projek\s+ilmu\s+pengetahuan\s+alam|ipas|sejarah|seni\s+budaya|informatika|bimbingan\s+konseling|bk|bp|projek\s+kreatif\s+(dan\s+)?kewirausahaan|produk\s+kreatif\s+(dan\s+)?kewirausahaan|kewirausahaan|pkk)\b/i;
 
 export function isMapelUmum(name?: string, kode?: string, label?: string): boolean {
   const combined = `${name || ''} ${kode || ''} ${label || ''}`.toLowerCase();
-  return MAPEL_UMUM_REGEX.test(combined);
+  // Cek regex utama
+  if (MAPEL_UMUM_REGEX.test(combined)) return true;
+  // Cek tambahan: "projek kreatif" muncul di bagian mana saja tanpa boundary (robustness)
+  if (/projek\s+kreatif|produk\s+kreatif/.test(combined)) return true;
+  return false;
 }
 
 export type KejuruanTargetCategory = 'MPP' | 'DDPK' | 'KK' | 'PRODUKTIF_ALL';
@@ -192,16 +196,19 @@ export function evaluateOptionForJurusan(
     }
   }
 
-  // Label tag [AKL], [KUL], dll
-  if (opt.label.toLowerCase().includes(`[${jurKodeLower}]`)) {
+  // Label tag [AKL], [KUL], [TOI] dll — case insensitive, handle spasi dan bracket
+  const labelLower = (opt.label || '').toLowerCase().replace(/\s+/g, ' ');
+  if (labelLower.includes(`[${jurKodeLower}]`) || new RegExp(`\\[\\s*${jurKodeLower}\\s*\\]`, 'i').test(labelLower)) {
     jurusanScore += 60;
     isJurusanMatch = true;
   }
 
   // Token alias di dalam teks lengkap (misal "MPP AK" -> match 'ak', "KK TSM" -> match 'tsm')
+  // Normalisasi spasi ganda sebelum matching (misal "MPP  TOI" -> "mpp toi")
+  const optFullTextNorm = optFullText.replace(/\s+/g, ' ');
   const matchedAlias = aliases.find((a) => {
-    const reg = new RegExp(`(^|[^a-z0-9])${a}([^a-z0-9]|$)`, 'i');
-    return reg.test(optFullText);
+    const reg = new RegExp(`(^|[^a-z0-9])${a.replace(/\s+/g, '\\s+')}([^a-z0-9]|$)`, 'i');
+    return reg.test(optFullTextNorm);
   });
   if (matchedAlias) {
     jurusanScore += 70;
