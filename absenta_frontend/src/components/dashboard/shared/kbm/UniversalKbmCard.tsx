@@ -615,7 +615,14 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
   );
 
   const prediksiBadge = mode !== 'SISWA' && prediksiRealtime ? (
-    prediksiRealtime.status === 'TERLAMBAT' ? (
+    guruHadirKegiatanBeririsan ? (
+      <span
+        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 text-[10px] font-bold shrink-0"
+        title={`Kehadiran Anda di ${guruHadirKegiatanNama || prediksiRealtime.kegiatanNama || 'Kegiatan'} sudah tercatat — keterlambatan saat membuka sesi KBM ini diampuni`}
+      >
+        ✅ Aman • Hadir {guruHadirKegiatanNama || prediksiRealtime.kegiatanNama || 'Kegiatan'}
+      </span>
+    ) : prediksiRealtime.status === 'TERLAMBAT' ? (
       <span
         className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-300 dark:border-rose-700 text-[10px] font-bold shrink-0"
         title={`Sudah melewati batas aman hadir${prediksiRealtime.kegiatanNama ? ` (${prediksiRealtime.kegiatanNama})` : ''}`}
@@ -625,9 +632,9 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
     ) : prediksiRealtime.kegiatanNama ? (
       <span
         className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-300 dark:border-amber-700 text-[10px] font-bold shrink-0"
-        title={`Kegiatan ${prediksiRealtime.kegiatanNama} berlangsung — batas aman hadir s.d ${prediksiRealtime.deadline} WIB`}
+        title={`Belum tercatat hadir di ${prediksiRealtime.kegiatanNama} — ${wajibTapTerminalGuru ? 'tap di Terminal Kegiatan' : 'lakukan Selfie Kegiatan'} s.d ${prediksiRealtime.deadline} WIB agar tidak terlambat`}
       >
-        ⚠️ Aman ≤ {prediksiRealtime.deadline}
+        ⚠️ Belum {prediksiRealtime.kegiatanNama} (≤ {prediksiRealtime.deadline})
       </span>
     ) : (
       <span
@@ -691,8 +698,22 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
 
   const ketarunaanBadge = (() => {
     const guruCatatan = item?.AbsenGuru?.[0]?.catatan || item?.guru_catatan || item?.session?.catatan || '';
+    const lowerCatatan = typeof guruCatatan === 'string' ? guruCatatan.toLowerCase() : '';
+    const isSelfieKegiatan = lowerCatatan.includes('selfie kegiatan');
+    if (isSelfieKegiatan) {
+      return (
+        <span
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-violet-50 text-violet-800 dark:bg-violet-950/40 dark:text-violet-200 border border-violet-300 dark:border-violet-700 text-[10px] font-bold shrink-0"
+          title={`Kehadiran tercatat via Selfie Kegiatan. ${guruCatatan}`}
+        >
+          <Camera size={10} className="text-violet-600 dark:text-violet-400" />
+          Via Selfie Kegiatan
+        </span>
+      );
+    }
     const isSyncedKetarunaan = Boolean(item?.is_synced_ketarunaan) ||
-      (typeof guruCatatan === 'string' && guruCatatan.toLowerCase().includes('ketarunaan'));
+      (lowerCatatan.includes('terminal') && lowerCatatan.includes('ketarunaan')) ||
+      (lowerCatatan.includes('ketarunaan') && !isGuruKegiatanSelfieCard);
     if (!isSyncedKetarunaan) return null;
     return (
       <span
@@ -1396,7 +1417,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
               )}
 
               {/* Tombol Kelas Virtual Live WebRTC (Guru POV) */}
-              {(isPjjDaring || modePelaksanaan === 'DARING_LIVE' || isLive) && !isFinished && !isOverdue && (
+              {!isGuruKegiatanSelfieCard && (isPjjDaring || modePelaksanaan === 'DARING_LIVE' || isLive) && !isFinished && !isOverdue && (
                 <Button
                   type="button"
                   size="sm"
