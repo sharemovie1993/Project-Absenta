@@ -560,7 +560,7 @@ export class UnifiedKegiatanService {
         status: isLate ? 'TERLAMBAT' : 'HADIR',
         jam: formatJam(row.waktu_tap || row.updated_at),
         foto: row.Siswa?.foto || undefined,
-        syncedKbm: false,
+        syncedKbm: Boolean((row.catatan || '').toUpperCase().includes('KBM')),
         metode: detectMetode(row.catatan),
         sortTime: new Date(ts).getTime(),
       });
@@ -1484,6 +1484,139 @@ export class UnifiedKegiatanService {
       });
     }
 
+    // 2b. Eksekusi 1-Tap 2-Record (Dual Tap) untuk Siswa: sinkronkan ke Sesi KBM kelas yang beririsan jamnya
+    let syncedKbm = false;
+    const jadwalKbmOpened: string[] = [];
+
+    if (targetKelasId) {
+      const kegiatanMulai = activeJadwal?.waktu_mulai || '06:30';
+      const kegiatanSelesai = activeJadwal?.waktu_selesai || '08:00';
+
+      const classKbms = await prisma.jadwalKBM.findMany({
+        where: {
+          tenant_id: tenantId,
+          kelas_id: targetKelasId,
+          hari: hariEnum,
+        },
+        orderBy: { slot_index: 'asc' },
+      });
+
+      const overlappingKbms = classKbms.filter((kbm) =>
+        this.isTimeOverlapping(kegiatanMulai, kegiatanSelesai, kbm.jam_mulai, kbm.jam_selesai)
+      );
+
+      if (overlappingKbms.length > 0) {
+        const tz = await getTenantTimezone(tenantId);
+        const tzOffset = getTenantOffsetString(tz);
+        const firstOverlap = overlappingKbms[0];
+
+        // Cari seluruh slot berurutan untuk guru+mapel yang sama pada hari ini
+        const relatedSlots = classKbms.filter(
+          (s) => s.guru_id === firstOverlap.guru_id && s.mapel_id === firstOverlap.mapel_id
+        );
+        const firstSlot = relatedSlots[0] || firstOverlap;
+        const lastSlot = relatedSlots[relatedSlots.length - 1] || firstOverlap;
+        const activeScheduleIds = relatedSlots.map((s) => s.id);
+
+        const waktuMulaiSesi = new Date(`${todayStr}T${(firstSlot.jam_mulai || '07:00').slice(0, 5)}:00.000${tzOffset}`);
+        const waktuSelesaiSesi = new Date(`${todayStr}T${(lastSlot.jam_selesai || '08:30').slice(0, 5)}:00.000${tzOffset}`);
+
+        let kbmSesi = await prisma.sesiAbsensi.findFirst({
+          where: {
+            tenant_id: tenantId,
+            OR: [
+              { jadwal_kbm_id: { in: activeScheduleIds } },
+              {
+                kelas_id: firstOverlap.kelas_id,
+                mapel_id: firstOverlap.mapel_id,
+                jenis_kegiatan: 'KBM',
+              },
+            ],
+            tanggal: new Date(todayStr),
+          },
+        });
+
+        if (!kbmSesi) {
+          kbmSesi = await prisma.sesiAbsensi.create({
+            data: {
+              tenant_id: tenantId,
+              jadwal_kbm_id: firstSlot.id,
+              kelas_id: firstOverlap.kelas_id,
+              guru_id: firstOverlap.guru_id,
+              mapel_id: firstOverlap.mapel_id,
+              tahun_pelajaran_id: firstOverlap.tahun_pelajaran_id,
+              semester_id: firstOverlap.semester_id,
+              jenis_kegiatan: 'KBM',
+              status: 'BERLANGSUNG',
+              tanggal: new Date(todayStr),
+              waktu_mulai: waktuMulaiSesi,
+              waktu_selesai: waktuSelesaiSesi,
+              created_at: now,
+              updated_at: now,
+            },
+          });
+        } else if (kbmSesi.status === 'MENDATANG' || kbmSesi.status === 'BELUM_DIMULAI') {
+          kbmSesi = await prisma.sesiAbsensi.update({
+            where: { id: kbmSesi.id },
+            data: {
+              status: 'BERLANGSUNG',
+              waktu_mulai: kbmSesi.waktu_mulai || waktuMulaiSesi,
+              waktu_selesai: kbmSesi.waktu_selesai || waktuSelesaiSesi,
+              updated_at: now,
+            },
+          });
+        }
+
+        const existingKbmAbsen = await prisma.absenSiswa.findFirst({
+          where: {
+            sesi_id: kbmSesi.id,
+            siswa_akademik_id: finalSaId,
+          },
+        });
+
+        const kbmCatatan = `Hadir via Dual-Tap Kegiatan + KBM (${jenis})`;
+        if (existingKbmAbsen) {
+          await prisma.absenSiswa.update({
+            where: {
+              id_created_at: {
+                id: existingKbmAbsen.id,
+                created_at: (existingKbmAbsen as any).created_at,
+              },
+            },
+            data: {
+              status: 'HADIR',
+              is_terlambat: isLate,
+              menit_keterlambatan: isLate ? menitTerlambat : 0,
+              waktu_tap: now,
+              catatan: kbmCatatan,
+              updated_at: now,
+            },
+          });
+        } else {
+          await prisma.absenSiswa.create({
+            data: {
+              tenant_id: tenantId,
+              sesi_id: kbmSesi.id,
+              siswa_id: siswa.id,
+              siswa_akademik_id: finalSaId,
+              status: 'HADIR',
+              is_terlambat: isLate,
+              menit_keterlambatan: isLate ? menitTerlambat : 0,
+              waktu_tap: now,
+              kelas_id_snapshot: targetKelasId || undefined,
+              kelas_nama_snapshot: targetKelasNama,
+              tingkat_snapshot: targetTingkat,
+              tahun_pelajaran_id_snapshot: targetTpId || undefined,
+              catatan: kbmCatatan,
+            },
+          });
+        }
+
+        syncedKbm = true;
+        jadwalKbmOpened.push(kbmSesi.id);
+      }
+    }
+
     // Emit non-blocking domain event agar log kegiatan (Pembiasaan, Ketarunaan, Upacara, Apel) masuk ke chat Orang Tua
     emitDomainEvent({
       event_type: 'attendance.session.tap',
@@ -1507,9 +1640,12 @@ export class UnifiedKegiatanService {
       entity_type: 'SISWA',
       status: 'HADIR',
       is_terlambat: isLate,
-      synced_kbm: false,
+      synced_kbm: syncedKbm,
+      jadwal_kbm_opened: jadwalKbmOpened,
       message: isLate
         ? `Presensi taruna terlambat: ${siswa.nama_siswa} (${targetKelasNama})`
+        : syncedKbm
+        ? `Dual-Tap Berhasil (Kegiatan + KBM): ${siswa.nama_siswa} (${targetKelasNama})`
         : `Presensi taruna/siswa berhasil dicatat: ${siswa.nama_siswa} (${targetKelasNama})`,
       jam: jamStr,
       siswa: {
