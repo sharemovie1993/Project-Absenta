@@ -485,17 +485,18 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      size="6xl"
+      size="full"
+      contentClassName="p-0 overflow-y-auto"
       title={
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
-            <Sparkles className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
+            <Sparkles className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-base font-black text-slate-800 dark:text-slate-100">
+            <h3 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100">
               Wizard Backfill Presensi Cepat (Manual UI Multi-Tanggal)
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
               {currentStep === 1 && 'Langkah 1 dari 3: Konfigurasi Tanggal, Agenda & Rombel Kelas'}
               {currentStep === 2 && 'Langkah 2 dari 3: Input Siswa Non-Hadir (Daftar Pengecualian)'}
               {currentStep === 3 && 'Langkah 3 dari 3: Review Matriks Kehadiran Sebelum Eksekusi'}
@@ -504,7 +505,7 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
         </div>
       }
     >
-      <div className="p-4 sm:p-5 space-y-4 max-h-[78vh] overflow-y-auto">
+      <div className="p-4 sm:p-5 space-y-4">
         {/* ── COMPACT OFFICIAL EVENT GUARD BAR + STEPPER HEADER ── */}
         <div className="space-y-2.5">
           {isGuardEnabled ? (
@@ -727,7 +728,7 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
 
               {/* Chip Tanggal Terpilih */}
               {selectedDates.length > 0 ? (
-                <div className="flex items-center gap-1.5 flex-wrap max-h-28 overflow-y-auto pt-0.5">
+                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
                   {selectedDates.map((dStr) => (
                     <span
                       key={dStr}
@@ -810,7 +811,7 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                   </div>
                 </div>
 
-                <div className="max-h-32 overflow-y-auto border border-slate-100 dark:border-slate-800 rounded-lg p-2 grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 gap-1.5 bg-slate-50/50 dark:bg-slate-800/30">
+                <div className="border border-slate-100 dark:border-slate-800 rounded-lg p-2 grid grid-cols-3 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-1.5 bg-slate-50/50 dark:bg-slate-800/30">
                   {classOptions.map((c) => {
                     const isSelected = selectedKelasIds.includes(c.id);
                     return (
@@ -874,7 +875,7 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                   </span>
                 </div>
 
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5">
+                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
                   {[...new Set(selectedDates)].sort().map((dStr) => {
                     const isSelectedDate = activeChecklistDate === dStr;
                     const sessionsForDate = generatedSessions.filter((s) => s.dateIso === dStr);
@@ -947,8 +948,8 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
               </div>
 
               {/* ── ROMBEL QUICK PILLS & SEARCH BAR ── */}
-              <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+              <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-[11px] font-extrabold text-slate-400 uppercase shrink-0 mr-1">
                     Rombel ({selectedKelasIds.length}):
                   </span>
@@ -1014,8 +1015,8 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                 </div>
               </div>
 
-              {/* Interactive Student Checklist Table (Dynamic per activeChecklistDate) */}
-              <div className="max-h-64 overflow-y-auto border border-slate-200/80 dark:border-slate-800 rounded-xl divide-y divide-slate-100 dark:divide-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
+              {/* Interactive Student Checklist Table (Dynamic per activeChecklistDate - Full Workspace Height) */}
+              <div className="border border-slate-200/80 dark:border-slate-800 rounded-xl divide-y divide-slate-100 dark:divide-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
                 {loadingStudents ? (
                   <div className="p-8 text-center text-xs text-slate-400">Memuat daftar siswa rombel...</div>
                 ) : currentAvailableStudents.length === 0 ? (
@@ -1360,7 +1361,7 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
               </div>
 
               {/* Attendance Matrix Table */}
-              <div className="border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-x-auto max-h-72 overflow-y-auto">
+              <div className="border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-x-auto">
                 <table className="w-full text-left text-[11px] border-collapse">
                   <thead className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-black uppercase text-[10px] sticky top-0 z-20 shadow-2xs">
                     <tr>
