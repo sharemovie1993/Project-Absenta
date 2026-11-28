@@ -155,10 +155,21 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
   // ── Step 3: Preview State ──
   const [previewKelasId, setPreviewKelasId] = useState<string>('');
   const [previewSearchStudent, setPreviewSearchStudent] = useState<string>('');
+  const [hasInitializedKelas, setHasInitializedKelas] = useState<boolean>(false);
+  const [focusedCellKey, setFocusedCellKey] = useState<string | null>(null);
 
-  // Auto-select 20 Rombel Kelas X saat modal pertama dibuka
+  // Reset flag saat modal ditutup agar saat dibuka ulang tetap ter-init rapi
   useEffect(() => {
-    if (isOpen && classOptions.length > 0 && selectedKelasIds.length === 0) {
+    if (!isOpen) {
+      setHasInitializedKelas(false);
+      setFocusedCellKey(null);
+    }
+  }, [isOpen]);
+
+  // Auto-select 20 Rombel Kelas X HANYA SEKALI saat modal pertama dibuka (agar tombol "Kosongkan" berfungsi!)
+  useEffect(() => {
+    if (isOpen && classOptions.length > 0 && !hasInitializedKelas) {
+      setHasInitializedKelas(true);
       const kelasX = classOptions.filter(
         (c) => c.tingkat === 10 || c.nama_kelas.toUpperCase().startsWith('X ')
       );
@@ -169,7 +180,7 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
         setPreviewKelasId(xIds[0]);
       }
     }
-  }, [isOpen, classOptions, selectedKelasIds.length]);
+  }, [isOpen, classOptions, hasInitializedKelas]);
 
   // Fetch siswa saat kelas terpilih berubah
   const fetchStudentsForClass = useCallback((kId: string) => {
@@ -271,6 +282,9 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
 
   const handleClearKelas = () => {
     setSelectedKelasIds([]);
+    setActiveFilterKelasId('');
+    setPreviewKelasId('');
+    toast.success('Pilihan rombel kelas dikosongkan.');
   };
 
   // Siswa yang tersedia untuk dipilih di dropdown
@@ -898,7 +912,7 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
         {currentStep === 2 && (
           <div className="space-y-3">
             <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3">
-              {/* Top Toolbar: Info Siklus Klik (H -> S -> I -> A -> T -> D) + Legend */}
+              {/* Top Toolbar: Info Siklus Klik (H -> S -> I -> A -> T -> D) + Shortcut Keyboard */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100 dark:border-slate-800">
                 <div>
                   <h4 className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
@@ -906,24 +920,24 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                     Matriks Ceklis Kehadiran Terbuka ({selectedDates.length} Hari &times; Siklus Sesi = {generatedSessions.length} Blok Sesi)
                   </h4>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    <strong>Klik kotak sesi untuk memutar siklus status:</strong> Klik 1x = <strong className="text-amber-600">Sakit (S)</strong> &rarr; Klik 2x = <strong className="text-blue-600">Izin (I)</strong> &rarr; Klik 3x = <strong className="text-rose-600">Alpa (A)</strong> &rarr; Klik 4x = <strong className="text-orange-600">Telat (T)</strong> &rarr; Klik 5x = <strong className="text-purple-600">Dispen (D)</strong> &rarr; Kembali <strong className="text-emerald-600">Hadir (H)</strong>.
+                    <strong>Klik kotak</strong> untuk fokus &amp; memutar status (<strong className="text-amber-600">S</strong> &rarr; <strong className="text-blue-600">I</strong> &rarr; <strong className="text-rose-600">A</strong> &rarr; <strong className="text-orange-600">T</strong> &rarr; <strong className="text-purple-600">D</strong> &rarr; <strong className="text-emerald-600">H</strong>), atau <strong>tekan huruf keyboard</strong> (<kbd className="px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 font-mono text-[10px]">H</kbd> <kbd className="px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 font-mono text-[10px]">S</kbd> <kbd className="px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 font-mono text-[10px]">I</kbd> <kbd className="px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 font-mono text-[10px]">A</kbd> <kbd className="px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 font-mono text-[10px]">T</kbd> <kbd className="px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 font-mono text-[10px]">D</kbd> + panah <kbd className="px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 font-mono text-[10px]">&larr;&uarr;&darr;&rarr;</kbd>).
                   </p>
                 </div>
 
-                {/* Urutan Siklus Klik Badge Visual */}
+                {/* Urutan Siklus Klik & Shortcut Keyboard Badge Visual */}
                 <div className="flex items-center gap-1 flex-wrap shrink-0 bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-700 text-[10px] font-extrabold">
-                  <span className="text-slate-500 uppercase mr-1">Siklus Klik:</span>
-                  <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">H</span>
+                  <span className="text-slate-500 uppercase mr-1">Klik / Ketik:</span>
+                  <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">[H] Hadir</span>
                   <span className="text-slate-400">&rarr;</span>
-                  <span className="px-1.5 py-0.5 rounded bg-amber-500 text-white">1. Sakit (S)</span>
+                  <span className="px-1.5 py-0.5 rounded bg-amber-500 text-white">[S] Sakit</span>
                   <span className="text-slate-400">&rarr;</span>
-                  <span className="px-1.5 py-0.5 rounded bg-blue-600 text-white">2. Izin (I)</span>
+                  <span className="px-1.5 py-0.5 rounded bg-blue-600 text-white">[I] Izin</span>
                   <span className="text-slate-400">&rarr;</span>
-                  <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white">3. Alpa (A)</span>
+                  <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white">[A] Alpa</span>
                   <span className="text-slate-400">&rarr;</span>
-                  <span className="px-1.5 py-0.5 rounded bg-orange-500 text-white">4. Telat (T)</span>
+                  <span className="px-1.5 py-0.5 rounded bg-orange-500 text-white">[T] Telat</span>
                   <span className="text-slate-400">&rarr;</span>
-                  <span className="px-1.5 py-0.5 rounded bg-purple-600 text-white">5. Dispen (D)</span>
+                  <span className="px-1.5 py-0.5 rounded bg-purple-600 text-white">[D] Dispen</span>
                 </div>
               </div>
 
@@ -1095,10 +1109,120 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                       });
                     };
 
+                    // Palet Warna Pembeda Blok Hari (Senin, Selasa, Rabu, Kamis, Jum'at, Sabtu) agar kolom hari tetap terbaca jelas saat di-scroll ke bawah
+                    const DAY_BLOCK_THEMES = [
+                      {
+                        // Blok 1 (Misal Senin): Indigo / Biru Muda
+                        headerBg: 'bg-indigo-100/90 dark:bg-indigo-950/70',
+                        subHeaderBg: 'bg-indigo-50/80 dark:bg-indigo-950/40',
+                        cellBg: 'bg-indigo-50/45 dark:bg-indigo-950/20',
+                        dayText: 'text-indigo-800 dark:text-indigo-300',
+                        borderRight: 'border-r-2 border-indigo-200 dark:border-indigo-800/80',
+                      },
+                      {
+                        // Blok 2 (Misal Selasa): Amber / Kuning Hangat
+                        headerBg: 'bg-amber-100/90 dark:bg-amber-950/70',
+                        subHeaderBg: 'bg-amber-50/80 dark:bg-amber-950/40',
+                        cellBg: 'bg-amber-50/45 dark:bg-amber-950/20',
+                        dayText: 'text-amber-800 dark:text-amber-300',
+                        borderRight: 'border-r-2 border-amber-200 dark:border-amber-800/80',
+                      },
+                      {
+                        // Blok 3 (Misal Rabu): Teal / Cyan Segar
+                        headerBg: 'bg-teal-100/90 dark:bg-teal-950/70',
+                        subHeaderBg: 'bg-teal-50/80 dark:bg-teal-950/40',
+                        cellBg: 'bg-teal-50/45 dark:bg-teal-950/20',
+                        dayText: 'text-teal-800 dark:text-teal-300',
+                        borderRight: 'border-r-2 border-teal-200 dark:border-teal-800/80',
+                      },
+                      {
+                        // Blok 4 (Misal Kamis): Purple / Violet
+                        headerBg: 'bg-purple-100/90 dark:bg-purple-950/70',
+                        subHeaderBg: 'bg-purple-50/80 dark:bg-purple-950/40',
+                        cellBg: 'bg-purple-50/45 dark:bg-purple-950/20',
+                        dayText: 'text-purple-800 dark:text-purple-300',
+                        borderRight: 'border-r-2 border-purple-200 dark:border-purple-800/80',
+                      },
+                      {
+                        // Blok 5 (Misal Jum'at): Rose / Pink Lembut
+                        headerBg: 'bg-rose-100/90 dark:bg-rose-950/70',
+                        subHeaderBg: 'bg-rose-50/80 dark:bg-rose-950/40',
+                        cellBg: 'bg-rose-50/45 dark:bg-rose-950/20',
+                        dayText: 'text-rose-800 dark:text-rose-300',
+                        borderRight: 'border-r-2 border-rose-200 dark:border-purple-800/80',
+                      },
+                      {
+                        // Blok 6 (Misal Sabtu): Sky / Biru Langit
+                        headerBg: 'bg-sky-100/90 dark:bg-sky-950/70',
+                        subHeaderBg: 'bg-sky-50/80 dark:bg-sky-950/40',
+                        cellBg: 'bg-sky-50/45 dark:bg-sky-950/20',
+                        dayText: 'text-sky-800 dark:text-sky-300',
+                        borderRight: 'border-r-2 border-sky-200 dark:border-sky-800/80',
+                      },
+                    ];
+
+                    const visibleStudents = currentAvailableStudents.filter((st) => {
+                      if (!studentChecklistSearch.trim()) return true;
+                      const q = studentChecklistSearch.toLowerCase();
+                      return (
+                        st.nama_siswa.toLowerCase().includes(q) ||
+                        (st.nis && st.nis.toLowerCase().includes(q))
+                      );
+                    });
+
+                    // Navigasi & Shortcut Keyboard pada Cell Matriks
+                    const handleCellKeyDown = (
+                      e: React.KeyboardEvent<HTMLButtonElement>,
+                      st: ClassStudentOption,
+                      rowIdx: number,
+                      flatColIdx: number,
+                      sessKey: string,
+                      currentStatus: 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA' | 'TERLAMBAT' | 'DISPENSASI'
+                    ) => {
+                      const keyUpper = e.key.toUpperCase();
+                      const KEY_TO_STATUS: Record<string, 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA' | 'TERLAMBAT' | 'DISPENSASI'> = {
+                        H: 'HADIR',
+                        S: 'SAKIT',
+                        I: 'IZIN',
+                        A: 'ALPA',
+                        T: 'TERLAMBAT',
+                        D: 'DISPENSASI',
+                      };
+
+                      if (KEY_TO_STATUS[keyUpper]) {
+                        e.preventDefault();
+                        applyStudentSessionKeys(st, [sessKey], KEY_TO_STATUS[keyUpper]);
+                        return;
+                      }
+
+                      if (e.key === 'Backspace' || e.key === 'Delete') {
+                        e.preventDefault();
+                        applyStudentSessionKeys(st, [sessKey], 'HADIR');
+                        return;
+                      }
+
+                      // Navigasi tombol panah antar sel matriks
+                      let nextRow = rowIdx;
+                      let nextCol = flatColIdx;
+                      if (e.key === 'ArrowRight') nextCol = Math.min(allSessionKeys.length - 1, flatColIdx + 1);
+                      else if (e.key === 'ArrowLeft') nextCol = Math.max(0, flatColIdx - 1);
+                      else if (e.key === 'ArrowDown') nextRow = Math.min(visibleStudents.length - 1, rowIdx + 1);
+                      else if (e.key === 'ArrowUp') nextRow = Math.max(0, rowIdx - 1);
+                      else return;
+
+                      e.preventDefault();
+                      const targetBtn = document.querySelector<HTMLButtonElement>(
+                        `[data-matrix-cell="${nextRow}_${nextCol}"]`
+                      );
+                      if (targetBtn) {
+                        targetBtn.focus();
+                      }
+                    };
+
                     return (
                       <table className="w-full text-left text-xs border-collapse">
                         <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 uppercase text-[10px] font-black sticky top-0 z-20">
-                          {/* Row 1: Grouped Date Headers (Misal: 5 Hari Siklus) */}
+                          {/* Row 1: Grouped Date Headers dengan Warna Pembeda Per Blok Hari */}
                           <tr className="border-b border-slate-200 dark:border-slate-700">
                             <th
                               rowSpan={2}
@@ -1108,24 +1232,27 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                             </th>
                             <th
                               rowSpan={2}
-                              className="px-3 py-2 min-w-[200px] border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800"
+                              className="px-3 py-2 min-w-[200px] border-r-2 border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800"
                             >
                               Nama Siswa &amp; NIS
                             </th>
-                            {dateGroups.map((dg) => (
-                              <th
-                                key={dg.dateIso}
-                                colSpan={dg.sessions.length}
-                                className="px-2 py-1.5 text-center border-r border-slate-200 dark:border-slate-700 bg-slate-200/70 dark:bg-slate-800/90"
-                              >
-                                <span className="text-amber-700 dark:text-amber-400 font-black">
-                                  {dg.dayName}
-                                </span>{' '}
-                                <span className="text-slate-800 dark:text-slate-100 font-extrabold">
-                                  {dg.dateFormatted}
-                                </span>
-                              </th>
-                            ))}
+                            {dateGroups.map((dg, dgIdx) => {
+                              const theme = DAY_BLOCK_THEMES[dgIdx % DAY_BLOCK_THEMES.length];
+                              return (
+                                <th
+                                  key={dg.dateIso}
+                                  colSpan={dg.sessions.length}
+                                  className={`px-2 py-1.5 text-center ${theme.headerBg} ${theme.borderRight}`}
+                                >
+                                  <span className={`${theme.dayText} font-black`}>
+                                    {dg.dayName}
+                                  </span>{' '}
+                                  <span className="text-slate-900 dark:text-slate-100 font-extrabold">
+                                    {dg.dateFormatted}
+                                  </span>
+                                </th>
+                              );
+                            })}
                             <th
                               rowSpan={2}
                               className="px-2.5 py-2 text-center min-w-[90px] bg-slate-100 dark:bg-slate-800"
@@ -1136,26 +1263,28 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
 
                           {/* Row 2: Individual Session Blocks (2 x 5 Siklus Blok: Pagi & Sore) */}
                           <tr className="border-b border-slate-200 dark:border-slate-700">
-                            {dateGroups.map((dg) =>
-                              dg.sessions.map((sess, sIdx) => {
+                            {dateGroups.map((dg, dgIdx) => {
+                              const theme = DAY_BLOCK_THEMES[dgIdx % DAY_BLOCK_THEMES.length];
+                              return dg.sessions.map((sess, sIdx) => {
                                 const sessKey = `${sess.dateIso}_${sess.sessionCode}`;
                                 const isExistingInDb = (existingDbSessionsByKelas[kId] || []).includes(sessKey);
+                                const isLastInDayGroup = sIdx === dg.sessions.length - 1;
 
                                 return (
                                   <th
                                     key={`${sessKey}_${sIdx}`}
-                                    className={`px-1.5 py-1.5 text-center min-w-[68px] border-r border-slate-200 dark:border-slate-700 ${
-                                      isExistingInDb
-                                        ? 'bg-sky-50/90 dark:bg-sky-950/40'
-                                        : 'bg-slate-50 dark:bg-slate-800/50'
+                                    className={`px-1.5 py-1.5 text-center min-w-[68px] ${theme.subHeaderBg} ${
+                                      isLastInDayGroup
+                                        ? theme.borderRight
+                                        : 'border-r border-slate-200/80 dark:border-slate-700/80'
                                     }`}
                                   >
                                     <div className="flex flex-col items-center gap-0.5">
                                       <span
                                         className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-black ${
                                           sess.sessionCode === 'PAGI'
-                                            ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300'
-                                            : 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300'
+                                            ? 'bg-white/90 text-indigo-800 dark:bg-slate-900 dark:text-indigo-300 shadow-2xs'
+                                            : 'bg-white/90 text-teal-800 dark:bg-slate-900 dark:text-teal-300 shadow-2xs'
                                         }`}
                                       >
                                         {sess.sessionLabel}
@@ -1171,145 +1300,148 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                                     </div>
                                   </th>
                                 );
-                              })
-                            )}
+                              });
+                            })}
                           </tr>
                         </thead>
 
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                          {currentAvailableStudents
-                            .filter((st) => {
-                              if (!studentChecklistSearch.trim()) return true;
-                              const q = studentChecklistSearch.toLowerCase();
-                              return (
-                                st.nama_siswa.toLowerCase().includes(q) ||
-                                (st.nis && st.nis.toLowerCase().includes(q))
-                              );
-                            })
-                            .map((st, sIdx) => {
-                              const hasAnyException = exceptionsList.some((e) => e.siswa_id === st.siswa_id);
+                          {visibleStudents.map((st, sIdx) => {
+                            const hasAnyException = exceptionsList.some((e) => e.siswa_id === st.siswa_id);
+                            let flatColCounter = 0;
 
-                              return (
-                                <tr
-                                  key={st.siswa_id}
-                                  className={`transition-colors ${
-                                    hasAnyException
-                                      ? 'bg-amber-50/60 dark:bg-amber-950/20 hover:bg-amber-50/90'
-                                      : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'
-                                  }`}
-                                >
-                                  <td className="px-2 py-1.5 text-center font-bold text-slate-400 border-r border-slate-100 dark:border-slate-800">
-                                    {sIdx + 1}
-                                  </td>
-                                  <td className="px-3 py-1.5 border-r border-slate-100 dark:border-slate-800">
-                                    <span className="font-bold text-slate-800 dark:text-slate-100 block truncate max-w-[210px]">
-                                      {st.nama_siswa}
+                            return (
+                              <tr
+                                key={st.siswa_id}
+                                className="transition-colors hover:brightness-95"
+                              >
+                                <td className="px-2 py-1.5 text-center font-bold text-slate-400 border-r border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+                                  {sIdx + 1}
+                                </td>
+                                <td className="px-3 py-1.5 border-r-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900">
+                                  <span className="font-bold text-slate-800 dark:text-slate-100 block truncate max-w-[210px]">
+                                    {st.nama_siswa}
+                                  </span>
+                                  {st.nis && (
+                                    <span className="text-[10px] text-slate-400 font-mono block">
+                                      NIS: {st.nis}
                                     </span>
-                                    {st.nis && (
-                                      <span className="text-[10px] text-slate-400 font-mono block">
-                                        NIS: {st.nis}
-                                      </span>
-                                    )}
-                                  </td>
-
-                                  {/* 2 x N Siklus Block Interactive Cells */}
-                                  {dateGroups.map((dg) =>
-                                    dg.sessions.map((sess, sessIdx) => {
-                                      const sessKey = `${sess.dateIso}_${sess.sessionCode}`;
-                                      const { status } = getStudentSessionStatus(st.siswa_id, sess);
-
-                                      const badgeStyle =
-                                        status === 'HADIR'
-                                          ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/70'
-                                          : status === 'SAKIT'
-                                          ? 'bg-amber-500 text-white border-amber-600 shadow-2xs'
-                                          : status === 'IZIN'
-                                          ? 'bg-blue-600 text-white border-blue-700 shadow-2xs'
-                                          : status === 'ALPA'
-                                          ? 'bg-rose-600 text-white border-rose-700 shadow-2xs'
-                                          : status === 'TERLAMBAT'
-                                          ? 'bg-orange-500 text-white border-orange-600 shadow-2xs'
-                                          : 'bg-purple-600 text-white border-purple-700 shadow-2xs';
-
-                                      const shortCode =
-                                        status === 'HADIR'
-                                          ? 'H'
-                                          : status === 'SAKIT'
-                                          ? 'S'
-                                          : status === 'IZIN'
-                                          ? 'I'
-                                          : status === 'ALPA'
-                                          ? 'A'
-                                          : status === 'TERLAMBAT'
-                                          ? 'T'
-                                          : 'D';
-
-                                      const nextStatus = getNextCycleStatus(status);
-                                      const isExistingInDb = (existingDbSessionsByKelas[kId] || []).includes(sessKey);
-
-                                      return (
-                                        <td
-                                          key={`${sessKey}_${sessIdx}`}
-                                          className={`p-1 text-center border-r border-slate-100 dark:border-slate-800 ${
-                                            isExistingInDb ? 'bg-sky-50/40 dark:bg-sky-950/15' : ''
-                                          }`}
-                                        >
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              applyStudentSessionKeys(st, [sessKey], nextStatus)
-                                            }
-                                            title={`${st.nama_siswa} • ${sess.dayName}, ${sess.dateFormatted} (${sess.sessionLabel})${
-                                              isExistingInDb ? ' [✓ Sudah Ada di Database]' : ''
-                                            }\nStatus saat ini: ${status} -> Klik untuk ubah ke [${nextStatus}]`}
-                                            className={`w-full h-7 rounded-lg border font-black text-[11px] transition-all cursor-pointer select-none flex items-center justify-center active:scale-95 ${badgeStyle} ${
-                                              isExistingInDb && status === 'HADIR'
-                                                ? 'ring-1 ring-sky-400/70 dark:ring-sky-500/60'
-                                                : ''
-                                            }`}
-                                          >
-                                            {shortCode}
-                                          </button>
-                                        </td>
-                                      );
-                                    })
                                   )}
+                                </td>
 
-                                  {/* Quick Row Action: Siklus Semua Blok / Dropdown Baris */}
-                                  <td className="px-2 py-1 text-center">
-                                    <div className="flex items-center justify-center gap-1">
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          const firstSess = generatedSessions[0];
-                                          const currentFirstStatus = firstSess
-                                            ? getStudentSessionStatus(st.siswa_id, firstSess).status
-                                            : 'HADIR';
-                                          const nextRowStatus = getNextCycleStatus(currentFirstStatus);
-                                          applyStudentSessionKeys(st, allSessionKeys, nextRowStatus);
-                                        }}
-                                        title={`Klik berulang untuk memutar siklus status seluruh sesi baris ini (H -> S -> I -> A -> T -> D)`}
-                                        className="px-2 py-1 rounded-md text-[10px] font-extrabold bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-900 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700 cursor-pointer select-none"
+                                {/* 2 x N Siklus Block Interactive Cells dengan Warna Latar Blok Hari & Shortcut Keyboard */}
+                                {dateGroups.map((dg, dgIdx) => {
+                                  const theme = DAY_BLOCK_THEMES[dgIdx % DAY_BLOCK_THEMES.length];
+                                  return dg.sessions.map((sess, sessIdx) => {
+                                    const currentFlatCol = flatColCounter++;
+                                    const sessKey = `${sess.dateIso}_${sess.sessionCode}`;
+                                    const cellIdKey = `${st.siswa_id}_${sessKey}`;
+                                    const isFocused = focusedCellKey === cellIdKey;
+                                    const isLastInDayGroup = sessIdx === dg.sessions.length - 1;
+                                    const { status } = getStudentSessionStatus(st.siswa_id, sess);
+
+                                    const badgeStyle =
+                                      status === 'HADIR'
+                                        ? 'bg-white/90 hover:bg-white text-emerald-700 border-emerald-200/90 dark:bg-slate-900/80 dark:text-emerald-300 dark:border-emerald-800/70'
+                                        : status === 'SAKIT'
+                                        ? 'bg-amber-500 text-white border-amber-600 shadow-2xs'
+                                        : status === 'IZIN'
+                                        ? 'bg-blue-600 text-white border-blue-700 shadow-2xs'
+                                        : status === 'ALPA'
+                                        ? 'bg-rose-600 text-white border-rose-700 shadow-2xs'
+                                        : status === 'TERLAMBAT'
+                                        ? 'bg-orange-500 text-white border-orange-600 shadow-2xs'
+                                        : 'bg-purple-600 text-white border-purple-700 shadow-2xs';
+
+                                    const shortCode =
+                                      status === 'HADIR'
+                                        ? 'H'
+                                        : status === 'SAKIT'
+                                        ? 'S'
+                                        : status === 'IZIN'
+                                        ? 'I'
+                                        : status === 'ALPA'
+                                        ? 'A'
+                                        : status === 'TERLAMBAT'
+                                        ? 'T'
+                                        : 'D';
+
+                                    const nextStatus = getNextCycleStatus(status);
+                                    const isExistingInDb = (existingDbSessionsByKelas[kId] || []).includes(sessKey);
+
+                                    return (
+                                      <td
+                                        key={`${sessKey}_${sessIdx}`}
+                                        className={`p-1 text-center ${theme.cellBg} ${
+                                          isLastInDayGroup
+                                            ? theme.borderRight
+                                            : 'border-r border-slate-200/60 dark:border-slate-800'
+                                        }`}
                                       >
-                                        Semua
-                                      </button>
-                                      {hasAnyException && (
                                         <button
                                           type="button"
-                                          onClick={() =>
-                                            applyStudentSessionKeys(st, allSessionKeys, 'HADIR')
+                                          data-matrix-cell={`${sIdx}_${currentFlatCol}`}
+                                          onFocus={() => setFocusedCellKey(cellIdKey)}
+                                          onClick={() => {
+                                            setFocusedCellKey(cellIdKey);
+                                            applyStudentSessionKeys(st, [sessKey], nextStatus);
+                                          }}
+                                          onKeyDown={(e) =>
+                                            handleCellKeyDown(e, st, sIdx, currentFlatCol, sessKey, status)
                                           }
-                                          title="Reset kembali menjadi HADIR di semua sesi"
-                                          className="p-1 rounded-md text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer"
+                                          title={`[${dg.dayName}, ${dg.dateFormatted} • ${sess.sessionLabel}] ${st.nama_siswa}${
+                                            isExistingInDb ? ' (✓ DB)' : ''
+                                          }\nStatus: ${status} -> Klik untuk siklus [${nextStatus}] atau tekan tombol keyboard H / S / I / A / T / D`}
+                                          className={`w-full h-7 rounded-lg border font-black text-[11px] transition-all cursor-pointer select-none flex items-center justify-center active:scale-95 focus:outline-none ${badgeStyle} ${
+                                            isFocused
+                                              ? 'ring-2 ring-indigo-600 dark:ring-indigo-400 ring-offset-1 z-10'
+                                              : isExistingInDb && status === 'HADIR'
+                                              ? 'ring-1 ring-sky-400/70 dark:ring-sky-500/60'
+                                              : ''
+                                          }`}
                                         >
-                                          <X className="w-3.5 h-3.5" />
+                                          {shortCode}
                                         </button>
-                                      )}
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                            })}
+                                      </td>
+                                    );
+                                  });
+                                })}
+
+                                {/* Quick Row Action: Siklus Semua Blok / Reset Baris */}
+                                <td className="px-2 py-1 text-center bg-white dark:bg-slate-900">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const firstSess = generatedSessions[0];
+                                        const currentFirstStatus = firstSess
+                                          ? getStudentSessionStatus(st.siswa_id, firstSess).status
+                                          : 'HADIR';
+                                        const nextRowStatus = getNextCycleStatus(currentFirstStatus);
+                                        applyStudentSessionKeys(st, allSessionKeys, nextRowStatus);
+                                      }}
+                                      title={`Klik berulang untuk memutar siklus status seluruh sesi baris ini (H -> S -> I -> A -> T -> D)`}
+                                      className="px-2 py-1 rounded-md text-[10px] font-extrabold bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-900 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700 cursor-pointer select-none"
+                                    >
+                                      Semua
+                                    </button>
+                                    {hasAnyException && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          applyStudentSessionKeys(st, allSessionKeys, 'HADIR')
+                                        }
+                                        title="Reset kembali menjadi HADIR di semua sesi"
+                                        className="p-1 rounded-md text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer"
+                                      >
+                                        <X className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     );
