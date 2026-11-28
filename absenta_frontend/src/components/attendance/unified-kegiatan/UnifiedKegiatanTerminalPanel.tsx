@@ -478,16 +478,7 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
               <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white tracking-tight">
                 {panelTitle}
               </h3>
-              <Badge
-                variant="outline"
-                className="text-[9px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 py-0"
-              >
-                Universal Terminal
-              </Badge>
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
-              {panelSubtitle}
-            </p>
           </div>
         </div>
 

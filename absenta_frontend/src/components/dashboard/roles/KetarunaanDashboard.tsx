@@ -602,10 +602,12 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
 
           {/* Right Column: Main Content Area */}
           <main className="min-w-0 flex-1 space-y-3">
-            {/* Shopee-Grade Hairline Bento Grid */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xs">
-              <HubBentoGrid cells={bentoCells} columns={4} />
-            </div>
+            {/* Shopee-Grade Hairline Bento Grid (disembunyikan di Terminal Absensi agar fokus ke terminal) */}
+            {activeTab !== 'terminal_absensi' && (
+              <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xs">
+                <HubBentoGrid cells={bentoCells} columns={4} />
+              </div>
+            )}
 
             {/* Area Kerja Aktif Sesuai Subtab Terpilih (Keep-Alive Cache) */}
             <SectionCard fullWidth noPadding className="overflow-hidden border border-slate-200/80 dark:border-slate-800">
