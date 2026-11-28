@@ -135,21 +135,65 @@ export async function getEffectivePolicyForJadwalKegiatan(
   return resolveJadwalKegiatanPolicy(jadwal);
 }
 
+/**
+ * Urutan hierarki jabatan struktural sekolah dari tertinggi sampai terendah
+ * (Pimpinan → Waka → Kepala Unit/Koordinator → Pembina/Walas → Koperasi → Staf TU → Teknis/Operasional)
+ */
+export const POSITION_HIERARCHY_RANK: Record<string, number> = {
+  KEPALA_SEKOLAH: 1,
+  KURIKULUM: 10,
+  KESISWAAN: 11,
+  HUBIN: 12,
+  SARPRAS: 13,
+  TU_KEPALA: 20,
+  TU: 21,
+  KAPROG: 22,
+  KABENG: 23,
+  BPBK: 24,
+  BKK: 25,
+  KETUA_PEMBINA_TARUNA: 30,
+  KOORDINATOR_DHUHA: 31,
+  PEMBINA_ROHIS: 32,
+  PEMBINA_TARUNA: 33,
+  PEMBINA_ESKUL: 34,
+  WALIKELAS: 35,
+  KETUA_KOPERASI: 40,
+  PENGAWAS_KOPERASI: 41,
+  SEKRETARIS_KOPERASI: 42,
+  BENDAHARA_KOPERASI: 43,
+  MANAJER_TOKO_KOPERASI: 44,
+  TU_KEPEGAWAIAN: 50,
+  TU_KEUANGAN: 51,
+  TU_PERSURATAN: 52,
+  TU_SARPRAS: 53,
+  TOOLMAN: 60,
+  GERBANG: 61,
+};
+
 export async function getAvailableKegiatanPositions(tenantId: string) {
-  return prisma.organizationalPosition.findMany({
+  const rows = await prisma.organizationalPosition.findMany({
     where: {
       tenant_id: tenantId,
       is_active: true,
       code: { notIn: NON_GURU_KEGIATAN_POSITION_CODES },
     },
-    orderBy: [{ order: 'asc' }, { name: 'asc' }],
     select: {
       id: true,
       code: true,
       name: true,
       scope_type: true,
+      order: true,
     },
   });
+
+  return rows
+    .sort((a, b) => {
+      const ra = POSITION_HIERARCHY_RANK[a.code.toUpperCase()] ?? 100 + (a.order || 0);
+      const rb = POSITION_HIERARCHY_RANK[b.code.toUpperCase()] ?? 100 + (b.order || 0);
+      if (ra !== rb) return ra - rb;
+      return a.name.localeCompare(b.name, 'id');
+    })
+    .map(({ id, code, name, scope_type }) => ({ id, code, name, scope_type }));
 }
 
 export function formatOrgDutyLabel(assign: {

@@ -54,6 +54,38 @@ const DHUHA_PENDAMPING_CODES = new Set([
   'PEMBINA_ROHIS',
 ]);
 
+/** Urutan hierarki jabatan struktural sekolah dari tertinggi sampai terendah */
+const POSITION_HIERARCHY_RANK: Record<string, number> = {
+  KEPALA_SEKOLAH: 1,
+  KURIKULUM: 10,
+  KESISWAAN: 11,
+  HUBIN: 12,
+  SARPRAS: 13,
+  TU_KEPALA: 20,
+  TU: 21,
+  KAPROG: 22,
+  KABENG: 23,
+  BPBK: 24,
+  BKK: 25,
+  KETUA_PEMBINA_TARUNA: 30,
+  KOORDINATOR_DHUHA: 31,
+  PEMBINA_ROHIS: 32,
+  PEMBINA_TARUNA: 33,
+  PEMBINA_ESKUL: 34,
+  WALIKELAS: 35,
+  KETUA_KOPERASI: 40,
+  PENGAWAS_KOPERASI: 41,
+  SEKRETARIS_KOPERASI: 42,
+  BENDAHARA_KOPERASI: 43,
+  MANAJER_TOKO_KOPERASI: 44,
+  TU_KEPEGAWAIAN: 50,
+  TU_KEUANGAN: 51,
+  TU_PERSURATAN: 52,
+  TU_SARPRAS: 53,
+  TOOLMAN: 60,
+  GERBANG: 61,
+};
+
 const SCOPE_EMPTY_HINT: Record<KegiatanPolicyScope, string> = {
   ALL: 'Belum ada Jadwal Kegiatan aktif.',
   KETARUNAAN: 'Belum ada jadwal Ketarunaan / Upacara / Apel yang aktif.',
@@ -96,10 +128,15 @@ export const KegiatanWajibPolicyPanel: React.FC<KegiatanWajibPolicyPanelProps> =
     staleTime: 30_000,
   });
 
-  const availablePositions: AvailableKegiatanPosition[] = useMemo(
-    () => summaryRes?.data?.available_positions || [],
-    [summaryRes]
-  );
+  const availablePositions: AvailableKegiatanPosition[] = useMemo(() => {
+    const raw = summaryRes?.data?.available_positions || [];
+    return [...raw].sort((a, b) => {
+      const ra = POSITION_HIERARCHY_RANK[String(a.code || '').toUpperCase()] ?? 100;
+      const rb = POSITION_HIERARCHY_RANK[String(b.code || '').toUpperCase()] ?? 100;
+      if (ra !== rb) return ra - rb;
+      return String(a.name || '').localeCompare(String(b.name || ''), 'id');
+    });
+  }, [summaryRes]);
   const allPolicies: JadwalKegiatanPolicyItem[] = useMemo(
     () => summaryRes?.data?.policies || [],
     [summaryRes]
