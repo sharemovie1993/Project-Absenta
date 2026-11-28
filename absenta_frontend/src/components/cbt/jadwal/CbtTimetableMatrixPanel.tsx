@@ -328,6 +328,8 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
     try {
       setIsSavingTimeConfig(true);
       toast.loading('Menyimpan format tanggal, jam sesi & rancangan mapel ke server...', { id: 'save-time-config' });
+      // KRITIS: Hanya kirim days_config & matrix_draft — JANGAN sertakan room_mappings
+      // agar tidak menimpa (clobber) konfigurasi ruang yang dikelola panel CbtKelasRoomTreePanel
       await cbtApi.upsertEvent({
         id: activeEvent.id,
         nama_event: activeEvent.nama_event,
@@ -343,7 +345,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
         enable_proctor: activeEvent.enable_proctor,
         is_active: activeEvent.is_active ?? true,
         days_config: days,
-        room_mappings: activeEvent.room_mappings,
+        // room_mappings sengaja tidak dikirim agar tidak clobber panel Ruang
         matrix_draft: matrix,
       });
 

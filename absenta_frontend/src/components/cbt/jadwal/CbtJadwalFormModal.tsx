@@ -403,6 +403,45 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
 
       const finalPengawasObj = rawStaffList.find((g) => g.id === finalPengawasId) || currentTeacherObj;
 
+      // Bangun setting_keamanan baru dari form
+      const newSettingKeamanan = {
+        lock_device: true,
+        block_tab_switching: blockTabSwitch,
+        max_tab_switches: Number(maxTabSwitches),
+        shuffle_questions: shuffleQuestions,
+        shuffle_options: shuffleOptions,
+        show_result_instant: showResultInstant,
+        auto_transfer_rapor: autoTransferRapor,
+        target_rapor_slot: autoTransferRapor ? targetRaporSlot : null,
+        token_refresh_interval: 0,
+        created_by_guru_id: teacherGuruId || null,
+        kelas_room_map: kelasRoomMap,
+        room_mappings: kelasRoomMap,
+        ruang_ujian: ruangUjian.trim() || defaultAutoRuang,
+        pengawas_1_id: finalPengawasId,
+        pengawas_1_nama: finalPengawasObj?.nama_guru || null,
+        pengawas_1_nip: finalPengawasObj?.nip || null,
+        proktor_id: (selectedCount > 1 && !isTeacherMode) ? null : (proktorId || null),
+        proktor_nama: (selectedCount > 1 && !isTeacherMode) ? null : (proktorObj?.nama_guru || null),
+        proktor_nip: (selectedCount > 1 && !isTeacherMode) ? null : (proktorObj?.nip || null),
+      };
+
+      // KRITIS: Saat edit, merge dengan setting_keamanan existing agar tidak kehilangan:
+      // - event_id (isolasi event)
+      // - tanda_tangan_* (tanda tangan digital pengawas)
+      // - dispensasi_terlambat_siswa_ids (dispensasi siswa terlambat)
+      // - nama_sesi_waktu, ruang_ujian_nama, is_remedial, target_siswa_ids
+      const mergedSettingKeamanan = jadwalToEdit
+        ? {
+            ...jadwalToEdit.setting_keamanan, // Pertahankan seluruh data existing
+            ...newSettingKeamanan,            // Timpa hanya dengan nilai baru dari form
+            // Jika pengawas identity berubah, hapus tanda tangan lama (tanda tangan tidak valid)
+            ...(jadwalToEdit.setting_keamanan?.pengawas_1_id !== finalPengawasId
+              ? { tanda_tangan_pengawas_1: null, tanda_tangan_pengawas_1_at: null }
+              : {}),
+          }
+        : newSettingKeamanan;
+
       const payload = {
         bank_soal_id: bankSoalId,
         tahun_pelajaran_id: resolvedTpId,
@@ -413,27 +452,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
         durasi_menit: Number(durasiMenit),
         toleransi_terlambat_menit: Number(toleransiMenit),
         target_kelas_ids: validTargetKelasIds,
-        setting_keamanan: {
-          lock_device: true,
-          block_tab_switching: blockTabSwitch,
-          max_tab_switches: Number(maxTabSwitches),
-          shuffle_questions: shuffleQuestions,
-          shuffle_options: shuffleOptions,
-          show_result_instant: showResultInstant,
-          auto_transfer_rapor: autoTransferRapor,
-          target_rapor_slot: autoTransferRapor ? targetRaporSlot : null,
-          token_refresh_interval: 0,
-          created_by_guru_id: teacherGuruId || null,
-          kelas_room_map: kelasRoomMap,
-          room_mappings: kelasRoomMap,
-          ruang_ujian: ruangUjian.trim() || defaultAutoRuang,
-          pengawas_1_id: finalPengawasId,
-          pengawas_1_nama: finalPengawasObj?.nama_guru || null,
-          pengawas_1_nip: finalPengawasObj?.nip || null,
-          proktor_id: (selectedCount > 1 && !isTeacherMode) ? null : (proktorId || null),
-          proktor_nama: (selectedCount > 1 && !isTeacherMode) ? null : (proktorObj?.nama_guru || null),
-          proktor_nip: (selectedCount > 1 && !isTeacherMode) ? null : (proktorObj?.nip || null),
-        },
+        setting_keamanan: mergedSettingKeamanan,
       };
 
       if (jadwalToEdit) {

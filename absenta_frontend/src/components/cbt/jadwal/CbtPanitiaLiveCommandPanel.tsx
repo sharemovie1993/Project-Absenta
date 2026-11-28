@@ -37,7 +37,7 @@ import { CbtProctorMonitoringView } from '../sesi/CbtProctorMonitoringView';
 import { detectNodeTingkat, TINGKAT_STYLES } from '@/components/spasial/denahTingkatHelper';
 import useConfirm from '@/hooks/useConfirm';
 import { cn } from '@/lib/utils';
-import { formatLocalTimeFromISO, formatLocalDateIndo } from '@/utils/attendance/time';
+import { formatLocalTimeFromISO, formatLocalDateIndo, toLocalDate } from '@/utils/attendance/time';
 
 interface CbtPanitiaLiveCommandPanelProps {
   topFlightDeck?: React.ReactNode;
@@ -440,7 +440,8 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
     >();
 
     filteredJadwal.forEach((j) => {
-      const rawDate = j.tanggal_mulai ? j.tanggal_mulai.split('T')[0] : 'default-date';
+      // KRITIS: Gunakan toLocalDate() agar tanggal tidak bergeser untuk WITA (UTC+8) / WIT (UTC+9)
+      const rawDate = j.tanggal_mulai ? toLocalDate(new Date(j.tanggal_mulai)) : 'default-date';
       const dateLabel = formatLocalDateIndo(j.tanggal_mulai);
 
       if (!dayMap.has(rawDate)) {

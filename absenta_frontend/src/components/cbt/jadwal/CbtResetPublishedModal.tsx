@@ -42,7 +42,7 @@ export const CbtResetPublishedModal: React.FC<CbtResetPublishedModalProps> = ({
     roomMappings.forEach((rm) => {
       map.set(rm.kelas_id, {
         nama_kelas: rm.nama_kelas,
-        roomCode: rm.roomCode,
+        roomCode: rm.slot_ruang, // Perbaikan: gunakan slot_ruang bukan roomCode (field tidak ada di KelasRoomMapping)
         tingkat: rm.tingkat,
       });
     });
@@ -97,7 +97,7 @@ export const CbtResetPublishedModal: React.FC<CbtResetPublishedModalProps> = ({
       const sesi = (s.nama_sesi || '').toLowerCase();
       const bankJudul = (s.BankSoal?.judul || '').toLowerCase();
       const guru = (s.BankSoal?.Guru?.nama_guru || '').toLowerCase();
-      const room = ((s.setting_keamanan as any)?.room_code || '').toLowerCase();
+      const room = ((s.setting_keamanan as any)?.ruang_ujian || (s.setting_keamanan as any)?.room_code || '').toLowerCase();
       return (
         mapel.includes(q) ||
         sesi.includes(q) ||
@@ -254,7 +254,7 @@ export const CbtResetPublishedModal: React.FC<CbtResetPublishedModalProps> = ({
               ) : (
                 filteredSchedules.map((s, idx) => {
                   const mapelName = s.BankSoal?.Mapel?.nama_mapel || s.display_mapel || 'Mata Pelajaran';
-                  const roomCode = (s.setting_keamanan as any)?.room_code || 'Semua Ruang';
+                  const roomCode = (s.setting_keamanan as any)?.ruang_ujian || (s.setting_keamanan as any)?.room_code || 'Semua Ruang';
                   const guruName = s.BankSoal?.Guru?.nama_guru || 'Guru Pengampu';
                   const jumlahSoal = s.BankSoal?.jumlah_soal || 0;
                   const kelasNames = Array.isArray(s.target_kelas_ids)

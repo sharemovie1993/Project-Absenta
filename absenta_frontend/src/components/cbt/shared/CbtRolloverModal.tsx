@@ -54,7 +54,26 @@ export const CbtRolloverModal: React.FC<CbtRolloverModalProps> = ({
     enabled: isOpen,
   });
 
-  const allEvents: CbtEventItem[] = eventsRes?.events || [];
+  const allEvents: CbtEventItem[] = useMemo(() => {
+    // API getEventsSummary() mengembalikan { summary, active_event, total_events }
+    // summary adalah array grup TP, masing-masing mengandung array events
+    const groups = eventsRes?.summary || [];
+    const list: CbtEventItem[] = [];
+    const seen = new Set<string>();
+    groups.forEach((grp: any) => {
+      (grp?.events || []).forEach((ev: any) => {
+        if (!ev?.id || seen.has(ev.id)) return;
+        seen.add(ev.id);
+        list.push(ev);
+      });
+    });
+    // Tambahkan active_event jika belum ada
+    const activeEv = eventsRes?.active_event;
+    if (activeEv?.id && !seen.has(activeEv.id)) {
+      list.unshift(activeEv);
+    }
+    return list;
+  }, [eventsRes]);
   const sourceEvents = useMemo(
     () => allEvents.filter((e) => e.id !== targetEvent?.id),
     [allEvents, targetEvent?.id]

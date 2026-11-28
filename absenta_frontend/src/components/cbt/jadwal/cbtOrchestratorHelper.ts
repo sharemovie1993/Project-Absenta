@@ -628,8 +628,8 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
               target_kelas_ids: [cls.kelas_id],
               setting_keamanan: {
                 lock_device: true,
-                block_tab_switch: true,
-                max_violations: 3,
+                block_tab_switching: true,
+                max_tab_switches: 3,
                 shuffle_questions: true,
                 shuffle_options: true,
                 show_result_instant: false,
@@ -734,8 +734,8 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
                 target_kelas_ids: [cls.kelas_id],
                 setting_keamanan: {
                   lock_device: true,
-                  block_tab_switch: true,
-                  max_violations: 3,
+                  block_tab_switching: true,
+                  max_tab_switches: 3,
                   shuffle_questions: true,
                   shuffle_options: true,
                   show_result_instant: false,
@@ -774,6 +774,10 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
                 }
               });
 
+              const mapelName =
+                effectiveBank.Mapel?.nama_mapel ||
+                (effectiveBank as any).MataPelajaran?.nama_mapel ||
+                effectiveBank.judul;
               const cleanJur = (effectiveBank.jurusan || '').trim().toUpperCase();
               const jurTag = cleanJur && cleanJur !== 'SEMUA' && cleanJur !== 'UMUM' ? ` (${cleanJur})` : '';
 
@@ -789,8 +793,8 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
                 target_kelas_ids: groupedClasses.map((c) => c.kelas_id),
                 setting_keamanan: {
                   lock_device: true,
-                  block_tab_switch: true,
-                  max_violations: 3,
+                  block_tab_switching: true,
+                  max_tab_switches: 3,
                   shuffle_questions: true,
                   shuffle_options: true,
                   show_result_instant: false,
@@ -845,12 +849,11 @@ export function loadPersistedMatrixState(
   eventId?: string
 ): PersistedMatrixState | null {
   try {
-    // 1. Coba baca state spesifik event jika eventId ada
+    // Isolasi ketat per eventId: jangan pernah fallback ke key global TP/Semester agar rancangan antar-event tidak bocor
     if (eventId) {
       const specificRaw = localStorage.getItem(getStorageKeyMatrix(tenantId, tpId, semId, eventId));
-      if (specificRaw) return JSON.parse(specificRaw);
+      return specificRaw ? JSON.parse(specificRaw) : null;
     }
-    // 2. Fallback ke state umum per TP/Semester
     const raw = localStorage.getItem(getStorageKeyMatrix(tenantId, tpId, semId));
     if (!raw) return null;
     return JSON.parse(raw);
@@ -878,10 +881,6 @@ export function savePersistedMatrixState(
     };
     const key = getStorageKeyMatrix(tenantId, tpId, semId, eventId);
     localStorage.setItem(key, JSON.stringify(data));
-    // Jika ada eventId, simpan juga salinan fallback ke key umum agar kompatibel
-    if (eventId) {
-      localStorage.setItem(getStorageKeyMatrix(tenantId, tpId, semId), JSON.stringify(data));
-    }
   } catch (err) {
     console.warn('Gagal menyimpan matriks ke localStorage:', err);
   }
@@ -1090,8 +1089,9 @@ export function filterEffectiveJadwalList(
     // 0. Sesi remedial dikelola mandiri oleh Guru Mapel, bukan ruang bilik reguler panitia
     if ((j.setting_keamanan as any)?.is_remedial) return false;
 
-    if (activeEventId && j.setting_keamanan?.event_id) {
-      if (j.setting_keamanan.event_id !== activeEventId) return false;
+    if (activeEventId) {
+      const schedEventId = j.setting_keamanan?.event_id || (j.BankSoal as any)?.event_id || null;
+      if (schedEventId !== activeEventId) return false;
     }
     if (targetTingkat && targetTingkat.length > 0) {
       const targetKelasIds: string[] = Array.isArray(j.target_kelas_ids) ? j.target_kelas_ids : [];
@@ -1106,19 +1106,33 @@ export function filterEffectiveJadwalList(
   });
 }
 
-export function detectSupervisorConflicts(jadwalList: CbtJadwalUjian[]): Set<string> {
+export function detectSupervisorConflicts(
+  jadwalList: CbtJadwalUjian[],
+  externalSchedules: CbtJadwalUjian[] = []
+): Set<string> {
   const conflicts = new Set<string>();
+  const getAssignedIds = (j: CbtJadwalUjian): string[] => {
+    const sec = (j.setting_keamanan as any) || {};
+    const ids = [
+      sec.pengawas_1_id || (j as any).pengawas_guru_id,
+      sec.proktor_id,
+      sec.pengawas_2_id,
+    ]
+      .filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
+    return Array.from(new Set(ids));
+  };
+
   for (let i = 0; i < jadwalList.length; i++) {
     const a = jadwalList[i];
-    const pA = a.setting_keamanan?.pengawas_1_id || (a as any).pengawas_guru_id;
-    if (!pA) continue;
+    const teachersA = getAssignedIds(a);
+    if (teachersA.length === 0) continue;
     const startA = new Date(a.tanggal_mulai).getTime();
     const endA = new Date(a.tanggal_selesai).getTime();
 
     for (let k = i + 1; k < jadwalList.length; k++) {
       const b = jadwalList[k];
-      const pB = b.setting_keamanan?.pengawas_1_id || (b as any).pengawas_guru_id;
-      if (!pB || pA !== pB) continue;
+      const teachersB = getAssignedIds(b);
+      if (!teachersA.some((t) => teachersB.includes(t))) continue;
 
       const startB = new Date(b.tanggal_mulai).getTime();
       const endB = new Date(b.tanggal_selesai).getTime();
@@ -1126,6 +1140,17 @@ export function detectSupervisorConflicts(jadwalList: CbtJadwalUjian[]): Set<str
       if (startA < endB && startB < endA) {
         conflicts.add(a.id);
         conflicts.add(b.id);
+      }
+    }
+
+    for (const ext of externalSchedules) {
+      if (ext.id === a.id || (ext.setting_keamanan as any)?.is_remedial) continue;
+      const teachersExt = getAssignedIds(ext);
+      if (!teachersA.some((t) => teachersExt.includes(t))) continue;
+      const startExt = new Date(ext.tanggal_mulai).getTime();
+      const endExt = new Date(ext.tanggal_selesai).getTime();
+      if (startA < endExt && startExt < endA) {
+        conflicts.add(a.id);
       }
     }
   }

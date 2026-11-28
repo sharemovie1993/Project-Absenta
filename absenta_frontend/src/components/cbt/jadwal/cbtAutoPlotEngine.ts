@@ -1,5 +1,6 @@
 import type { CbtJadwalUjian } from '@/types/cbt.types';
 import type { AutoPlotConfigOptions } from './CbtAutoPlotConfigModal';
+import { toLocalDate } from '@/utils/attendance/time';
 
 export interface PlottingDraftRow {
   jadwal_id: string;
@@ -49,9 +50,10 @@ export function executeAutoPlotSupervisors(
   const teacherBusyIntervals = new Map<string, Array<{ start: number; end: number }>>(); // teacherId -> intervals
   const roomLastTeacher = new Map<string, string>(); // roomKey -> lastAssignedTeacherId
 
-  // Helper untuk mengambil tanggal (YYYY-MM-DD)
+  // Helper untuk mengambil tanggal lokal (YYYY-MM-DD) — timezone-aware agar tidak bergeser untuk WITA/WIT
   const getDateKey = (isoString: string): string => {
-    return isoString ? isoString.split('T')[0] : 'default_date';
+    if (!isoString) return 'default_date';
+    try { return toLocalDate(new Date(isoString)); } catch { return isoString.split('T')[0] || 'default_date'; }
   };
 
   // Helper untuk mengambil ruang ujian

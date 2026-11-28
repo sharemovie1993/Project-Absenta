@@ -2,10 +2,69 @@ import { prisma } from '@/utils/prisma';
 import { Prisma } from '@prisma/client';
 import { getRedisConnection } from '@/infra/redis/redisClient';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
+import { getTenantTimezone } from '@/utils/timezone.utils';
 import { CbtSettingsService } from './cbt-settings.service';
 import crypto from 'crypto';
 
 export class CbtJadwalService {
+  private static formatLocalDateKey(dt: Date | string, timezone: string): string {
+    const d = typeof dt === 'string' ? new Date(dt) : dt;
+    if (Number.isNaN(d.getTime())) return '';
+    try {
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(d);
+    } catch {
+      return d.toISOString().split('T')[0];
+    }
+  }
+
+  private static parseTingkatInt(raw?: string | number | null): number | null {
+    if (raw === undefined || raw === null || raw === '') return null;
+    const s = String(raw).trim().toUpperCase();
+    const roman: Record<string, number> = {
+      I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6,
+      VII: 7, VIII: 8, IX: 9, X: 10, XI: 11, XII: 12, XIII: 13,
+    };
+    if (roman[s]) return roman[s];
+    const n = Number(s);
+    return Number.isInteger(n) ? n : null;
+  }
+
+  private static async invalidateScheduleCaches(
+    tenantId: string,
+    schedules: Array<{ id?: string; token_ujian?: string | null; target_kelas_ids?: any }>
+  ) {
+    try {
+      const { CbtTestEngineService } = await import('./cbt-test-engine.service');
+      CbtTestEngineService.invalidateClassExamsCache(tenantId);
+    } catch {}
+
+    const redis = getRedisConnection();
+    if (!redis || !schedules || schedules.length === 0) return;
+
+    const kelasIds = new Set<string>();
+    for (const s of schedules) {
+      if (s.id) {
+        await redis.del(`cbt:${tenantId}:bundle:${s.id}`).catch(() => null);
+        await redis.del(`cbt:${tenantId}:jadwal-entry:${s.id}`).catch(() => null);
+      }
+      if (s.token_ujian) {
+        await redis.del(`cbt:${tenantId}:token:${s.token_ujian}`).catch(() => null);
+      }
+      if (Array.isArray(s.target_kelas_ids)) {
+        (s.target_kelas_ids as string[]).forEach((kid) => {
+          if (kid) kelasIds.add(kid);
+        });
+      }
+    }
+    for (const kid of kelasIds) {
+      await redis.del(`cbt:${tenantId}:my-exams-meta:${kid}`).catch(() => null);
+    }
+  }
   /**
    * Menghasilkan 6 karakter token acak (tanpa karakter ambigu seperti 0/O, 1/I)
    */
@@ -109,6 +168,23 @@ export class CbtJadwalService {
         OR: orConditions,
       });
     }
+    if (query.event_id && query.include_all_events !== 'true') {
+      andConditions.push({
+        OR: [
+          {
+            setting_keamanan: {
+              path: ['event_id'],
+              equals: query.event_id,
+            },
+          },
+          {
+            BankSoal: {
+              event_id: query.event_id,
+            },
+          },
+        ],
+      });
+    }
     if (query.pengawas_guru_id) {
       // Meja Pengawas murni untuk sesi orkestrasi kepanitiaan ujian sekolah, kecualikan sesi remedial/susulan
       andConditions.push({
@@ -116,9 +192,9 @@ export class CbtJadwalService {
           nama_sesi: { contains: '[REMEDIAL', mode: 'insensitive' },
         },
       });
-      if (query.include_all_events !== 'true') {
-        const activeEvent = !query.event_id ? await CbtSettingsService.getActiveEvent(tenantId) : null;
-        const targetEventId = query.event_id || activeEvent?.id;
+      if (query.include_all_events !== 'true' && !query.event_id) {
+        const activeEvent = await CbtSettingsService.getActiveEvent(tenantId);
+        const targetEventId = activeEvent?.id;
         if (targetEventId) {
           andConditions.push({
             OR: [
@@ -183,6 +259,7 @@ export class CbtJadwalService {
           BankSoal: {
             select: {
               id: true,
+              event_id: true,
               guru_id: true,
               kode_bank: true,
               judul: true,
@@ -468,9 +545,15 @@ export class CbtJadwalService {
    * Mengupdate Jadwal Ujian
    */
   static async update(tenantId: string, id: string, data: any) {
-    await this.getById(tenantId, id);
+    const existing = await this.getById(tenantId, id);
+    const mergedSecurity = data.setting_keamanan
+      ? {
+          ...((existing.setting_keamanan as Record<string, any>) || {}),
+          ...data.setting_keamanan,
+        }
+      : undefined;
 
-    return prisma.cbtJadwalUjian.update({
+    const updated = await prisma.cbtJadwalUjian.update({
       where: { id },
       data: {
         ...(data.bank_soal_id ? { bank_soal_id: data.bank_soal_id } : {}),
@@ -482,10 +565,13 @@ export class CbtJadwalService {
         ...(data.durasi_menit !== undefined ? { durasi_menit: data.durasi_menit } : {}),
         ...(data.toleransi_terlambat_menit !== undefined ? { toleransi_terlambat_menit: data.toleransi_terlambat_menit } : {}),
         ...(data.target_kelas_ids ? { target_kelas_ids: data.target_kelas_ids } : {}),
-        ...(data.setting_keamanan ? { setting_keamanan: data.setting_keamanan } : {}),
+        ...(mergedSecurity ? { setting_keamanan: mergedSecurity } : {}),
         ...(data.status ? { status: data.status } : {}),
       },
     });
+
+    await this.invalidateScheduleCaches(tenantId, [updated]);
+    return updated;
   }
 
   /**
@@ -739,15 +825,32 @@ export class CbtJadwalService {
         bank_soal_id: true,
         token_ujian: true,
         status: true,
+        target_kelas_ids: true,
         setting_keamanan: true,
+        BankSoal: {
+          select: {
+            event_id: true,
+            tingkat: true,
+            tingkat_num: true,
+          },
+        },
       },
     });
 
-    // Saring jadwal yang sesuai event (jika disimpan di setting_keamanan)
+    const allowedTingkatSet =
+      Array.isArray(params.target_tingkat) && params.target_tingkat.length > 0
+        ? new Set(params.target_tingkat.map(Number).filter((n) => !Number.isNaN(n)))
+        : null;
+
+    // Saring jadwal yang strictly sesuai event & tingkat sasaran (mencegah jadwal event lain atau mandiri tanpa event_id ikut terhapus)
     const targetSchedules = schedules.filter((s) => {
       if (params.event_id) {
-        const schedEventId = (s.setting_keamanan as any)?.event_id;
-        if (schedEventId && schedEventId !== params.event_id) return false;
+        const schedEventId = (s.setting_keamanan as any)?.event_id || s.BankSoal?.event_id || null;
+        if (schedEventId !== params.event_id) return false;
+      }
+      if (allowedTingkatSet) {
+        const tNum = s.BankSoal?.tingkat_num ?? this.parseTingkatInt(s.BankSoal?.tingkat);
+        if (tNum !== null && !allowedTingkatSet.has(tNum)) return false;
       }
       // Jangan hapus jadwal yang sudah selesai (COMPLETED) atau aktif kecuali diminta paksa
       if (!params.force && (s.status === 'COMPLETED' || s.status === 'ACTIVE')) {
@@ -769,16 +872,7 @@ export class CbtJadwalService {
       )
     );
 
-    const redis = getRedisConnection();
-
-    if (redis) {
-      for (const s of targetSchedules) {
-        await redis.del(`cbt:${tenantId}:bundle:${s.id}`).catch(() => null);
-        if (s.token_ujian) {
-          await redis.del(`cbt:${tenantId}:token:${s.token_ujian}`).catch(() => null);
-        }
-      }
-    }
+    await this.invalidateScheduleCaches(tenantId, targetSchedules);
 
     // Cascade delete peserta jika ada
     await prisma.cbtPesertaUjian.deleteMany({
@@ -1957,19 +2051,23 @@ export class CbtJadwalService {
       },
       select: {
         id: true,
+        token_ujian: true,
+        target_kelas_ids: true,
         setting_keamanan: true,
       },
     });
 
-    const existingMap = new Map(existingList.map((j) => [j.id, j.setting_keamanan as Record<string, any>]));
+    const existingMap = new Map(existingList.map((j) => [j.id, j]));
     const operations: any[] = [];
+    const affectedSchedules: Array<{ id: string; token_ujian?: string | null; target_kelas_ids?: any }> = [];
 
     for (const item of items) {
-      const currentSetting = existingMap.get(item.jadwal_id);
-      if (!currentSetting && !existingList.some((j) => j.id === item.jadwal_id)) continue;
+      const existingRow = existingMap.get(item.jadwal_id);
+      if (!existingRow) continue;
+      const currentSetting = (existingRow.setting_keamanan as Record<string, any>) || {};
 
-      const mergedSetting = {
-        ...(currentSetting || {}),
+      const mergedSetting: Record<string, any> = {
+        ...currentSetting,
         ...(item.ruang_ujian !== undefined ? { ruang_ujian: item.ruang_ujian } : {}),
         ...(item.pengawas_1_id !== undefined ? { pengawas_1_id: item.pengawas_1_id } : {}),
         ...(item.pengawas_1_nama !== undefined ? { pengawas_1_nama: item.pengawas_1_nama } : {}),
@@ -1981,6 +2079,26 @@ export class CbtJadwalService {
         ...(item.proktor_nama !== undefined ? { proktor_nama: item.proktor_nama } : {}),
         ...(item.proktor_nip !== undefined ? { proktor_nip: item.proktor_nip } : {}),
       };
+
+      // Hapus tanda tangan digital lama jika identitas pengawas/proktor berubah atau dikosongkan
+      if (
+        item.pengawas_1_id !== undefined &&
+        String(item.pengawas_1_id || '') !== String(currentSetting.pengawas_1_id || '')
+      ) {
+        delete mergedSetting.tanda_tangan_pengawas_1;
+        delete mergedSetting.waktu_ttd_pengawas_1;
+      }
+      if (
+        (item.proktor_id !== undefined &&
+          String(item.proktor_id || '') !== String(currentSetting.proktor_id || '')) ||
+        (item.pengawas_2_id !== undefined &&
+          String(item.pengawas_2_id || '') !== String(currentSetting.pengawas_2_id || ''))
+      ) {
+        delete mergedSetting.tanda_tangan_proktor;
+        delete mergedSetting.waktu_ttd_proktor;
+        delete mergedSetting.tanda_tangan_pengawas_2;
+        delete mergedSetting.waktu_ttd_pengawas_2;
+      }
 
       const updateData: any = {
         setting_keamanan: mergedSetting,
@@ -1994,10 +2112,12 @@ export class CbtJadwalService {
           data: updateData,
         })
       );
+      affectedSchedules.push(existingRow);
     }
 
     if (operations.length > 0) {
       await prisma.$transaction(operations);
+      await this.invalidateScheduleCaches(tenantId, affectedSchedules);
     }
 
     return {
@@ -2011,34 +2131,40 @@ export class CbtJadwalService {
    */
   static async bulkCreate(tenantId: string, items: any[]) {
     const bankIds = Array.from(new Set(items.map((i) => i.bank_soal_id)));
-    const banks = await prisma.cbtBankSoal.findMany({
-      where: {
-        tenant_id: tenantId,
-        id: { in: bankIds },
-      },
-      include: { _count: { select: { Soal: true } } },
-    });
+    const [tenantTz, banks, existingJadwal] = await Promise.all([
+      getTenantTimezone(tenantId),
+      prisma.cbtBankSoal.findMany({
+        where: {
+          tenant_id: tenantId,
+          id: { in: bankIds },
+        },
+        include: { _count: { select: { Soal: true } } },
+      }),
+      // 1. Ambil jadwal yang sudah ada untuk bank soal terkait di tenant ini agar IDEMPOTEN & terisolasi event/periode
+      prisma.cbtJadwalUjian.findMany({
+        where: {
+          tenant_id: tenantId,
+          bank_soal_id: { in: bankIds },
+        },
+        select: {
+          id: true,
+          bank_soal_id: true,
+          tahun_pelajaran_id: true,
+          semester_id: true,
+          token_ujian: true,
+          tanggal_mulai: true,
+          tanggal_selesai: true,
+          durasi_menit: true,
+          nama_sesi: true,
+          status: true,
+          target_kelas_ids: true,
+          setting_keamanan: true,
+          BankSoal: { select: { event_id: true } },
+        },
+      }),
+    ]);
 
     const bankMap = new Map(banks.map((b) => [b.id, b]));
-
-    // 1. Ambil jadwal yang sudah ada untuk bank soal terkait di tenant ini agar IDEMPOTEN
-    const existingJadwal = await prisma.cbtJadwalUjian.findMany({
-      where: {
-        tenant_id: tenantId,
-        bank_soal_id: { in: bankIds },
-      },
-      select: {
-        id: true,
-        bank_soal_id: true,
-        tanggal_mulai: true,
-        tanggal_selesai: true,
-        durasi_menit: true,
-        nama_sesi: true,
-        status: true,
-        target_kelas_ids: true,
-        setting_keamanan: true,
-      },
-    });
 
     const eventIdsInBatch = Array.from(
       new Set(
@@ -2059,6 +2185,7 @@ export class CbtJadwalService {
     }
 
     const operations: any[] = [];
+    const affectedForCache: Array<{ id?: string; token_ujian?: string | null; target_kelas_ids?: any }> = [];
     const claimedExistingIds = new Set<string>();
     const updatedBankSoalIds = new Set<string>();
     let skippedCount = 0;
@@ -2071,8 +2198,9 @@ export class CbtJadwalService {
       if (!bankSoal) continue;
 
       const itemStartDate = new Date(data.tanggal_mulai);
-      const itemDateStr = itemStartDate.toISOString().split('T')[0];
+      const itemDateStr = this.formatLocalDateKey(itemStartDate, tenantTz);
       const itemTargetKelas: string[] = Array.isArray(data.target_kelas_ids) ? data.target_kelas_ids : [];
+      const itemEventId = (data.setting_keamanan as any)?.event_id || null;
 
       // Sinkronisasi alokasi_menit pada Bank Soal jika durasi di jadwal/sesi ujian diubah atau berbeda
       if (
@@ -2090,12 +2218,21 @@ export class CbtJadwalService {
         bankSoal.alokasi_menit = data.durasi_menit;
       }
 
-      // Cari jadwal eksisting yang cocok (Idempoten & Proteksi Terhadap Perubahan Jadwal)
-      // Prioritas 1: Cocok pada hari yang sama untuk bank soal dan rombel target yang sama
+      const matchesEventAndPeriod = (exist: (typeof existingJadwal)[number]) => {
+        if (data.tahun_pelajaran_id && exist.tahun_pelajaran_id !== data.tahun_pelajaran_id) return false;
+        if (data.semester_id && exist.semester_id !== data.semester_id) return false;
+        const existEventId = (exist.setting_keamanan as any)?.event_id || exist.BankSoal?.event_id || null;
+        if (itemEventId && existEventId !== itemEventId) return false;
+        return true;
+      };
+
+      // Cari jadwal eksisting yang cocok (Idempoten & Terisolasi Event/Periode)
+      // Prioritas 1: Cocok pada hari lokal yang sama untuk event, periode, bank soal, dan rombel target yang sama
       let matchedExisting = existingJadwal.find((exist) => {
         if (claimedExistingIds.has(exist.id)) return false;
         if (exist.bank_soal_id !== data.bank_soal_id) return false;
-        const existDateStr = new Date(exist.tanggal_mulai).toISOString().split('T')[0];
+        if (!matchesEventAndPeriod(exist)) return false;
+        const existDateStr = this.formatLocalDateKey(exist.tanggal_mulai, tenantTz);
         if (existDateStr !== itemDateStr) return false;
 
         const existTargetKelas: string[] = Array.isArray(exist.target_kelas_ids)
@@ -2105,17 +2242,14 @@ export class CbtJadwalService {
         return itemTargetKelas.some((kId: string) => existTargetKelas.includes(kId));
       });
 
-      // Prioritas 2: Jika hari pelaksanaan dipindahkan (reschedule), cocokkan jadwal DRAFT pada bank soal & rombel yang sama
+      // Prioritas 2: Jika hari pelaksanaan dipindahkan (reschedule), cocokkan jadwal DRAFT pada event, periode, bank soal & rombel yang sama
       if (!matchedExisting) {
         matchedExisting = existingJadwal.find((exist) => {
           if (claimedExistingIds.has(exist.id)) return false;
           if (exist.bank_soal_id !== data.bank_soal_id) return false;
+          if (!matchesEventAndPeriod(exist)) return false;
           // Jangan geser jadwal yang sedang berlangsung atau sudah selesai
           if (exist.status && exist.status !== 'DRAFT') return false;
-
-          const existEventId = (exist.setting_keamanan as any)?.event_id;
-          const itemEventId = (data.setting_keamanan as any)?.event_id;
-          if (existEventId && itemEventId && existEventId !== itemEventId) return false;
 
           const existTargetKelas: string[] = Array.isArray(exist.target_kelas_ids)
             ? (exist.target_kelas_ids as string[])
@@ -2127,6 +2261,13 @@ export class CbtJadwalService {
 
       if (matchedExisting) {
         claimedExistingIds.add(matchedExisting.id);
+
+        // Proteksi sesi ACTIVE/PAUSED/COMPLETED: jangan ubah jam/nama/ruang sesi berjalan agar jadwal mengawas tidak bergeser diam-diam
+        if (matchedExisting.status && matchedExisting.status !== 'DRAFT') {
+          skippedCount++;
+          continue;
+        }
+
         const existStartMs = new Date(matchedExisting.tanggal_mulai).getTime();
         const itemStartMs = itemStartDate.getTime();
         const existEndMs = new Date(matchedExisting.tanggal_selesai).getTime();
@@ -2134,7 +2275,7 @@ export class CbtJadwalService {
         const targetDuration = data.durasi_menit ?? bankSoal.alokasi_menit;
         const isDurationDiff = (matchedExisting.durasi_menit || 0) !== targetDuration;
         const isNameDiff = (matchedExisting.nama_sesi || '').trim() !== (data.nama_sesi || '').trim();
-        const existDateStr = new Date(matchedExisting.tanggal_mulai).toISOString().split('T')[0];
+        const existDateStr = this.formatLocalDateKey(matchedExisting.tanggal_mulai, tenantTz);
         const isDateDiff = existDateStr !== itemDateStr;
 
         const existSecurity = (matchedExisting.setting_keamanan as Record<string, any>) || {};
@@ -2145,8 +2286,11 @@ export class CbtJadwalService {
         const isRoomNamaDiff =
           String(newSecurity.ruang_ujian_nama || '').trim().length > 0 &&
           String(newSecurity.ruang_ujian_nama || '').trim() !== String(existSecurity.ruang_ujian_nama || '').trim();
+        const existKelasJson = JSON.stringify(Array.isArray(matchedExisting.target_kelas_ids) ? matchedExisting.target_kelas_ids : []);
+        const newKelasJson = JSON.stringify(itemTargetKelas);
+        const isTargetKelasDiff = existKelasJson !== newKelasJson;
 
-        // Jika jam mulai/selesai (selisih > 60 detik), tanggal, durasi, nama sesi, atau pemetaan ruang diedit:
+        // Jika jam mulai/selesai (selisih > 60 detik), tanggal, durasi, nama sesi, target kelas, atau pemetaan ruang diedit:
         if (
           Math.abs(existStartMs - itemStartMs) > 60000 ||
           Math.abs(existEndMs - itemEndMs) > 60000 ||
@@ -2154,7 +2298,8 @@ export class CbtJadwalService {
           isDurationDiff ||
           isNameDiff ||
           isRoomDiff ||
-          isRoomNamaDiff
+          isRoomNamaDiff ||
+          isTargetKelasDiff
         ) {
           const mergedSecurity = {
             ...existSecurity,
@@ -2184,10 +2329,16 @@ export class CbtJadwalService {
                 tanggal_selesai: new Date(data.tanggal_selesai),
                 durasi_menit: targetDuration,
                 nama_sesi: data.nama_sesi.trim(),
+                target_kelas_ids: itemTargetKelas,
                 setting_keamanan: mergedSecurity,
               },
             })
           );
+          affectedForCache.push({
+            id: matchedExisting.id,
+            token_ujian: matchedExisting.token_ujian,
+            target_kelas_ids: itemTargetKelas,
+          });
           updatedCount++;
         } else {
           skippedCount++;
@@ -2196,9 +2347,17 @@ export class CbtJadwalService {
       }
 
       // Jika belum ada jadwal pada hari dan rombel tersebut, buat jadwal baru
-      const itemEventId = (data.setting_keamanan as any)?.event_id;
       const customEvToken = itemEventId ? customTokenByEventId.get(String(itemEventId)) : undefined;
       const token = customEvToken || (data.token_ujian ? String(data.token_ujian).trim().toUpperCase() : this.generateToken());
+      const normalizedSetting = {
+        lock_device: true,
+        block_tab_switching: true,
+        max_tab_switches: 3,
+        shuffle_questions: bankSoal.acak_soal,
+        shuffle_options: bankSoal.acak_opsi,
+        show_result_instant: false,
+        ...(data.setting_keamanan || {}),
+      };
       operations.push(
         prisma.cbtJadwalUjian.create({
           data: {
@@ -2213,18 +2372,15 @@ export class CbtJadwalService {
             durasi_menit: data.durasi_menit ?? bankSoal.alokasi_menit,
             toleransi_terlambat_menit: data.toleransi_terlambat_menit ?? 15,
             target_kelas_ids: data.target_kelas_ids,
-            setting_keamanan: data.setting_keamanan || {
-              lock_device: true,
-              block_tab_switch: true,
-              max_violations: 3,
-              shuffle_questions: true,
-              shuffle_options: true,
-              show_result_instant: false,
-            },
+            setting_keamanan: normalizedSetting,
             status: 'DRAFT',
           },
         })
       );
+      affectedForCache.push({
+        token_ujian: token,
+        target_kelas_ids: data.target_kelas_ids,
+      });
       createdCount++;
     }
 
@@ -2242,6 +2398,8 @@ export class CbtJadwalService {
     }
 
     const results = await prisma.$transaction(operations);
+    await this.invalidateScheduleCaches(tenantId, affectedForCache);
+
     return {
       created_count: createdCount,
       updated_count: updatedCount,

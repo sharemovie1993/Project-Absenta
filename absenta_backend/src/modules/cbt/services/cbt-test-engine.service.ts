@@ -57,6 +57,19 @@ export class CbtTestEngineService {
   private static guruMapelCache = new Map<string, { data: any[]; exp: number }>();
   private static classExamsCache = new Map<string, { data: any; exp: number }>();
 
+  static invalidateClassExamsCache(tenantId?: string) {
+    if (!tenantId) {
+      CbtTestEngineService.classExamsCache.clear();
+      return;
+    }
+    const prefix = `${tenantId}:`;
+    for (const key of CbtTestEngineService.classExamsCache.keys()) {
+      if (key.startsWith(prefix)) {
+        CbtTestEngineService.classExamsCache.delete(key);
+      }
+    }
+  }
+
   private static async getCachedClassExamsMeta(tenantId: string, kelasId: string) {
     const memKey = `${tenantId}:${kelasId}`;
     const now = Date.now();

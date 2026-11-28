@@ -87,7 +87,7 @@ export const CbtKandidatPengawasModal: React.FC<CbtKandidatPengawasModalProps> =
     const groups = eventsSummaryRes?.summary || [];
     const list: Array<{ id: string; nama_event: string; tpLabel: string; candidateIds: string[] }> = [];
     groups.forEach((grp: any) => {
-      const tpLabel = grp?.tahun_pelajaran || '';
+      const tpLabel = grp?.tahun_ajaran || grp?.tahun_pelajaran || '';
       (grp?.events || []).forEach((ev: CbtEventItem) => {
         if (!ev?.id || ev.id === activeEvent?.id) return;
         const cands = Array.isArray(ev.pengawas_candidates) ? ev.pengawas_candidates : [];

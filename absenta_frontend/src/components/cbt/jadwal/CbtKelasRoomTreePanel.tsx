@@ -212,6 +212,8 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
       try {
         setIsSavingCloud(true);
         toast.loading('Menyimpan ploting ruang ke server...', { id: 'save-room-cloud' });
+        // KRITIS: Hanya kirim room_mappings — JANGAN sertakan days_config/matrix_draft
+        // agar tidak menimpa (clobber) konfigurasi hari/sesi/draft yang dikelola panel lain
         await cbtApi.upsertEvent({
           id: activeEvent.id,
           nama_event: activeEvent.nama_event,
@@ -221,14 +223,13 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
           target_tingkat: activeEvent.target_tingkat,
           tipe_pelaksanaan: activeEvent.tipe_pelaksanaan,
           keterangan: activeEvent.keterangan,
-          days_config: activeEvent.days_config,
-          room_mappings: roomMappings,
-          matrix_draft: activeEvent.matrix_draft,
           lock_teacher_scheduling: activeEvent.lock_teacher_scheduling,
           token_refresh_interval: activeEvent.token_refresh_interval,
           strict_browser_guard: activeEvent.strict_browser_guard,
           enable_proctor: activeEvent.enable_proctor,
           is_active: activeEvent.is_active ?? true,
+          room_mappings: roomMappings,
+          // days_config & matrix_draft sengaja tidak dikirim agar tidak clobber panel Jadwal
         });
         await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.eventsSummary() });
         toast.success('Konfigurasi ploting ruang berhasil disimpan ke Server! Komputer lain kini dapat melihat ploting yang sama.', { id: 'save-room-cloud' });

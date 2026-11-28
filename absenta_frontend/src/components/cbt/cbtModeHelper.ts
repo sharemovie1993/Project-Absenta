@@ -178,3 +178,50 @@ export function useCbtOperationMode() {
     updateActiveEvent,
   };
 }
+
+/**
+ * Resolusi Tahun Pelajaran & Semester efektif untuk sebuah Event CBT.
+ * Prioritaskan konteks akademik milik Event CBT terlebih dahulu (mencegah event Genap
+ * tersimpan dengan semester_id Ganjil saat persiapan pra-pergantian semester).
+ */
+export function resolveEventAcademicContext(params: {
+  activeEvent?: Pick<CbtEventItem, 'tahun_pelajaran_id' | 'semester'> | null;
+  activeTp?: { id?: string } | null;
+  activeSemester?: { id?: string; tahun_pelajaran_id?: string; nama_semester?: string } | null;
+  allSemesters?: Array<{ id: string; tahun_pelajaran_id?: string; nama_semester?: string; nama?: string; is_active?: boolean }>;
+}): { effectiveTpId?: string; effectiveSemId?: string } {
+  const { activeEvent, activeTp, activeSemester, allSemesters = [] } = params;
+  const effectiveTpId = activeEvent?.tahun_pelajaran_id || activeTp?.id;
+
+  const tpSemesters = effectiveTpId
+    ? allSemesters.filter((s) => !s.tahun_pelajaran_id || s.tahun_pelajaran_id === effectiveTpId)
+    : allSemesters;
+
+  let effectiveSemId: string | undefined;
+
+  if (activeEvent?.semester && tpSemesters.length > 0) {
+    const target = String(activeEvent.semester).toUpperCase().trim();
+    const isGenapTarget = target.includes('GENAP') || target === '2';
+    const isGanjilTarget = target.includes('GANJIL') || target.includes('GASAL') || target === '1';
+
+    const matched = tpSemesters.find((s) => {
+      const semName = String(s.nama_semester || s.nama || '').toUpperCase().trim();
+      if (isGenapTarget) return semName.includes('GENAP') || /\b2\b/.test(semName);
+      if (isGanjilTarget) return semName.includes('GANJIL') || semName.includes('GASAL') || /\b1\b/.test(semName);
+      return semName.includes(target);
+    });
+    if (matched?.id) {
+      effectiveSemId = matched.id;
+    }
+  }
+
+  if (!effectiveSemId) {
+    if (activeSemester?.id && (!effectiveTpId || !activeSemester.tahun_pelajaran_id || activeSemester.tahun_pelajaran_id === effectiveTpId)) {
+      effectiveSemId = activeSemester.id;
+    } else {
+      effectiveSemId = tpSemesters.find((s) => s.is_active)?.id || tpSemesters[0]?.id || activeSemester?.id;
+    }
+  }
+
+  return { effectiveTpId, effectiveSemId };
+}

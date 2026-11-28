@@ -1,6 +1,7 @@
 import { prisma } from '@/utils/prisma';
 import { waQueueService } from '@/services/wa-queue.service';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
+import { getRedisConnection } from '@/infra/redis/redisClient';
 import crypto from 'crypto';
 
 export interface CbtEventItem {
@@ -86,12 +87,35 @@ export class CbtSettingsService {
     };
   }
 
-  private static async upsertRelationalEvent(tenantId: string, evt: CbtEventItem, validTpIds?: Set<string>) {
+  private static async invalidateCbtEngineMetaCache(tenantId: string) {
+    try {
+      const { CbtTestEngineService } = await import('./cbt-test-engine.service');
+      CbtTestEngineService.invalidateClassExamsCache(tenantId);
+      const redis = getRedisConnection();
+      if (redis) {
+        const keys = await redis.keys(`cbt:${tenantId}:my-exams-meta:*`).catch(() => [] as string[]);
+        if (Array.isArray(keys) && keys.length > 0) {
+          for (let i = 0; i < keys.length; i += 200) {
+            await redis.del(...keys.slice(i, i + 200)).catch(() => null);
+          }
+        }
+      }
+    } catch {
+      // Abaikan jika Redis / engine cache tidak tersedia
+    }
+  }
+
+  private static async upsertRelationalEvent(
+    tenantId: string,
+    evt: CbtEventItem,
+    validTpIds?: Set<string>,
+    dbClient: any = prisma
+  ) {
     const resolvedTpId =
       evt.tahun_pelajaran_id && (!validTpIds || validTpIds.has(evt.tahun_pelajaran_id))
         ? evt.tahun_pelajaran_id
         : null;
-    await prisma.cbtEvent.upsert({
+    await dbClient.cbtEvent.upsert({
       where: { tenant_id_id: { tenant_id: tenantId, id: evt.id } },
       update: {
         tahun_pelajaran_id: resolvedTpId,
@@ -246,10 +270,20 @@ export class CbtSettingsService {
 
     // Auto-inisialisasi event bawaan jika belum ada untuk TP aktif
     if (activeTp && !allEvents.some((e) => e.tahun_pelajaran_id === activeTp.id)) {
+      const activeSemKeyInit = String(activeSem?.nama_semester || '').toUpperCase().includes('GENAP')
+        ? 'GENAP'
+        : String(activeSem?.nama_semester || '').toUpperCase().includes('GANJIL')
+        ? 'GANJIL'
+        : '';
       const defaultEvents = this.generateDefaultEvents(activeTp.id);
-      const seededDefaults = defaultEvents.map((evt) => ({
+      const defaultActiveIdx = activeSemKeyInit
+        ? defaultEvents.findIndex((e) => String(e.semester || '').toUpperCase() === activeSemKeyInit)
+        : 0;
+      const resolvedActiveIdx = defaultActiveIdx >= 0 ? defaultActiveIdx : 0;
+
+      const seededDefaults = defaultEvents.map((evt, idx) => ({
         ...evt,
-        is_active: false,
+        is_active: idx === resolvedActiveIdx,
       }));
       allEvents = [...allEvents, ...seededDefaults];
 
@@ -586,12 +620,11 @@ export class CbtSettingsService {
       suspend_kbm_during_exam: suspendKbmDuringExam,
       tipe_pelaksanaan: payload.tipe_pelaksanaan !== undefined ? payload.tipe_pelaksanaan : (existing?.tipe_pelaksanaan || 'MASSAL'),
       keterangan: payload.keterangan !== undefined ? payload.keterangan : (existing?.keterangan || ''),
-      days_config: Array.isArray(payload.days_config) ? payload.days_config : (existing?.days_config || []),
-      room_mappings: Array.isArray(payload.room_mappings) ? payload.room_mappings : (existing?.room_mappings || []),
-      matrix_draft: payload.matrix_draft !== undefined ? payload.matrix_draft : (existing?.matrix_draft || {}),
-      pengawas_candidates: Array.isArray(payload.pengawas_candidates)
-        ? payload.pengawas_candidates
-        : (existing?.pengawas_candidates || []),
+      // Hanya timpa field JSON kolaboratif jika eksplisit dikirim pada payload (mencegah clobber antar-fase/tab)
+      days_config: Array.isArray(payload.days_config) ? payload.days_config : undefined,
+      room_mappings: Array.isArray(payload.room_mappings) ? payload.room_mappings : undefined,
+      matrix_draft: payload.matrix_draft !== undefined ? payload.matrix_draft : undefined,
+      pengawas_candidates: Array.isArray(payload.pengawas_candidates) ? payload.pengawas_candidates : undefined,
       lock_teacher_scheduling: payload.lock_teacher_scheduling !== undefined ? payload.lock_teacher_scheduling : (existing?.lock_teacher_scheduling ?? true),
       token_refresh_interval: payload.token_refresh_interval !== undefined ? payload.token_refresh_interval : (existing?.token_refresh_interval ?? 0),
       strict_browser_guard: payload.strict_browser_guard !== undefined ? payload.strict_browser_guard : (existing?.strict_browser_guard ?? true),
@@ -606,36 +639,58 @@ export class CbtSettingsService {
       updated_at: now,
     };
 
-    if (updatedEvent.is_active) {
-      await prisma.cbtEvent.updateMany({
-        where: { tenant_id: tenantId, id: { not: id } },
-        data: { is_active: false },
-      });
-    }
+    await prisma.$transaction(async (tx) => {
+      if (updatedEvent.is_active) {
+        await tx.cbtEvent.updateMany({
+          where: { tenant_id: tenantId, id: { not: id } },
+          data: { is_active: false },
+        });
+      }
+      await this.upsertRelationalEvent(tenantId, updatedEvent, undefined, tx);
+    });
 
-    await this.upsertRelationalEvent(tenantId, updatedEvent);
+    const savedRow = await prisma.cbtEvent.findFirst({
+      where: { tenant_id: tenantId, id },
+    });
+    const hydratedEvent = savedRow ? this.mapRowToItem(savedRow) : updatedEvent;
+
     await cacheInvalidationService.invalidateAttendanceCache(tenantId).catch(() => {});
+    await this.invalidateCbtEngineMetaCache(tenantId);
 
     // Sinkronkan token_ujian pada jadwal event ini jika custom_token diisi
-    if (updatedEvent.custom_token) {
+    if (hydratedEvent.custom_token) {
       await prisma.cbtJadwalUjian.updateMany({
         where: {
           tenant_id: tenantId,
-          setting_keamanan: { path: ['event_id'], equals: updatedEvent.id },
+          OR: [
+            { setting_keamanan: { path: ['event_id'], equals: hydratedEvent.id } },
+            { BankSoal: { event_id: hydratedEvent.id } },
+          ],
         },
-        data: { token_ujian: updatedEvent.custom_token },
+        data: { token_ujian: hydratedEvent.custom_token },
       });
     }
 
-    return updatedEvent;
+    return hydratedEvent;
   }
 
   static async setActiveEvent(tenantId: string, eventId: string) {
-    const targetRow = await prisma.cbtEvent.findFirst({
-      where: { tenant_id: tenantId, id: eventId },
-    });
+    const [targetRow, activeTp] = await Promise.all([
+      prisma.cbtEvent.findFirst({
+        where: { tenant_id: tenantId, id: eventId },
+      }),
+      prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true, tahun: true },
+      }),
+    ]);
     if (!targetRow) {
       throw new Error('Event CBT tidak ditemukan');
+    }
+    if (activeTp && targetRow.tahun_pelajaran_id && targetRow.tahun_pelajaran_id !== activeTp.id) {
+      throw new Error(
+        `Tidak dapat mengaktifkan event dari Tahun Pelajaran lain karena Tahun Pelajaran aktif saat ini adalah ${activeTp.tahun}. Gunakan pemilih Event di Meja Kerja Panitia untuk persiapan.`
+      );
     }
 
     await prisma.$transaction([
@@ -649,6 +704,7 @@ export class CbtSettingsService {
       }),
     ]);
     await cacheInvalidationService.invalidateAttendanceCache(tenantId).catch(() => {});
+    await this.invalidateCbtEngineMetaCache(tenantId);
 
     return { ...this.mapRowToItem(targetRow), is_active: true };
   }

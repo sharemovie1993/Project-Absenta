@@ -31,6 +31,7 @@ import {
   formatLocalTimeFromISO,
   getTimezone,
   getTimezoneLabel,
+  toLocalDate,
 } from '@/utils/attendance/time';
 import { formatLocalDateIndo } from '@/utils/date.utils';
 import { detectNodeTingkat, TINGKAT_STYLES } from '@/components/spasial/denahTingkatHelper';
@@ -38,6 +39,7 @@ import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import { CbtBeritaAcaraPrintModal } from './CbtBeritaAcaraPrintModal';
 import { CbtDaftarHadirPrintModal } from './CbtDaftarHadirPrintModal';
+import { CbtMatrixPengawasPrintModal } from './CbtMatrixPengawasPrintModal';
 import { CbtAutoPlotConfigModal, type AutoPlotConfigOptions } from './CbtAutoPlotConfigModal';
 import { CbtKandidatPengawasModal } from './CbtKandidatPengawasModal';
 import { CbtDenahModal } from './CbtDenahModal';
@@ -97,6 +99,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
   // State Modal Berita Acara & Auto Plot
   const [selectedJadwalForPrint, setSelectedJadwalForPrint] = useState<CbtJadwalUjian | null>(null);
   const [selectedJadwalForDaftarHadir, setSelectedJadwalForDaftarHadir] = useState<CbtJadwalUjian | null>(null);
+  const [isMatrixPrintModalOpen, setIsMatrixPrintModalOpen] = useState(false);
   const [isAutoPlotModalOpen, setIsAutoPlotModalOpen] = useState(false);
   const [isKandidatModalOpen, setIsKandidatModalOpen] = useState(false);
   const [showUnassignedGuruModal, setShowUnassignedGuruModal] = useState(false);
@@ -414,13 +417,19 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
   }, [targetTingkat]);
 
   // ── 3. DETEKSI BENTROK JAM PENGAWAS (CONFLICT GUARD) ──
+  // Memeriksa pengawas_1_id, proktor_id, DAN pengawas_2_id agar tidak ada guru ditugaskan 2x di sesi bersamaan
   const conflictJadwalIds = useMemo(() => {
     const conflicts = new Set<string>();
     for (let i = 0; i < effectiveJadwalList.length; i++) {
       const a = effectiveJadwalList[i];
       const draftA = plottingDrafts[a.id];
-      const pA = draftA?.pengawas_1_id;
-      if (!pA) continue;
+      // Kumpulkan semua guru yang ditugaskan pada sesi a (dari draft maupun DB)
+      const guruA = new Set<string>([
+        draftA?.pengawas_1_id || a.setting_keamanan?.pengawas_1_id || '',
+        draftA?.proktor_id || a.setting_keamanan?.proktor_id || '',
+        a.setting_keamanan?.pengawas_2_id || '',
+      ].filter(Boolean));
+      if (guruA.size === 0) continue;
 
       const startA = new Date(a.tanggal_mulai).getTime();
       const endA = new Date(a.tanggal_selesai).getTime();
@@ -428,8 +437,17 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
       for (let k = i + 1; k < effectiveJadwalList.length; k++) {
         const b = effectiveJadwalList[k];
         const draftB = plottingDrafts[b.id];
-        const pB = draftB?.pengawas_1_id;
-        if (!pB || pA !== pB) continue;
+        // Kumpulkan semua guru yang ditugaskan pada sesi b
+        const guruB = new Set<string>([
+          draftB?.pengawas_1_id || b.setting_keamanan?.pengawas_1_id || '',
+          draftB?.proktor_id || b.setting_keamanan?.proktor_id || '',
+          b.setting_keamanan?.pengawas_2_id || '',
+        ].filter(Boolean));
+        if (guruB.size === 0) continue;
+
+        // Periksa apakah ada guru yang sama di kedua sesi
+        const hasOverlapGuru = [...guruA].some((id) => guruB.has(id));
+        if (!hasOverlapGuru) continue;
 
         const startB = new Date(b.tanggal_mulai).getTime();
         const endB = new Date(b.tanggal_selesai).getTime();
@@ -491,7 +509,9 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
     const sessionMap = new Map<string, string>();
 
     effectiveJadwalList.forEach((j) => {
-      const dKey = j.tanggal_mulai ? j.tanggal_mulai.split('T')[0] : '';
+      // KRITIS: Gunakan toLocalDate() bukan split('T')[0] agar hari tidak bergeser untuk WITA/WIT
+      // Server menyimpan UTC — jam 23:00 WIB = 00:00 UTC keesokan harinya jika sekolah WITA/WIT
+      const dKey = j.tanggal_mulai ? toLocalDate(new Date(j.tanggal_mulai)) : '';
       if (dKey && !dayMap.has(dKey)) {
         dayMap.set(dKey, formatLocalDateIndo(j.tanggal_mulai));
       }
@@ -533,7 +553,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
 
       // Filter Hari
       if (selectedDayKey !== 'ALL') {
-        const dKey = j.tanggal_mulai ? j.tanggal_mulai.split('T')[0] : '';
+        const dKey = j.tanggal_mulai ? toLocalDate(new Date(j.tanggal_mulai)) : '';
         if (dKey !== selectedDayKey) return false;
       }
 
@@ -770,7 +790,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
 
     return targetDays.map((d) => {
       const daySchedules = effectiveJadwalList.filter((j) => {
-        const dKey = j.tanggal_mulai ? j.tanggal_mulai.split('T')[0] : '';
+        const dKey = j.tanggal_mulai ? toLocalDate(new Date(j.tanggal_mulai)) : '';
         return dKey === d.key;
       });
 
@@ -1057,10 +1077,12 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
     return Object.values(plottingDrafts).filter((d) => d.dirty);
   }, [plottingDrafts]);
 
-  // Kosongkan Ploting Massal
+  // Kosongkan Ploting Massal — HANYA untuk jadwal dalam event aktif (effectiveJadwalList)
   const clearPlottingMutation = useMutation({
     mutationFn: async () => {
-      const payload = jadwalList.map((d) => {
+      // KRITIS: Gunakan effectiveJadwalList (bukan jadwalList) agar hanya jadwal event ini yang dikosongkan
+      // jadwalList mentah bisa mengandung jadwal event lain yang ikut ter-fetch
+      const payload = effectiveJadwalList.map((d) => {
         const curr = plottingDrafts[d.id];
         return {
           jadwal_id: d.id,
@@ -1079,18 +1101,21 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
       return cbtApi.bulkUpdatePlotting(payload);
     },
     onSuccess: async () => {
-      const resetDrafts: Record<string, PlottingDraftRow> = {};
-      jadwalList.forEach((j) => {
-        const curr = plottingDrafts[j.id];
-        resetDrafts[j.id] = {
-          jadwal_id: j.id,
-          ruang_ujian: curr?.ruang_ujian || j.setting_keamanan?.ruang_ujian || '',
-          pengawas_1_id: '',
-          proktor_id: '',
-          dirty: false,
-        };
+      // Reset draft hanya untuk jadwal yang dikosongkan (effectiveJadwalList dalam event ini)
+      setPlottingDrafts((prev) => {
+        const next = { ...prev };
+        effectiveJadwalList.forEach((j) => {
+          const curr = next[j.id];
+          next[j.id] = {
+            jadwal_id: j.id,
+            ruang_ujian: curr?.ruang_ujian || j.setting_keamanan?.ruang_ujian || '',
+            pengawas_1_id: '',
+            proktor_id: '',
+            dirty: false,
+          };
+        });
+        return next;
       });
-      setPlottingDrafts(resetDrafts);
       toast.success('Seluruh hasil ploting pengawas & proktor berhasil dikosongkan!');
       await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false, refetchType: 'all' });
       refetchJadwal?.();
@@ -1142,6 +1167,16 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
       return cbtApi.bulkUpdatePlotting(payload);
     },
     onSuccess: async (res) => {
+      // Reset dirty flag pada semua item yang berhasil disimpan
+      setPlottingDrafts((prev) => {
+        const next = { ...prev };
+        dirtyPlottingItems.forEach((d) => {
+          if (next[d.jadwal_id]) {
+            next[d.jadwal_id] = { ...next[d.jadwal_id], dirty: false };
+          }
+        });
+        return next;
+      });
       toast.success(`Berhasil menyimpan ploting ${res?.updated_count || dirtyPlottingItems.length} jadwal ujian!`);
       await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false, refetchType: 'all' });
       refetchJadwal?.();
@@ -1291,6 +1326,19 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
               >
                 <Wand2 size={12} className="text-indigo-600 dark:text-indigo-400" />
                 <span>Plot Otomatis</span>
+              </Button>
+
+              {/* Cetak Matrix Jadwal Landscape PDF Button */}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsMatrixPrintModalOpen(true)}
+                className="text-xs h-8 px-2.5 font-bold border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-2xs cursor-pointer flex items-center gap-1.5 shrink-0"
+                title="Cetak Matrix Jadwal Pengawas format Landscape A4 / Ekspor PDF"
+              >
+                <Printer size={13} className="text-slate-600 dark:text-slate-300" />
+                <span>Cetak Matrix</span>
               </Button>
 
               {/* Simpan Button */}
@@ -1979,6 +2027,20 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
           onClose={() => setSelectedJadwalForPrint(null)}
           jadwal={selectedJadwalForPrint}
           eventName={eventName}
+        />
+      )}
+
+      {/* ── MODAL CETAK MATRIX JADWAL & PENGAWAS LANDSCAPE PDF ── */}
+      {isMatrixPrintModalOpen && (
+        <CbtMatrixPengawasPrintModal
+          isOpen={isMatrixPrintModalOpen}
+          onClose={() => setIsMatrixPrintModalOpen(false)}
+          jadwalList={effectiveJadwalList}
+          plottingDrafts={plottingDrafts}
+          guruMap={guruMap}
+          activeEvent={activeEvent}
+          eventName={eventName}
+          targetTingkat={targetTingkat}
         />
       )}
 
