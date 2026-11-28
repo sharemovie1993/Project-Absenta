@@ -2,6 +2,7 @@ import { prisma } from '@/utils/prisma';
 import { Hari } from '@prisma/client';
 import { getTenantTimezone, getTenantOffsetString } from '@/utils/timezone.utils';
 import { emitDomainEvent } from '@/infra/event-bus';
+import { storageService } from '@/infra/storage/storage.service';
 
 export interface UnifiedTapPayload {
   guru_id: string;
@@ -798,10 +799,12 @@ export class UnifiedKegiatanService {
     }
 
     const isApelPulang = activeSiklusType === 'APEL_SORE';
+    const wajibTapTerminalGuru = await this.isWajibTapTerminalKegiatanGuru(tenantId);
 
     // 4. Guru Mapel KBM yang Jadwalnya BERIRISAN Jam dengan Kegiatan
-    // Khusus Apel Pulang (APEL_SORE), guru mapel TIDAK diwajibkan tap di terminal kegiatan meskipun ada jadwal KBM beririsan.
-    if (!isApelPulang) {
+    // Khusus Apel Pulang (APEL_SORE) ATAU jika Admin menonaktifkan mode Wajib Tap Terminal,
+    // guru mapel TIDAK dimasukkan ke daftar wajib tap terminal (saat nonaktif, guru selfie mandiri di kartu kegiatan Universal KBM).
+    if (!isApelPulang && wajibTapTerminalGuru) {
       const allKbmHariIni = await prisma.jadwalKBM.findMany({
         where: {
           tenant_id: tenantId,
@@ -873,6 +876,257 @@ export class UnifiedKegiatanService {
       schedule_day_used: kbmHariQuery,
       today_hari: todayHari,
       is_active_session: Boolean(sesiId),
+      wajib_tap_terminal_guru: wajibTapTerminalGuru,
+    };
+  }
+
+  /**
+   * Cek konfigurasi sekolah: apakah guru beririsan wajib tap di Terminal Unified Kegiatan (default: true).
+   * Jika false, guru disediakan kartu Sesi Kegiatan di Universal KBM untuk selfie mandiri.
+   */
+  async isWajibTapTerminalKegiatanGuru(tenantId: string): Promise<boolean> {
+    const cfg = await prisma.config.findFirst({
+      where: { tenant_id: tenantId, key: 'WAJIB_TAP_TERMINAL_KEGIATAN_GURU' },
+      select: { value: true },
+    });
+    return cfg?.value !== 'false';
+  }
+
+  /**
+   * Selfie Mandiri Kegiatan Guru (saat mode Wajib Tap Terminal = Nonaktif / opsional).
+   * Mencatat HADIR + foto_bukti di AbsenGuru milik Sesi Kegiatan untuk memberi pengampunan telat KBM pertama.
+   */
+  async selfieGuruKegiatan(
+    tenantId: string,
+    userId: string,
+    payload: {
+      sesi_id?: string;
+      jadwal_kegiatan_id?: string;
+      jenis_kegiatan?: string;
+      foto_bukti: string;
+      catatan?: string;
+    }
+  ) {
+    if (!userId) {
+      throw new Error('Autentikasi user diperlukan');
+    }
+    if (!payload?.foto_bukti || typeof payload.foto_bukti !== 'string' || !payload.foto_bukti.trim()) {
+      throw new Error('Foto bukti selfie kegiatan wajib dilampirkan');
+    }
+
+    const guru = await prisma.guru.findFirst({
+      where: { tenant_id: tenantId, user_id: userId },
+      select: { id: true, nama_guru: true },
+    });
+    if (!guru) {
+      throw new Error('Akun Anda tidak terhubung dengan data Guru');
+    }
+
+    const now = new Date();
+    const tz = await getTenantTimezone(tenantId);
+    const tzOffset = getTenantOffsetString(tz);
+    const todayStr = this.getTodayDateStr(tz);
+    const hariEnum = this.getHariEnum(todayStr, tz);
+    const startOfDay = new Date(`${todayStr}T00:00:00.000${tzOffset}`);
+    const endOfDay = new Date(`${todayStr}T23:59:59.999${tzOffset}`);
+
+    // 1. Upload foto bukti ke storage jika berupa data URL base64
+    let finalFotoUrl = payload.foto_bukti.trim();
+    if (finalFotoUrl.startsWith('data:image/')) {
+      try {
+        const commaIdx = finalFotoUrl.indexOf(',');
+        if (commaIdx !== -1) {
+          const header = finalFotoUrl.substring(0, commaIdx);
+          const base64Data = finalFotoUrl.substring(commaIdx + 1);
+          const mimeMatch = header.match(/data:([^;]+)/);
+          const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+          const buffer = Buffer.from(base64Data, 'base64');
+          const ext = mimeType.split('/')[1] || 'jpeg';
+          const fileName = `${Date.now()}_${guru.id.slice(0, 8)}_${Math.random().toString(36).slice(2, 6)}.${ext}`;
+          const storageKey = `uploads/tenants/${tenantId}/kegiatan-guru/${fileName}`;
+          await storageService.uploadBuffer(storageKey, buffer, { contentType: mimeType });
+          finalFotoUrl = `/api/${storageKey}`;
+        }
+      } catch (storageErr) {
+        console.error('[UnifiedKegiatanService.selfieGuruKegiatan] Upload photo error:', storageErr);
+      }
+    }
+
+    // 2. Resolve atau materialisasi SesiAbsensi kegiatan hari ini
+    let parentSesi: any = null;
+    if (payload.sesi_id && !String(payload.sesi_id).startsWith('keg_virtual_')) {
+      parentSesi = await prisma.sesiAbsensi.findFirst({
+        where: { id: payload.sesi_id, tenant_id: tenantId },
+        include: { JadwalKegiatan: true },
+      });
+    }
+
+    if (!parentSesi && payload.jadwal_kegiatan_id) {
+      parentSesi = await prisma.sesiAbsensi.findFirst({
+        where: {
+          tenant_id: tenantId,
+          jadwal_kegiatan_id: payload.jadwal_kegiatan_id,
+          tanggal: { gte: startOfDay, lte: endOfDay },
+        },
+        include: { JadwalKegiatan: true },
+        orderBy: { created_at: 'asc' },
+      });
+    }
+
+    if (!parentSesi && payload.jadwal_kegiatan_id) {
+      const jadwal = await prisma.jadwalKegiatan.findFirst({
+        where: { id: payload.jadwal_kegiatan_id, tenant_id: tenantId },
+      });
+      if (jadwal) {
+        const [activeTp, activeSem, sampleKelas] = await Promise.all([
+          prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } }),
+          prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } }),
+          prisma.kelas.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } }),
+        ]);
+        if (activeTp && activeSem && sampleKelas) {
+          const startStr = (jadwal.waktu_mulai || '06:30').slice(0, 5);
+          const endStr = (jadwal.waktu_selesai || '08:00').slice(0, 5);
+          parentSesi = await prisma.sesiAbsensi.create({
+            data: {
+              tenant_id: tenantId,
+              kelas_id: sampleKelas.id,
+              tahun_pelajaran_id: jadwal.tahun_pelajaran_id || activeTp.id,
+              semester_id: jadwal.semester_id || activeSem.id,
+              tanggal: startOfDay,
+              waktu_mulai: new Date(`${todayStr}T${startStr}:00.000${tzOffset}`),
+              waktu_selesai: new Date(`${todayStr}T${endStr}:00.000${tzOffset}`),
+              jenis_kegiatan: jadwal.nama || payload.jenis_kegiatan || 'KEGIATAN',
+              jadwal_kegiatan_id: jadwal.id,
+              status: 'BERLANGSUNG',
+              sumber_sesi: 'TEMPLATE',
+            },
+            include: { JadwalKegiatan: true },
+          });
+        }
+      }
+    }
+
+    if (!parentSesi) {
+      const jenisTarget = payload.jenis_kegiatan || 'KETARUNAAN';
+      const sesiToday = await this.getSesiHariIni(tenantId, {
+        tanggal: todayStr,
+        jenis_kegiatan: jenisTarget,
+        jadwal_kegiatan_id: payload.jadwal_kegiatan_id,
+      });
+      if (sesiToday?.id) {
+        parentSesi = await prisma.sesiAbsensi.findUnique({
+          where: { id: sesiToday.id },
+          include: { JadwalKegiatan: true },
+        });
+      }
+    }
+
+    if (!parentSesi) {
+      const jenisTarget = payload.jenis_kegiatan || 'KETARUNAAN';
+      const resolvedSiklus = await this.resolveSiklusJadwal(tenantId, jenisTarget, hariEnum);
+      const activeJadwal = resolvedSiklus.jadwal;
+      const [activeTp, activeSem, sampleKelas] = await Promise.all([
+        prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } }),
+        prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } }),
+        prisma.kelas.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } }),
+      ]);
+      if (activeJadwal && activeTp && activeSem && sampleKelas) {
+        const startStr = (activeJadwal.waktu_mulai || '06:30').slice(0, 5);
+        const endStr = (activeJadwal.waktu_selesai || '08:00').slice(0, 5);
+        parentSesi = await prisma.sesiAbsensi.create({
+          data: {
+            tenant_id: tenantId,
+            kelas_id: sampleKelas.id,
+            tahun_pelajaran_id: activeTp.id,
+            semester_id: activeSem.id,
+            tanggal: startOfDay,
+            waktu_mulai: new Date(`${todayStr}T${startStr}:00.000${tzOffset}`),
+            waktu_selesai: new Date(`${todayStr}T${endStr}:00.000${tzOffset}`),
+            jenis_kegiatan: activeJadwal.nama || jenisTarget,
+            jadwal_kegiatan_id: activeJadwal.id,
+            status: 'BERLANGSUNG',
+            sumber_sesi: 'TEMPLATE',
+          },
+          include: { JadwalKegiatan: true },
+        });
+      }
+    }
+
+    if (!parentSesi) {
+      throw new Error('Sesi kegiatan hari ini tidak ditemukan');
+    }
+
+    if (parentSesi.status === 'MENDATANG') {
+      await prisma.sesiAbsensi.update({
+        where: { id: parentSesi.id },
+        data: { status: 'BERLANGSUNG', updated_at: now },
+      }).catch(() => {});
+    }
+
+    const namaKegiatan = parentSesi.JadwalKegiatan?.nama || parentSesi.jenis_kegiatan || 'Kegiatan';
+    const existing = await prisma.absenGuru.findUnique({
+      where: {
+        sesi_id_guru_id: {
+          sesi_id: parentSesi.id,
+          guru_id: guru.id,
+        },
+      },
+    });
+
+    const alreadyPresent = existing?.status === 'HADIR' && Boolean(existing?.waktu_tap);
+    const effectiveTap = alreadyPresent ? existing!.waktu_tap! : now;
+    const catatanFinal = payload.catatan || `Hadir via Selfie Kegiatan (${namaKegiatan})`;
+
+    await prisma.absenGuru.upsert({
+      where: {
+        sesi_id_guru_id: {
+          sesi_id: parentSesi.id,
+          guru_id: guru.id,
+        },
+      },
+      update: {
+        status: 'HADIR',
+        waktu_tap: effectiveTap,
+        foto_bukti: finalFotoUrl,
+        catatan: alreadyPresent ? (existing?.catatan || catatanFinal) : catatanFinal,
+        updated_at: now,
+      },
+      create: {
+        tenant_id: tenantId,
+        sesi_id: parentSesi.id,
+        guru_id: guru.id,
+        status: 'HADIR',
+        waktu_tap: effectiveTap,
+        foto_bukti: finalFotoUrl,
+        catatan: catatanFinal,
+        tahun_pelajaran_id: parentSesi.tahun_pelajaran_id,
+        semester_id: parentSesi.semester_id,
+        created_at: now,
+        updated_at: now,
+      },
+    });
+
+    emitDomainEvent({
+      event_type: 'SESI_UPDATED',
+      tenant_id: tenantId,
+      source_service: 'unified-kegiatan.service',
+      payload: {
+        sesi_id: parentSesi.id,
+        guru_id: guru.id,
+        jenis_kegiatan: namaKegiatan,
+      },
+    }).catch(() => {});
+
+    return {
+      success: true,
+      message: alreadyPresent
+        ? `Foto bukti selfie ${namaKegiatan} diperbarui. Pengampunan telat KBM beririsan tetap aktif.`
+        : `Selfie kehadiran ${namaKegiatan} berhasil dicatat. Pengampunan keterlambatan KBM pertama Anda aktif.`,
+      sesi_id: parentSesi.id,
+      guru_id: guru.id,
+      foto_bukti: finalFotoUrl,
+      waktu_tap: effectiveTap.toISOString(),
+      already_present: alreadyPresent,
     };
   }
 

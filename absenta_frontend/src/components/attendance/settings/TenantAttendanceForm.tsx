@@ -44,7 +44,8 @@ const TenantAttendanceFormComponent: React.FC<UniversalAttendanceSettingsViewPro
     // Operasional
     hari_sekolah: ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT'],
     allow_manual_hadir_gate: false,
-    allow_attendance_staging_backfill: false
+    allow_attendance_staging_backfill: false,
+    wajib_tap_terminal_kegiatan_guru: true
   });
 
   const DAYS_OPTIONS = HARI_LIST;
@@ -69,7 +70,8 @@ const TenantAttendanceFormComponent: React.FC<UniversalAttendanceSettingsViewPro
 
         hari_sekolah: tenant.hari_sekolah || ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT'],
         allow_manual_hadir_gate: !!tenant.allow_manual_hadir_gate,
-        allow_attendance_staging_backfill: !!tenant.allow_attendance_staging_backfill
+        allow_attendance_staging_backfill: !!tenant.allow_attendance_staging_backfill,
+        wajib_tap_terminal_kegiatan_guru: tenant.wajib_tap_terminal_kegiatan_guru !== false
       });
     } catch (err) {
       console.error('Failed to load tenant data', err);
@@ -103,7 +105,8 @@ const TenantAttendanceFormComponent: React.FC<UniversalAttendanceSettingsViewPro
 
         hari_sekolah: formData.hari_sekolah,
         allow_manual_hadir_gate: formData.allow_manual_hadir_gate,
-        allow_attendance_staging_backfill: formData.allow_attendance_staging_backfill
+        allow_attendance_staging_backfill: formData.allow_attendance_staging_backfill,
+        wajib_tap_terminal_kegiatan_guru: formData.wajib_tap_terminal_kegiatan_guru
       };
       
       const response = await updateTenant(user.tenant_id, updateData);
@@ -119,6 +122,9 @@ const TenantAttendanceFormComponent: React.FC<UniversalAttendanceSettingsViewPro
         queryClient.invalidateQueries({ queryKey: ['jadwal-kbm'] });
         queryClient.invalidateQueries({ queryKey: ['jadwal-pelajaran-grid'] });
         queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-all-builder'] });
+        queryClient.invalidateQueries({ queryKey: ['staff-timeline-unified'] });
+        queryClient.invalidateQueries({ queryKey: ['unified-kegiatan-pendamping'] });
+        queryClient.invalidateQueries({ queryKey: ['unified-kbm-sessions'] });
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('absenta-tenant-settings-updated', { detail: updateData }));
         }
@@ -458,6 +464,31 @@ const TenantAttendanceFormComponent: React.FC<UniversalAttendanceSettingsViewPro
                 onCheckedChange={(checked) => {
                   if (readOnly) return;
                   setFormData(prev => ({ ...prev, allow_manual_hadir_gate: checked }));
+                }}
+              />
+            </div>
+
+            <div className="flex items-start justify-between gap-4 p-3.5 sm:p-4 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800/60">
+              <div className="space-y-1 pr-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Label htmlFor="wajib-tap-terminal-kegiatan-guru-field" className="text-xs font-bold text-slate-900 dark:text-slate-200 cursor-pointer">
+                    Wajib Tap Terminal Unified Kegiatan (Guru Beririsan KBM)
+                  </Label>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${formData.wajib_tap_terminal_kegiatan_guru ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'}`}>
+                    {formData.wajib_tap_terminal_kegiatan_guru ? 'WAJIB TAP TERMINAL' : 'SELFIE MANDIRI DI KARTU KBM'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Jika <strong>Aktif</strong>, guru yang jadwal KBM-nya beririsan dengan kegiatan pagi (selain Apel Pulang) wajib tap di <strong>Terminal Unified Kegiatan</strong> untuk mendapat pengampunan telat KBM pertama. Jika <strong>Nonaktif</strong>, sistem menyediakan kartu <strong>Sesi Kegiatan</strong> di dashboard KBM guru agar guru dapat selfie mandiri di lokasi kegiatan.
+                </p>
+              </div>
+              <Switch
+                id="wajib-tap-terminal-kegiatan-guru-field"
+                disabled={readOnly}
+                checked={formData.wajib_tap_terminal_kegiatan_guru}
+                onCheckedChange={(checked) => {
+                  if (readOnly) return;
+                  setFormData(prev => ({ ...prev, wajib_tap_terminal_kegiatan_guru: checked }));
                 }}
               />
             </div>

@@ -149,7 +149,7 @@ export class SesiHelperService {
     kelasId: string | null | undefined,
     scheduledStart: Date | null,
     currentDate: Date = new Date(),
-    options?: { skipHandover?: boolean }
+    options?: { skipHandover?: boolean; skipKegiatanExtension?: boolean; kbmEnd?: Date | null }
   ): Promise<{ effectiveStartTarget: Date | null; isSpecialEventLateIgnored: boolean; isHandoverExtended: boolean; auditNote?: string }> {
     if (!scheduledStart || isNaN(scheduledStart.getTime())) {
       return { effectiveStartTarget: scheduledStart, isSpecialEventLateIgnored: false, isHandoverExtended: false };
@@ -175,7 +175,9 @@ export class SesiHelperService {
         };
       }
 
-      // 2. Cek Jadwal Kegiatan Rutin Slot 0 (Upacara, Dhuha, Pembiasaan) dari JadwalKegiatan
+      // 2. Cek Jadwal Kegiatan Rutin yang BENAR-BENAR BERIRISAN (hanya untuk siswa / jika tidak di-skip)
+      // Untuk guru, pengampunan keterlambatan KBM wajib melalui verifikasi kehadiran aktual di kegiatan
+      // (checkGuruKegiatanGracePeriod: tap terminal atau selfie kegiatan) agar tidak menjadi celah mangkir.
       const dayIndex = currentDate.getDay();
       const HARI_MAP: Record<number, any> = {
         0: 'MINGGU',
@@ -188,29 +190,56 @@ export class SesiHelperService {
       };
       const hariEnum = HARI_MAP[dayIndex];
 
-      if (hariEnum) {
-        const activeKegiatan = await prisma.jadwalKegiatan.findFirst({
+      if (hariEnum && !options?.skipKegiatanExtension) {
+        const activeKegiatans = await prisma.jadwalKegiatan.findMany({
           where: {
             tenant_id: tenantId,
             aktif: true,
             berlaku_mulai: { lte: currentDate },
-            OR: [
-              { berlaku_sampai: null },
-              { berlaku_sampai: { gte: currentDate } }
+            AND: [
+              {
+                OR: [
+                  { berlaku_sampai: null },
+                  { berlaku_sampai: { gte: currentDate } }
+                ]
+              },
+              ...(kelasId ? [{
+                OR: [
+                  { target_semua_kelas: true },
+                  { target_kelas_ids: { has: kelasId } }
+                ]
+              }] : [])
             ],
             hari: { has: hariEnum },
-            ...(kelasId ? {
-              OR: [
-                { target_semua_kelas: true },
-                { target_kelas_ids: { has: kelasId } }
-              ]
-            } : {})
           },
           orderBy: { waktu_selesai: 'desc' }
         });
 
-        if (activeKegiatan && activeKegiatan.waktu_selesai) {
-          const [endH, endM] = activeKegiatan.waktu_selesai.split(':').map(Number);
+        const kbmStartMs = scheduledStart.getTime();
+        const kbmEndMs = (options?.kbmEnd && !isNaN(options.kbmEnd.getTime()))
+          ? options.kbmEnd.getTime()
+          : (kbmStartMs + 90 * 60 * 1000);
+
+        const overlappingKegiatan = activeKegiatans.find((k: any) => {
+          if (!k.waktu_selesai || !k.waktu_selesai.includes(':')) return false;
+          const kegType = String(k.jenis_kegiatan || '').toUpperCase();
+          const kegName = String(k.nama || '');
+          // Abaikan Apel Pulang / Apel Sore agar tidak menggeser jam KBM pagi/siang (aware 2 shift)
+          if (kegType === 'APEL_SORE' || /pulang|apel\s*sore|apel_sore/i.test(kegName)) return false;
+
+          const [endH, endM] = k.waktu_selesai.split(':').map(Number);
+          const kegEnd = new Date(scheduledStart);
+          kegEnd.setHours(endH || 0, endM || 0, 0, 0);
+
+          const [startH, startM] = (k.waktu_mulai || '06:00').split(':').map(Number);
+          const kegStart = new Date(scheduledStart);
+          kegStart.setHours(startH || 0, startM || 0, 0, 0);
+
+          return kegEnd.getTime() > kbmStartMs && kegStart.getTime() < kbmEndMs;
+        });
+
+        if (overlappingKegiatan && overlappingKegiatan.waktu_selesai) {
+          const [endH, endM] = overlappingKegiatan.waktu_selesai.split(':').map(Number);
           const kegiatanEndTarget = new Date(scheduledStart);
           kegiatanEndTarget.setHours(endH || 0, endM || 0, 0, 0);
 
@@ -219,7 +248,7 @@ export class SesiHelperService {
               effectiveStartTarget: kegiatanEndTarget,
               isSpecialEventLateIgnored: false,
               isHandoverExtended: true,
-              auditNote: `Kegiatan ${activeKegiatan.nama} (s.d ${activeKegiatan.waktu_selesai})`
+              auditNote: `Kegiatan ${overlappingKegiatan.nama} (s.d ${overlappingKegiatan.waktu_selesai})`
             };
           }
         }
@@ -264,6 +293,103 @@ export class SesiHelperService {
       isSpecialEventLateIgnored: false,
       isHandoverExtended: false
     };
+  }
+
+  /**
+   * 🛡️ Single Source of Truth (SSOT) Pengampunan Keterlambatan Guru via Kehadiran Kegiatan:
+   * Mengembalikan { forgiven: true, kegiatanNama } HANYA jika guru benar-benar tercatat HADIR
+   * pada sesi kegiatan non-KBM (non-APEL_SORE) hari ini yang waktunya beririsan dengan KBM ini
+   * — baik melalui Tap Terminal Unified Kegiatan maupun Selfie Mandiri Kegiatan.
+   */
+  async checkGuruKegiatanGracePeriod(
+    tenantId: string,
+    guruId: string,
+    kbmStartHHMM: string | null | undefined,
+    kbmEndHHMM: string | null | undefined,
+    todayDateStr: string,
+    tz: string,
+    tzOffset: string
+  ): Promise<{ forgiven: boolean; kegiatanNama?: string }> {
+    try {
+      const toMinutes = (hhmm?: string | null) => {
+        if (!hhmm || !hhmm.includes(':')) return null;
+        const [h, m] = hhmm.split(':').map(Number);
+        if (Number.isNaN(h) || Number.isNaN(m)) return null;
+        return h * 60 + m;
+      };
+      const formatHHMM = (dt?: Date | null) => {
+        if (!dt) return null;
+        return new Intl.DateTimeFormat('en-GB', {
+          timeZone: tz,
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        }).format(dt);
+      };
+
+      const kbmStartMin = toMinutes(kbmStartHHMM);
+      const kbmEndMin = toMinutes(kbmEndHHMM) ?? (kbmStartMin !== null ? kbmStartMin + 90 : null);
+      if (kbmStartMin === null || kbmEndMin === null) {
+        return { forgiven: false };
+      }
+
+      const startOfDay = new Date(`${todayDateStr}T00:00:00.000${tzOffset}`);
+      const endOfDay = new Date(`${todayDateStr}T23:59:59.999${tzOffset}`);
+
+      const kegiatanHadirList = await prisma.absenGuru.findMany({
+        where: {
+          tenant_id: tenantId,
+          guru_id: guruId,
+          status: 'HADIR',
+          SesiAbsensi: {
+            tanggal: { gte: startOfDay, lte: endOfDay },
+            jenis_kegiatan: { not: 'KBM' },
+          },
+        },
+        include: {
+          SesiAbsensi: {
+            select: {
+              jenis_kegiatan: true,
+              waktu_mulai: true,
+              waktu_selesai: true,
+              JadwalKegiatan: {
+                select: {
+                  nama: true,
+                  jenis_kegiatan: true,
+                  waktu_mulai: true,
+                  waktu_selesai: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const overlappingKegiatan = kegiatanHadirList.find((kg) => {
+        const s = kg.SesiAbsensi;
+        if (!s) return false;
+        const kegType = String(s.JadwalKegiatan?.jenis_kegiatan || s.jenis_kegiatan || '').toUpperCase();
+        const kegName = String(s.JadwalKegiatan?.nama || s.jenis_kegiatan || '');
+        if (kegType === 'APEL_SORE' || /pulang|apel\s*sore|apel_sore/i.test(kegName)) return false;
+
+        const kgStartStr = s.JadwalKegiatan?.waktu_mulai || formatHHMM(s.waktu_mulai) || '06:30';
+        const kgEndStr = s.JadwalKegiatan?.waktu_selesai || formatHHMM(s.waktu_selesai) || '08:00';
+        const kgStartMin = toMinutes(kgStartStr);
+        const kgEndMin = toMinutes(kgEndStr);
+        if (kgStartMin === null || kgEndMin === null) return false;
+        return Math.max(kgStartMin, kbmStartMin) < Math.min(kgEndMin, kbmEndMin);
+      });
+
+      if (overlappingKegiatan) {
+        const kgNama = overlappingKegiatan.SesiAbsensi?.JadwalKegiatan?.nama || overlappingKegiatan.SesiAbsensi?.jenis_kegiatan || 'Kegiatan';
+        return { forgiven: true, kegiatanNama: kgNama };
+      }
+
+      return { forgiven: false };
+    } catch (err) {
+      console.warn('[SesiHelperService.checkGuruKegiatanGracePeriod] Failed checking:', err);
+      return { forgiven: false };
+    }
   }
 }
 

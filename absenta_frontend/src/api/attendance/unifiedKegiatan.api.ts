@@ -432,8 +432,8 @@ export async function getUnifiedPendamping(params: {
   sesi_id?: string;
   jadwal_kegiatan_id?: string;
   jenis_kegiatan?: string;
-}): Promise<{ success: boolean; data: UnifiedPendampingItem[]; sesi_id: string | null }> {
-  return requestWithFallback<{ success: boolean; data: UnifiedPendampingItem[]; sesi_id: string | null }>(
+}): Promise<{ success: boolean; data: UnifiedPendampingItem[]; sesi_id: string | null; wajib_tap_terminal_guru?: boolean }> {
+  return requestWithFallback<{ success: boolean; data: UnifiedPendampingItem[]; sesi_id: string | null; wajib_tap_terminal_guru?: boolean }>(
     'get',
     '/attendance/unified-kegiatan/pendamping',
     { params, headers: { 'X-Skip-403-Redirect': 'true' } }
@@ -452,6 +452,32 @@ export async function tapUnifiedPendampingRfid(payload: UnifiedRfidTapPayload): 
   return requestWithFallback<UnifiedRfidTapResponse>(
     'post',
     '/attendance/unified-kegiatan/tap-rfid',
+    { data: payload }
+  );
+}
+
+export interface SelfieGuruKegiatanPayload {
+  sesi_id?: string;
+  jadwal_kegiatan_id?: string;
+  jenis_kegiatan?: string;
+  foto_bukti: string;
+  catatan?: string;
+}
+
+export interface SelfieGuruKegiatanResponse {
+  success: boolean;
+  message: string;
+  sesi_id?: string;
+  guru_id?: string;
+  foto_bukti?: string;
+  waktu_tap?: string;
+  already_present?: boolean;
+}
+
+export async function selfieGuruKegiatan(payload: SelfieGuruKegiatanPayload): Promise<SelfieGuruKegiatanResponse> {
+  return requestWithFallback<SelfieGuruKegiatanResponse>(
+    'post',
+    '/attendance/unified-kegiatan/selfie-guru',
     { data: payload }
   );
 }

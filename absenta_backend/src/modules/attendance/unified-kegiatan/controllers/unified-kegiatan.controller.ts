@@ -87,6 +87,21 @@ export const unifiedKegiatanController = {
     }
   },
 
+  async selfieGuruKegiatan(request: any, reply: any) {
+    try {
+      const scope = request.dataScope as DataScope;
+      const userId = request.user?.userId || request.user?.id;
+      if (!scope?.tenantId || !userId) {
+        return reply.status(400).send({ success: false, message: 'Tenant ID dan User ID diperlukan' });
+      }
+
+      const res = await unifiedKegiatanService.selfieGuruKegiatan(scope.tenantId, userId, request.body || {});
+      return reply.send(res);
+    } catch (error: any) {
+      return reply.status(400).send({ success: false, message: error.message });
+    }
+  },
+
   async getStats(request: any, reply: any) {
     try {
       const scope = request.dataScope as DataScope;

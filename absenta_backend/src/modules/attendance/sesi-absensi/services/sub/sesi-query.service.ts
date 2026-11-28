@@ -453,7 +453,7 @@ export class SesiQueryService {
         UnitPengajaran: { select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true, foto: true } } } },
         Guru: { select: { id: true, nama_guru: true, nip: true, no_hp: true, foto: true } },
         GuruPelaksana: { select: { id: true, nama_guru: true, nip: true, no_hp: true } },
-        AbsenGuru: { select: { status: true, is_terlambat: true, waktu_tap: true, catatan: true } },
+        AbsenGuru: { select: { status: true, is_terlambat: true, waktu_tap: true, catatan: true, foto_bukti: true } },
         ProgresMateri: {
           select: {
             id: true,
@@ -863,6 +863,225 @@ export class SesiQueryService {
       }
     });
 
+    // 🎯 Mode Selfie Mandiri Kegiatan Guru (saat Admin menonaktifkan Wajib Tap Terminal):
+    // Jika query untuk 1 guru tertentu (schedTargetGuruId), periksa konfigurasi sekolah & kegiatan beririsan hari ini.
+    let wajibTapTerminalKegiatanGuru = true;
+    const guruAttendedKegiatanList: Array<{ jadwalId: string | null; nama: string; startMin: number; endMin: number }> = [];
+
+    if (schedTargetGuruId) {
+      try {
+        const toMin = (hhmm?: string | null) => {
+          if (!hhmm || !hhmm.includes(':')) return null;
+          const [h, m] = hhmm.split(':').map(Number);
+          return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+        };
+        const fmtHHMM = (dt?: Date | null) => {
+          if (!dt) return null;
+          return new Intl.DateTimeFormat('en-GB', {
+            timeZone: tz,
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          }).format(dt);
+        };
+
+        const dayLocalStart = new Date(`${dateStr}T00:00:00.000${tzOffset}`);
+        const dayLocalEnd = new Date(`${dateStr}T23:59:59.999${tzOffset}`);
+        const dayUtcStart = new Date(`${dateStr}T00:00:00.000Z`);
+        const dayUtcEnd = new Date(`${dateStr}T23:59:59.999Z`);
+
+        const [cfgWajibTap, guruKegiatanAbsens, activeKegiatansHariIni] = await Promise.all([
+          prisma.config.findFirst({
+            where: { tenant_id: tenantId, key: 'WAJIB_TAP_TERMINAL_KEGIATAN_GURU' },
+            select: { value: true },
+          }),
+          prisma.absenGuru.findMany({
+            where: {
+              tenant_id: tenantId,
+              guru_id: schedTargetGuruId,
+              SesiAbsensi: {
+                tanggal: { gte: dayLocalStart, lte: dayLocalEnd },
+                jenis_kegiatan: { not: 'KBM' },
+              },
+            },
+            include: {
+              SesiAbsensi: {
+                select: {
+                  id: true,
+                  kelas_id: true,
+                  jadwal_kegiatan_id: true,
+                  jenis_kegiatan: true,
+                  waktu_mulai: true,
+                  waktu_selesai: true,
+                  status: true,
+                  JadwalKegiatan: {
+                    select: {
+                      id: true,
+                      nama: true,
+                      jenis_kegiatan: true,
+                      waktu_mulai: true,
+                      waktu_selesai: true,
+                    },
+                  },
+                },
+              },
+            },
+          }),
+          prisma.jadwalKegiatan.findMany({
+            where: {
+              tenant_id: tenantId,
+              aktif: true,
+              hari: { has: hariName as any },
+              berlaku_mulai: { lte: dayUtcEnd },
+              OR: [
+                { berlaku_sampai: null },
+                { berlaku_sampai: { gte: dayUtcStart } },
+              ],
+            },
+          }),
+        ]);
+
+        wajibTapTerminalKegiatanGuru = cfgWajibTap?.value !== 'false';
+
+        // Rekam semua kegiatan di mana guru sudah tercatat HADIR hari ini (baik via Terminal maupun Selfie)
+        guruKegiatanAbsens.forEach((ag: any) => {
+          if (ag.status !== 'HADIR' || !ag.SesiAbsensi) return;
+          const s = ag.SesiAbsensi;
+          const sStart = toMin(s.JadwalKegiatan?.waktu_mulai || fmtHHMM(s.waktu_mulai));
+          const sEnd = toMin(s.JadwalKegiatan?.waktu_selesai || fmtHHMM(s.waktu_selesai));
+          if (sStart !== null && sEnd !== null) {
+            guruAttendedKegiatanList.push({
+              jadwalId: s.jadwal_kegiatan_id || s.JadwalKegiatan?.id || null,
+              nama: s.JadwalKegiatan?.nama || s.jenis_kegiatan || 'Kegiatan',
+              startMin: sStart,
+              endMin: sEnd,
+            });
+          }
+        });
+
+        // Jika Mode Selfie Mandiri aktif (wajibTapTerminalKegiatanGuru === false),
+        // suntikkan 1 kartu Sesi Kegiatan untuk setiap JadwalKegiatan non-APEL_SORE yang beririsan dengan KBM guru hari ini.
+        if (!wajibTapTerminalKegiatanGuru && activeKegiatansHariIni.length > 0) {
+          const guruKbmSlots = unifiedList
+            .filter((it: any) => !it.jadwal_kegiatan_id && (!it.jenis_kegiatan || String(it.jenis_kegiatan).toUpperCase() === 'KBM'))
+            .map((it: any) => {
+              const sMin = toMin(it.jam_mulai || (it.waktu_mulai ? fmtHHMM(new Date(it.waktu_mulai)) : null));
+              const eMin = toMin(it.jam_selesai || (it.waktu_selesai ? fmtHHMM(new Date(it.waktu_selesai)) : null)) ?? (sMin !== null ? sMin + 45 : null);
+              return { sMin, eMin, kelasId: it.kelas_id };
+            })
+            .filter((x: any) => x.sMin !== null && x.eMin !== null);
+
+          if (guruKbmSlots.length > 0) {
+            const existingActivityJadwalIds = new Set(
+              unifiedList
+                .filter((it: any) => Boolean(it.jadwal_kegiatan_id))
+                .map((it: any) => String(it.jadwal_kegiatan_id))
+            );
+
+            // Ambil 1 sesi fisik perwakilan per jadwal_kegiatan_id hari ini jika sudah ada
+            const existingRepSessions = await prisma.sesiAbsensi.findMany({
+              where: {
+                tenant_id: tenantId,
+                tanggal: { gte: dayLocalStart, lte: dayLocalEnd },
+                jadwal_kegiatan_id: { in: activeKegiatansHariIni.map((k: any) => k.id) },
+              },
+              select: {
+                id: true,
+                kelas_id: true,
+                jadwal_kegiatan_id: true,
+                status: true,
+                waktu_mulai: true,
+                waktu_selesai: true,
+              },
+              orderBy: { created_at: 'asc' },
+            });
+            const repSessionByJadwal = new Map<string, any>();
+            existingRepSessions.forEach((s: any) => {
+              if (s.jadwal_kegiatan_id && !repSessionByJadwal.has(s.jadwal_kegiatan_id)) {
+                repSessionByJadwal.set(s.jadwal_kegiatan_id, s);
+              }
+            });
+
+            for (const keg of activeKegiatansHariIni) {
+              if (existingActivityJadwalIds.has(String(keg.id))) continue;
+              const kegType = String(keg.jenis_kegiatan || '').toUpperCase();
+              const kegName = String(keg.nama || '');
+              // Abaikan Apel Pulang / Apel Sore (aware 2 shift)
+              if (kegType === 'APEL_SORE' || /pulang|apel\s*sore|apel_sore/i.test(kegName)) continue;
+
+              const kegMulai = (keg.waktu_mulai || '06:30').slice(0, 5);
+              const kegSelesai = (keg.waktu_selesai || '08:00').slice(0, 5);
+              const kegStartMin = toMin(kegMulai);
+              const kegEndMin = toMin(kegSelesai);
+              if (kegStartMin === null || kegEndMin === null) continue;
+
+              // Cek apakah benar-benar beririsan dengan minimal 1 jadwal KBM guru hari ini
+              const isOverlapping = guruKbmSlots.some(
+                (slot: any) => Math.max(kegStartMin, slot.sMin) < Math.min(kegEndMin, slot.eMin)
+              );
+              if (!isOverlapping) continue;
+
+              // Cari apakah guru ini sudah pernah absen/selfie pada kegiatan ini hari ini
+              const matchedAbsen = guruKegiatanAbsens.find(
+                (ag: any) =>
+                  ag.SesiAbsensi?.jadwal_kegiatan_id === keg.id ||
+                  String(ag.SesiAbsensi?.jenis_kegiatan || '').trim().toLowerCase() === kegName.trim().toLowerCase()
+              );
+              const repSesi = matchedAbsen?.SesiAbsensi || repSessionByJadwal.get(keg.id) || null;
+              const hasGuruAttended = matchedAbsen?.status === 'HADIR';
+
+              unifiedList.push({
+                id: repSesi?.id || `keg_virtual_${keg.id}`,
+                tenant_id: tenantId,
+                kelas_id: repSesi?.kelas_id || '',
+                mapel_id: null,
+                guru_id: schedTargetGuruId,
+                jadwal_kbm_id: null,
+                jadwal_kegiatan_id: keg.id,
+                jenis_kegiatan: keg.nama || keg.jenis_kegiatan || 'KEGIATAN',
+                kegiatan: keg.nama || keg.jenis_kegiatan || 'Kegiatan',
+                mapel_nama: keg.nama || keg.jenis_kegiatan || 'Kegiatan',
+                kelas_nama: 'Kegiatan Sekolah',
+                tanggal: dayLocalStart,
+                waktu_mulai: `${dateStr}T${kegMulai}:00.000${tzOffset}`,
+                waktu_selesai: `${dateStr}T${kegSelesai}:00.000${tzOffset}`,
+                jam_mulai: kegMulai,
+                jam_selesai: kegSelesai,
+                status: hasGuruAttended ? 'BERLANGSUNG' : (repSesi?.status || 'MENDATANG'),
+                foto_kegiatan: matchedAbsen?.foto_bukti || null,
+                guru_status: hasGuruAttended ? 'HADIR' : 'BELUM_TAP',
+                absenGuru: matchedAbsen
+                  ? {
+                      status: matchedAbsen.status,
+                      is_terlambat: matchedAbsen.is_terlambat,
+                      waktu_tap: matchedAbsen.waktu_tap,
+                      catatan: matchedAbsen.catatan,
+                      foto_bukti: matchedAbsen.foto_bukti,
+                    }
+                  : null,
+                AbsenGuru: matchedAbsen
+                  ? [
+                      {
+                        status: matchedAbsen.status,
+                        is_terlambat: matchedAbsen.is_terlambat,
+                        waktu_tap: matchedAbsen.waktu_tap,
+                        catatan: matchedAbsen.catatan,
+                        foto_bukti: matchedAbsen.foto_bukti,
+                      },
+                    ]
+                  : [],
+                is_guru_kegiatan_selfie_card: true,
+                wajib_tap_terminal_kegiatan_guru: false,
+                summary: { total: 0, HADIR: 0, IZIN: 0, SAKIT: 0, ALPA: 0, TERLAMBAT: 0 },
+              });
+            }
+          }
+        }
+      } catch (kegInjectErr: any) {
+        appLogger.warn({ error: kegInjectErr?.message }, '[getSesiAbsensiList] Guru kegiatan selfie injection warning');
+      }
+    }
+
     // Merge multiple session/schedule fragments belonging to the same lesson block (kelas, guru, mapel, unit)
     const blockMap = new Map<string, any[]>();
     unifiedList.forEach((item: any) => {
@@ -989,11 +1208,11 @@ export class SesiQueryService {
       const endAt = item.waktu_selesai ? new Date(item.waktu_selesai) : null;
       const hasValidTime = !!startAt && !!endAt && !isNaN(startAt.getTime()) && !isNaN(endAt.getTime());
 
-      const isFinished = item.status === 'SELESAI';
+      const isFinishedRaw = item.status === 'SELESAI';
       const isLiveByTime = hasValidTime && serverNow >= (startAt as Date) && serverNow <= (endAt as Date);
       const isPastSchedule = hasValidTime && serverNow > (endAt as Date);
       
-      const isVirtualSession = typeof item.id === 'string' && (item.id.startsWith('sched_') || item.status === 'MENDATANG');
+      const isVirtualSession = typeof item.id === 'string' && (item.id.startsWith('sched_') || item.id.startsWith('keg_virtual_') || item.status === 'MENDATANG');
       
       const absenGuru = item.absenGuru || (Array.isArray(item.AbsenGuru) ? item.AbsenGuru[0] : null);
       const isPlaceholderAbsenGuru = !absenGuru || (!absenGuru.waktu_tap && (!absenGuru.status || String(absenGuru.status).toUpperCase().includes('BELUM')));
@@ -1030,6 +1249,9 @@ export class SesiQueryService {
 
       const hasTeacherCheckInOrPhoto = Boolean(item.foto_kegiatan) || isDaringFromProgres || (item.guru_status && item.guru_status !== 'BELUM_TAP' && item.guru_status !== 'BELUM_HADIR' && item.guru_status !== 'ALPA') || !isPlaceholderAbsenGuru;
 
+      const isSelfieKegiatanCard = Boolean(item.is_guru_kegiatan_selfie_card);
+      const isFinished = isFinishedRaw || (isSelfieKegiatanCard && isPastSchedule && hasTeacherCheckInOrPhoto);
+
       // 1. isLive:
       // - HANYA bernilai TRUE jika sesi fisik sudah resmi dibuka/dimulai oleh guru (ada foto / check-in guru)
       //   dan sesi belum selesai ditutup.
@@ -1037,7 +1259,7 @@ export class SesiQueryService {
         item.jadwal_kegiatan_id ||
         (item.jenis_kegiatan && String(item.jenis_kegiatan).toUpperCase() !== 'KBM')
       );
-      const isLive = !isFinished && !isVirtualSession && item.status === 'BERLANGSUNG' && (hasTeacherCheckInOrPhoto || isKegiatanItem);
+      const isLive = !isFinished && !isVirtualSession && item.status === 'BERLANGSUNG' && (isSelfieKegiatanCard ? hasTeacherCheckInOrPhoto : (hasTeacherCheckInOrPhoto || isKegiatanItem));
 
       // 2. isOverdue (TERLEWAT):
       // - HANYA untuk jadwal virtual atau sesi yang TIDAK PERNAH DIBUKA sama sekali (tanpa foto / tanpa check-in guru)
@@ -1124,8 +1346,27 @@ export class SesiQueryService {
       const guruPengganti = item.guru_inval_nama || item.guru_pengganti_nama || item.GuruPelaksana?.nama_guru || null;
       const guruPengampu = item.guru_pengampu_nama || item.Guru?.nama_guru || item.guru_nama || null;
 
+      // Cek apakah guru sudah tercatat HADIR pada kegiatan yang beririsan dengan KBM ini
+      let guruHadirKegiatanNama: string | null = null;
+      if (schedTargetGuruId && !isKegiatanItem && guruAttendedKegiatanList.length > 0) {
+        const parseMin = (hhmm?: string | null) => {
+          if (!hhmm || !hhmm.includes(':')) return null;
+          const [h, m] = hhmm.split(':').map(Number);
+          return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+        };
+        const sMin = parseMin(item.jam_mulai);
+        const eMin = parseMin(item.jam_selesai) ?? (sMin !== null ? sMin + 45 : null);
+        if (sMin !== null && eMin !== null) {
+          const matched = guruAttendedKegiatanList.find((att) => Math.max(att.startMin, sMin) < Math.min(att.endMin, eMin));
+          if (matched) guruHadirKegiatanNama = matched.nama;
+        }
+      }
+
       return {
         ...item,
+        wajib_tap_terminal_kegiatan_guru: wajibTapTerminalKegiatanGuru,
+        guru_hadir_kegiatan_beririsan: Boolean(guruHadirKegiatanNama),
+        guru_hadir_kegiatan_nama: guruHadirKegiatanNama,
         isLive,
         isReadyToOpen,
         isFinished,

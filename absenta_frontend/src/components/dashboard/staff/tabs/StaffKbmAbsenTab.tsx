@@ -13,6 +13,7 @@ import {
   getPresensiTerpaduSesi, 
   getTrackingHarianGuruMe 
 } from '../../../../api/attendanceGerbang.api';
+import { selfieGuruKegiatan } from '../../../../api/attendance/unifiedKegiatan.api';
 
 import { toLocalDate, formatLocalDateTime, getVirtualDate } from '../../../../utils/attendance/time';
 import { SesiAttendanceList, type SesiAttendanceRecord } from '../../../attendance/sesi/SesiAttendanceList';
@@ -198,11 +199,24 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
     },
   });
 
-  // Mutation: Buka Sesi KBM baru dengan foto
+  // Mutation: Buka Sesi KBM baru atau Selfie Kegiatan Guru dengan foto
   const openSessionMutation = useMutation({
     mutationFn: async (payload: { jadwal: TimelineItem; fotoDataUrl: string }) => {
-      const nowISO = formatLocalDateTime(getVirtualDate());
       const foto = payload.fotoDataUrl;
+      const isKegiatanSelfie = Boolean(
+        (payload.jadwal as any).is_guru_kegiatan_selfie_card ||
+        (payload.jadwal as any).session?.is_guru_kegiatan_selfie_card
+      );
+      if (isKegiatanSelfie) {
+        const rawSesiId = (payload.jadwal as any).session?.id || payload.jadwal.id;
+        return selfieGuruKegiatan({
+          sesi_id: rawSesiId && !String(rawSesiId).startsWith('keg_virtual_') ? String(rawSesiId) : undefined,
+          jadwal_kegiatan_id: (payload.jadwal as any).jadwal_kegiatan_id || (payload.jadwal as any).session?.jadwal_kegiatan_id || undefined,
+          jenis_kegiatan: (payload.jadwal as any).jenis_kegiatan || payload.jadwal.kegiatan || undefined,
+          foto_bukti: foto,
+        });
+      }
+      const nowISO = formatLocalDateTime(getVirtualDate());
       const rawJadwalId = (payload.jadwal as any).jadwal_kbm_id || payload.jadwal.id;
       const cleanJadwalId = rawJadwalId ? String(rawJadwalId).replace(/^sched_/, '') : undefined;
       const jamSelesai = (payload.jadwal as any).jam_selesai || null;
@@ -220,18 +234,24 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
       } as any);
     },
     onSuccess: (res: any, variables) => {
-      const namaKegiatan = variables.jadwal.mapel_nama || (variables.jadwal as any).mapel || variables.jadwal.kegiatan || (variables.jadwal as any).Mapel?.nama_mapel || 'Mata Pelajaran';
-      toast.success(`Sesi KBM ${namaKegiatan} berhasil dibuka!`);
+      const isKegiatanSelfie = Boolean(
+        (variables.jadwal as any).is_guru_kegiatan_selfie_card ||
+        (variables.jadwal as any).session?.is_guru_kegiatan_selfie_card
+      );
+      const namaKegiatan = (variables.jadwal as any).mapel_nama || (variables.jadwal as any).mapel || variables.jadwal.kegiatan || (variables.jadwal as any).Mapel?.nama_mapel || 'Mata Pelajaran';
+      toast.success(isKegiatanSelfie ? (res?.message || `Selfie ${namaKegiatan} berhasil dicatat!`) : `Sesi KBM ${namaKegiatan} berhasil dibuka!`);
       setPhotoModalOpen(false);
       setTargetJadwal(null);
       queryClient.invalidateQueries({ queryKey: ['staff-timeline-unified'] });
       queryClient.invalidateQueries({ queryKey: ['sesi-absensi'] });
       queryClient.invalidateQueries({ queryKey: ['guru-monitoring-unified'] });
       queryClient.invalidateQueries({ queryKey: ['sesi-detail-attendance'] });
+      queryClient.invalidateQueries({ queryKey: ['unified-kegiatan-terminal-feed'] });
+      queryClient.invalidateQueries({ queryKey: ['unified-kegiatan-pendamping'] });
       if (onRefreshTimeline) onRefreshTimeline();
 
-      // 🎯 Auto-launch Meja Kerja Kelas saat sesi berhasil dibuka
-      if (res?.data) {
+      // 🎯 Auto-launch Meja Kerja Kelas saat sesi KBM berhasil dibuka (bukan kartu selfie kegiatan)
+      if (!isKegiatanSelfie && res?.data) {
         setWorkspaceItem({
           ...variables.jadwal,
           session: res.data,
@@ -241,7 +261,7 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
     },
     onError: (err: any) => {
       const msg = err?.response?.data?.message || err?.message || 'Terjadi kesalahan';
-      toast.error('Gagal membuka sesi KBM: ' + msg);
+      toast.error('Gagal menyimpan presensi: ' + msg);
     },
   });
 
@@ -486,7 +506,7 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
                   onOpenPhotoModal={handleOpenPhotoModal}
                   onOpenBahanAjar={handleOpenBahanAjar}
                   onViewPhoto={(it) => {
-                    const pUrl = it.session?.foto_kegiatan || it.foto_kegiatan || it.session?.foto_bukti_url || (it as any).AbsenGuru?.[0]?.foto_masuk;
+                    const pUrl = it.session?.foto_kegiatan || it.foto_kegiatan || it.session?.foto_bukti_url || (it as any).AbsenGuru?.[0]?.foto_bukti || (it as any).AbsenGuru?.[0]?.foto_masuk || (it as any).session?.AbsenGuru?.[0]?.foto_bukti;
                     if (pUrl) {
                       setPreviewPhotoData({
                         photoUrl: pUrl,
@@ -601,8 +621,10 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
           kelasNama={targetJadwal.kelas_nama}
           mapelNama={targetJadwal.kegiatan}
           guruNama={guruNama}
-          jenisKegiatan={targetJadwal.jenis_kegiatan}
+          jenisKegiatan={(targetJadwal as any).jenis_kegiatan}
           activityName={targetJadwal.kegiatan}
+          title={(targetJadwal as any).is_guru_kegiatan_selfie_card ? `Selfie Kehadiran ${targetJadwal.kegiatan}` : undefined}
+          instructionText={(targetJadwal as any).is_guru_kegiatan_selfie_card ? 'Ambil foto selfie di lokasi kegiatan untuk mencatat kehadiran dan mengaktifkan pengampunan keterlambatan sesi KBM pertama Anda.' : undefined}
           isLoading={openSessionMutation.isPending}
         />
       )}

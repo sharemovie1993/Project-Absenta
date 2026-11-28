@@ -1339,6 +1339,7 @@ model AbsenGuru {
   menit_keterlambatan Int?
   poin_kehadiran      Int            @default(0)
   catatan             String?
+  foto_bukti          String?        @db.Text
   tahun_pelajaran_id  String
   semester_id         String
   created_at          DateTime       @default(now()) @db.Timestamptz

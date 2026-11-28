@@ -132,27 +132,72 @@ async function upsertTeacherAttendanceOnOpen(
   tahunPelajaranId: string,
   semesterId: string,
   catatan: string = 'Hadir saat pembukaan sesi KBM (Foto)',
-  kelasId?: string | null
+  kelasId?: string | null,
+  endTarget?: Date | null
 ): Promise<void> {
   try {
     const now = new Date();
-    
-    // ⚖️ Resolusi Target Mulai Efektif (Pembiasaan & Transisi Guru Molor)
+    const tz = await getTenantTimezone(tenantId);
+    const tzOffset = getTenantOffsetString(tz);
+    const todayDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(now);
+    const formatHHMM = (dt?: Date | null) => {
+      if (!dt || isNaN(dt.getTime())) return null;
+      return new Intl.DateTimeFormat('en-GB', {
+        timeZone: tz,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).format(dt);
+    };
+
+    // ⚖️ Resolusi Target Mulai Efektif (Kejadian Khusus & Transisi Guru Molor;
+    // pengampunan kegiatan TIDAK otomatis — wajib diverifikasi via kehadiran aktual di kegiatan!)
     const { effectiveStartTarget, auditNote } = await sesiHelperService.resolveEffectiveKbmStartTarget(
       tenantId,
       kelasId,
       startTarget,
-      now
+      now,
+      { skipKegiatanExtension: true, kbmEnd: endTarget }
     );
+
+    const tenantCfg = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { toleransi_kbm_guru_inval_menit: true }
+    });
+    const tolGuruKbmInval = tenantCfg?.toleransi_kbm_guru_inval_menit ?? 10;
 
     let isTerlambat = false;
     let menitKeterlambatan = 0;
-    if (effectiveStartTarget && !isNaN(effectiveStartTarget.getTime()) && now.getTime() > effectiveStartTarget.getTime()) {
-      isTerlambat = true;
-      menitKeterlambatan = Math.max(0, Math.floor((now.getTime() - effectiveStartTarget.getTime()) / (60 * 1000)));
+    let graceAuditNote: string | null = null;
+    if (effectiveStartTarget && !isNaN(effectiveStartTarget.getTime())) {
+      const diffMinutes = Math.floor((now.getTime() - effectiveStartTarget.getTime()) / (60 * 1000));
+      if (diffMinutes > tolGuruKbmInval) {
+        isTerlambat = true;
+        menitKeterlambatan = Math.max(0, diffMinutes);
+      }
     }
 
-    const finalCatatan = auditNote ? `${catatan} (${auditNote})` : catatan;
+    // 🛡️ Pengampunan Keterlambatan Tugas Kegiatan (Tap Terminal ATAU Selfie Mandiri Kegiatan):
+    // Berlaku HANYA jika guru tercatat HADIR di sesi kegiatan non-APEL_SORE yang beririsan hari ini.
+    if (isTerlambat && startTarget) {
+      const grace = await sesiHelperService.checkGuruKegiatanGracePeriod(
+        tenantId,
+        guruId,
+        formatHHMM(startTarget),
+        formatHHMM(endTarget),
+        todayDateStr,
+        tz,
+        tzOffset
+      );
+      if (grace.forgiven) {
+        isTerlambat = false;
+        menitKeterlambatan = 0;
+        graceAuditNote = `Pengampunan tugas ${grace.kegiatanNama || 'Kegiatan'}`;
+      }
+    }
+
+    const combinedNote = graceAuditNote || auditNote;
+    const finalCatatan = combinedNote ? `${catatan} (${combinedNote})` : catatan;
 
     const existingAbsen = await prisma.absenGuru.findFirst({
       where: { tenant_id: tenantId, sesi_id: sesiId, guru_id: guruId }
@@ -394,7 +439,8 @@ export class SesiCreatorService {
             existingSesi.tahun_pelajaran_id,
             existingSesi.semester_id,
             'Hadir saat pembukaan sesi KBM (Foto Guru)',
-            existingSesi.kelas_id
+            existingSesi.kelas_id,
+            endTarget
           );
         }
 
@@ -520,7 +566,8 @@ export class SesiCreatorService {
         targetTpId || 'default-tp',
         targetSemId || 'default-sem',
         note,
-        kelas_id
+        kelas_id,
+        effectiveParsedEnd
       );
     }
 

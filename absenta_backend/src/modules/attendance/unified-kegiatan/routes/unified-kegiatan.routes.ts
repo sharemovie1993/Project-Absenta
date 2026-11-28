@@ -1,6 +1,7 @@
 import { unifiedKegiatanController } from '../controllers/unified-kegiatan.controller';
 import { requireCapability } from '../../../../middlewares/requireCapability';
 import { determineDataScope } from '../../../../middlewares/dataScope';
+import { RoleName } from '../../../../constants/enums';
 
 export async function unifiedKegiatanRoutes(fastify: any) {
   // 1. Guard Status
@@ -55,6 +56,15 @@ export async function unifiedKegiatanRoutes(fastify: any) {
       determineDataScope(),
     ],
     handler: unifiedKegiatanController.tapPendampingRfid,
+  });
+
+  // 4c. Selfie Mandiri Guru pada Sesi Kegiatan (Mode Wajib Tap Terminal = OFF)
+  fastify.post('/selfie-guru', {
+    preHandler: [
+      requireCapability('attendance.sessions.create', { exemptRoles: [RoleName.GURU, RoleName.ADMIN] }),
+      determineDataScope(),
+    ],
+    handler: unifiedKegiatanController.selfieGuruKegiatan,
   });
 
   // 5. Statistik

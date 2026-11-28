@@ -228,7 +228,26 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
     item.status || { isLive, isReadyToOpen, isFinished, isOverdue, isUpcoming }
   );
 
-  const fotoKegiatanUrl = item.foto_kegiatan || item.foto_masuk || item.session?.foto_kegiatan || item.session?.foto_masuk || item.AbsenGuru?.[0]?.foto_masuk || null;
+  const fotoKegiatanUrl =
+    item.foto_kegiatan ||
+    item.foto_masuk ||
+    item.session?.foto_kegiatan ||
+    item.session?.foto_masuk ||
+    item.AbsenGuru?.[0]?.foto_bukti ||
+    item.AbsenGuru?.[0]?.foto_masuk ||
+    item.session?.AbsenGuru?.[0]?.foto_bukti ||
+    null;
+
+  const isGuruKegiatanSelfieCard = Boolean(
+    item.is_guru_kegiatan_selfie_card || item.session?.is_guru_kegiatan_selfie_card
+  );
+  const wajibTapTerminalGuru =
+    (item.wajib_tap_terminal_kegiatan_guru ?? item.session?.wajib_tap_terminal_kegiatan_guru) !== false;
+  const guruHadirKegiatanBeririsan = Boolean(
+    item.guru_hadir_kegiatan_beririsan || item.session?.guru_hadir_kegiatan_beririsan
+  );
+  const guruHadirKegiatanNama =
+    item.guru_hadir_kegiatan_nama || item.session?.guru_hadir_kegiatan_nama || null;
 
   const rawTeacherStatus = item.guru_status 
     || item.status?.teacherStatus 
@@ -334,8 +353,8 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
   const kegiatanNamaLabel = item.kegiatan || item.nama_kegiatan || (item.jenis_kegiatan === 'KETARUNAAN' ? 'Ketarunaan' : item.jenis_kegiatan === 'DHUHA' ? 'Dhuha' : item.jenis_kegiatan) || 'Kegiatan';
 
   // 🏛️ Prediksi Batas Aman Hadir — Real-Time, update tiap menit
-  // Hanya aktif untuk kartu mode GURU yang belum dimulai / siap dibuka
-  const isGuroPrediksiActive = mode === 'GURU' && (isReadyToOpen || isUpcoming);
+  // Hanya aktif untuk kartu KBM mode GURU yang belum dimulai / siap dibuka (bukan kartu selfie kegiatan itu sendiri)
+  const isGuroPrediksiActive = mode === 'GURU' && !isGuruKegiatanSelfieCard && (isReadyToOpen || isUpcoming);
 
   const { data: kegiatanData } = useQuery({
     queryKey: ['jadwal-kegiatan-list', true],
@@ -458,6 +477,12 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
   const handleClick = (e: React.MouseEvent) => {
     if (onSelectSession) {
       onSelectSession(item);
+    } else if (mode === 'GURU' && isGuruKegiatanSelfieCard) {
+      if (!isTeacherPresent && !isFinished && !isOverdue && canStartSessionNow && onOpenPhotoModal) {
+        onOpenPhotoModal(item);
+      } else if (fotoKegiatanUrl && onViewPhoto) {
+        onViewPhoto(item);
+      }
     } else if (mode === 'GURU' && (isLive || isTeacherPresent) && onOpenWorkspace) {
       onOpenWorkspace(item);
     } else if (mode === 'GURU' && isReadyToOpen && !isLive && !isFinished && !isOverdue && onOpenPhotoModal) {
@@ -551,7 +576,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
 
   const headerActions = (
     <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
-      {onOpenBahanAjar && (
+      {onOpenBahanAjar && !isGuruKegiatanSelfieCard && (
         <button
           type="button"
           onClick={(e) => {
@@ -566,7 +591,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
         </button>
       )}
 
-      {mode === 'GURU' && onTestAlert && (
+      {mode === 'GURU' && onTestAlert && !isGuruKegiatanSelfieCard && (
         <button
           type="button"
           onClick={(e) => {
@@ -710,12 +735,27 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
         )}
         {showGuruClassCol && (
           <div className="shrink-0 flex items-start pt-0.5">
-            <div className="w-16 h-20 rounded-xl border-2 border-indigo-100 dark:border-indigo-900/70 bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-indigo-950/70 dark:via-slate-900 dark:to-blue-950/50 shadow-xs flex flex-col items-center justify-center px-1.5 text-center relative overflow-hidden">
-              <span className="text-[9px] font-extrabold uppercase tracking-widest text-indigo-500 dark:text-indigo-400">
-                Kelas
+            <div className={cn(
+              "w-16 h-20 rounded-xl border-2 shadow-xs flex flex-col items-center justify-center px-1.5 text-center relative overflow-hidden",
+              isGuruKegiatanSelfieCard
+                ? "border-violet-200 dark:border-violet-800/80 bg-gradient-to-br from-violet-50 via-white to-indigo-50 dark:from-violet-950/70 dark:via-slate-900 dark:to-indigo-950/50"
+                : "border-indigo-100 dark:border-indigo-900/70 bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-indigo-950/70 dark:via-slate-900 dark:to-blue-950/50"
+            )}>
+              <span className={cn(
+                "text-[9px] font-extrabold uppercase tracking-widest",
+                isGuruKegiatanSelfieCard
+                  ? "text-violet-600 dark:text-violet-400"
+                  : "text-indigo-500 dark:text-indigo-400"
+              )}>
+                {isGuruKegiatanSelfieCard ? 'Sesi' : 'Kelas'}
               </span>
-              <span className="text-xs sm:text-sm font-black text-indigo-900 dark:text-indigo-100 leading-tight mt-0.5 break-words">
-                {kelasNama}
+              <span className={cn(
+                "text-[11px] sm:text-xs font-black leading-tight mt-0.5 break-words",
+                isGuruKegiatanSelfieCard
+                  ? "text-violet-900 dark:text-violet-100"
+                  : "text-indigo-900 dark:text-indigo-100"
+              )}>
+                {isGuruKegiatanSelfieCard ? 'Kegiatan' : kelasNama}
               </span>
             </div>
           </div>
@@ -1106,28 +1146,68 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
           </div>
         )}
 
-        {/* 3. POV GURU: Peringatan Irisan Pembiasaan + Tombol Aksi Guru */}
-        {mode === 'GURU' && !isTeacherPresent && !isFinished && !isOverdue && prediksiRealtime?.kegiatanNama && (
+        {/* 3. POV GURU: Peringatan / Info Irisan Kegiatan + Tombol Aksi Guru */}
+        {mode === 'GURU' && isGuruKegiatanSelfieCard && !isTeacherPresent && !isFinished && !isOverdue && (
           <div
             onClick={(e) => e.stopPropagation()}
-            className="p-2.5 sm:p-3 rounded-xl bg-amber-50/90 dark:bg-amber-950/35 border border-amber-300/80 dark:border-amber-800/70 flex items-start gap-2.5"
+            className="p-2.5 sm:p-3 rounded-xl bg-violet-50/90 dark:bg-violet-950/35 border border-violet-300/80 dark:border-violet-800/70 flex items-start gap-2.5"
           >
-            <AlertCircle size={15} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-            <p className="text-[11px] sm:text-xs font-medium text-amber-950 dark:text-amber-100 leading-snug">
-              <span className="font-black">Wajib Hadir Fisik di Kegiatan:</span> Jam KBM ini beririsan dengan{' '}
-              <strong className="font-bold">{prediksiRealtime.kegiatanNama}</strong> (
-              {prediksiRealtime.kegiatanMulai ? `${prediksiRealtime.kegiatanMulai}–` : 's.d. '}
-              {prediksiRealtime.deadline} WIB). Silakan hadir fisik dan lakukan presensi melalui{' '}
-              <strong className="font-bold">Panitia {prediksiRealtime.kegiatanNama}</strong> di lokasi kegiatan agar tidak dianggap telat saat presensi KBM.
+            <Camera size={15} className="text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
+            <p className="text-[11px] sm:text-xs font-medium text-violet-950 dark:text-violet-100 leading-snug">
+              <span className="font-black">Selfie Mandiri Kegiatan:</span> Ambil foto selfie di lokasi{' '}
+              <strong className="font-bold">{kegiatanNamaLabel}</strong> untuk mencatat kehadiran dan mengaktifkan pengampunan keterlambatan pada sesi KBM pertama Anda yang beririsan.
             </p>
           </div>
+        )}
+
+        {mode === 'GURU' && !isGuruKegiatanSelfieCard && !isTeacherPresent && !isFinished && !isOverdue && prediksiRealtime?.kegiatanNama && (
+          guruHadirKegiatanBeririsan ? (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="p-2.5 sm:p-3 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/35 border border-emerald-300/80 dark:border-emerald-800/70 flex items-start gap-2.5"
+            >
+              <CheckCircle2 size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+              <p className="text-[11px] sm:text-xs font-medium text-emerald-950 dark:text-emerald-100 leading-snug">
+                <span className="font-black">Kehadiran Kegiatan Tercatat:</span> Anda sudah tercatat hadir pada{' '}
+                <strong className="font-bold">{guruHadirKegiatanNama || prediksiRealtime.kegiatanNama}</strong>. Pengampunan keterlambatan aktif saat Anda membuka sesi KBM ini.
+              </p>
+            </div>
+          ) : wajibTapTerminalGuru ? (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="p-2.5 sm:p-3 rounded-xl bg-amber-50/90 dark:bg-amber-950/35 border border-amber-300/80 dark:border-amber-800/70 flex items-start gap-2.5"
+            >
+              <AlertCircle size={15} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-[11px] sm:text-xs font-medium text-amber-950 dark:text-amber-100 leading-snug">
+                <span className="font-black">Wajib Hadir Fisik di Kegiatan:</span> Jam KBM ini beririsan dengan{' '}
+                <strong className="font-bold">{prediksiRealtime.kegiatanNama}</strong> (
+                {prediksiRealtime.kegiatanMulai ? `${prediksiRealtime.kegiatanMulai}–` : 's.d. '}
+                {prediksiRealtime.deadline} WIB). Silakan hadir fisik dan lakukan presensi melalui{' '}
+                <strong className="font-bold">Panitia {prediksiRealtime.kegiatanNama}</strong> di lokasi kegiatan agar tidak dianggap telat saat presensi KBM.
+              </p>
+            </div>
+          ) : (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="p-2.5 sm:p-3 rounded-xl bg-indigo-50/90 dark:bg-indigo-950/35 border border-indigo-300/80 dark:border-indigo-800/70 flex items-start gap-2.5"
+            >
+              <Camera size={15} className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+              <p className="text-[11px] sm:text-xs font-medium text-indigo-950 dark:text-indigo-100 leading-snug">
+                <span className="font-black">Selfie Kegiatan Tersedia:</span> Jam KBM ini beririsan dengan{' '}
+                <strong className="font-bold">{prediksiRealtime.kegiatanNama}</strong> (
+                {prediksiRealtime.kegiatanMulai ? `${prediksiRealtime.kegiatanMulai}–` : 's.d. '}
+                {prediksiRealtime.deadline} WIB). Silakan lakukan{' '}
+                <strong className="font-bold">Selfie Kegiatan</strong> pada kartu kegiatan di atas agar keterlambatan saat membuka sesi KBM pertama Anda diampuni.
+              </p>
+            </div>
+          )
         )}
 
         {mode === 'GURU' && (
           <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
               {/* Mobile: Bahan Ajar ikut menyatu rapi di baris tombol aksi */}
-              {onOpenBahanAjar && (
+              {onOpenBahanAjar && !isGuruKegiatanSelfieCard && (
                 <Button
                   type="button"
                   size="sm"
@@ -1143,7 +1223,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                   <span>Bahan Ajar</span>
                 </Button>
               )}
-              {/* 1. Guru BELUM HADIR: Tombol Foto Masuk Guru / Mulai KBM */}
+              {/* 1. Guru BELUM HADIR: Tombol Selfie Kegiatan / Foto Masuk Guru / Mulai KBM */}
               {!isTeacherPresent && !isFinished && !isOverdue && onOpenPhotoModal && (
                 <Button
                   type="button"
@@ -1158,20 +1238,32 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                     "h-8 px-3.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all",
                     !canStartSessionNow
                       ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60"
+                      : isGuruKegiatanSelfieCard
+                      ? "bg-violet-600 hover:bg-violet-500 text-white shadow-sm shadow-violet-900/20 border-none cursor-pointer active:scale-95"
                       : isSessionActive
                       ? "bg-amber-500 hover:bg-amber-400 text-slate-950 animate-pulse shadow-sm shadow-amber-950/20 border-none cursor-pointer active:scale-95"
                       : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm shadow-emerald-900/20 border-none cursor-pointer active:scale-95"
                   )}
                   title={
                     !canStartSessionNow
-                      ? `Tombol Mulai Sesi aktif 15 menit sebelum jam KBM (${jamMulai} WIB)`
+                      ? `Tombol aktif 15 menit sebelum jam mulai (${jamMulai} WIB)`
+                      : isGuruKegiatanSelfieCard
+                      ? `Ambil selfie kehadiran di lokasi ${kegiatanNamaLabel} untuk pengampunan telat KBM`
                       : isSessionActive
                       ? "Sesi telah dibuka oleh Petugas Kelas. Klik untuk mengambil foto verifikasi kehadiran Bapak/Ibu Guru"
                       : "Mulai sesi KBM dengan foto bukti kehadiran guru"
                   }
                 >
                   <Camera size={13} />
-                  <span>{isSessionActive ? "📸 Foto Masuk Guru" : isSesiKegiatan ? "Mulai Sesi" : "Mulai KBM"}</span>
+                  <span>
+                    {isGuruKegiatanSelfieCard
+                      ? "📸 Selfie Kegiatan"
+                      : isSessionActive
+                      ? "📸 Foto Masuk Guru"
+                      : isSesiKegiatan
+                      ? "Mulai Sesi"
+                      : "Mulai KBM"}
+                  </span>
                 </Button>
               )}
 
@@ -1186,7 +1278,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                     onOpenPhotoModal(item);
                   }}
                   className="h-8 px-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer border border-slate-300 dark:border-slate-700"
-                  title={fotoKegiatanUrl ? "Ambil ulang / perbarui foto bukti KBM" : "Ambil foto bukti kehadiran di kelas"}
+                  title={fotoKegiatanUrl ? "Ambil ulang / perbarui foto bukti" : "Ambil foto bukti kehadiran"}
                 >
                   <Camera size={13} className="text-emerald-500" />
                   <span>{fotoKegiatanUrl ? "Foto Ulang" : "Ambil Foto"}</span>
@@ -1194,7 +1286,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
               )}
 
               {/* 🎯 MEJA KERJA KELAS (ZEN LIVE WORKSPACE) */}
-              {onOpenWorkspace && !isFinished && !isOverdue && (
+              {onOpenWorkspace && !isGuruKegiatanSelfieCard && !isFinished && !isOverdue && (
                 <Button
                   type="button"
                   size="sm"
@@ -1216,7 +1308,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
               )}
 
               {/* 📋 REKAP KELAS (JIKA SESI TELAH SELESAI / TERLEWAT) */}
-              {onOpenWorkspace && (isFinished || isOverdue) && Boolean(item.session || item.id) && (
+              {onOpenWorkspace && !isGuruKegiatanSelfieCard && (isFinished || isOverdue) && Boolean(item.session || item.id) && (
                 <Button
                   type="button"
                   size="sm"
@@ -1243,7 +1335,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                     e.stopPropagation();
                     onViewPhoto(item);
                   }}
-                  title="Lihat foto bukti KBM yang telah diambil"
+                  title="Lihat foto bukti yang telah diambil"
                   className="h-8 px-2.5 rounded-xl text-xs font-black bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer border border-slate-300 dark:border-slate-700"
                 >
                   <Eye size={13} className="text-emerald-500" />
@@ -1252,7 +1344,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
               )}
 
               {/* Scan RFID / QR Siswa Button (Guru POV) */}
-              {onOpenScanModal && (
+              {onOpenScanModal && !isGuruKegiatanSelfieCard && (
                 <Button
                   type="button"
                   size="sm"
@@ -1283,7 +1375,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
               )}
 
               {/* Isi Jurnal / Ruang KBM Daring Button */}
-              {(isLive || isFinished || isPjjDaring || isReadyToOpen) && !isOverdue && onOpenJournalModal && (
+              {!isGuruKegiatanSelfieCard && (isLive || isFinished || isPjjDaring || isReadyToOpen) && !isOverdue && onOpenJournalModal && (
                 <Button
                   type="button"
                   size="sm"
