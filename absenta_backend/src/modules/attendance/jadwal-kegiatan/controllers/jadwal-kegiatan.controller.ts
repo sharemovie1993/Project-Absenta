@@ -15,9 +15,39 @@ export const createJadwalKegiatanSchema = z.object({
   tahun_pelajaran_id: z.string().optional(),
 });
 
+export const updateJadwalKegiatanPolicySchema = z.object({
+  wajib_tap_terminal_guru: z.boolean(),
+  wajib_guru_beririsan: z.boolean(),
+  wajib_position_ids: z.array(z.string()).default([]),
+  jadwal_kegiatan_ids: z.array(z.string()).optional(),
+});
+
 export const updateJadwalKegiatanSchema = createJadwalKegiatanSchema.partial();
 
 export const jadwalKegiatanController = {
+  async getPolicySummary(request: any, reply: any) {
+    try {
+      const scope = request.dataScope;
+      const data = await jadwalKegiatanService.getPolicySummary(scope);
+      return reply.status(200).send({ success: true, message: 'Kebijakan presensi kegiatan berhasil dimuat', data });
+    } catch (error: any) {
+      appLogger.error({ err: error }, 'Error fetching jadwal kegiatan policy summary');
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  },
+
+  async updatePolicy(request: any, reply: any) {
+    try {
+      const scope = request.dataScope;
+      const { id } = request.params as any;
+      const parsedBody = updateJadwalKegiatanPolicySchema.parse(request.body || {});
+      const data = await jadwalKegiatanService.updatePolicy(scope, id, parsedBody);
+      return reply.status(200).send({ success: true, message: 'Aturan kehadiran kegiatan berhasil diperbarui', data });
+    } catch (error: any) {
+      appLogger.error({ err: error }, 'Error updating jadwal kegiatan policy');
+      return reply.status(400).send({ success: false, message: error.message });
+    }
+  },
   async getAll(request: any, reply: any) {
     try {
       const scope = request.dataScope;

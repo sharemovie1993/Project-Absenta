@@ -77,9 +77,10 @@ model Tenant {
   subscriptions             Subscription[]           @relation("TenantSubscriptions")
   SystemConfig              SystemConfig[]
   SiswaFaceTemplate         SiswaFaceTemplate[]
-  JadwalKBM                 JadwalKBM[]
-  JadwalKegiatan            JadwalKegiatan[]
-  JadwalPembinaUpacara      JadwalPembinaUpacara[]
+  JadwalKBM                   JadwalKBM[]
+  JadwalKegiatan              JadwalKegiatan[]
+  JadwalKegiatanWajibPosition JadwalKegiatanWajibPosition[]
+  JadwalPembinaUpacara        JadwalPembinaUpacara[]
   AnggotaKegiatanEskul      AnggotaKegiatanEskul[]
 
   PelanggaranSiswa PelanggaranSiswa[]
@@ -548,9 +549,10 @@ model OrganizationalPosition {
   updated_at DateTime @updatedAt
 
   Tenant                Tenant                     @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  organizationalCaps    OrganizationalCapability[]
-  organizationalAssigns OrganizationalAssignment[]
-  jobdesk               PositionJobdesk?
+  organizationalCaps          OrganizationalCapability[]
+  organizationalAssigns       OrganizationalAssignment[]
+  jobdesk                     PositionJobdesk?
+  JadwalKegiatanWajibPosition JadwalKegiatanWajibPosition[]
 
   @@unique([tenant_id, code])
   @@index([tenant_id])
@@ -2726,22 +2728,43 @@ model JadwalKegiatan {
   target_kelas_ids   String[]  @default([])
   berlaku_mulai      DateTime
   berlaku_sampai     DateTime?
-  tahun_pelajaran_id String
-  semester_id        String?
-  aktif              Boolean   @default(true)
-  dibuat_oleh        String // user_id
-  created_at         DateTime  @default(now())
-  updated_at         DateTime  @updatedAt
+  tahun_pelajaran_id         String
+  semester_id                String?
+  aktif                      Boolean   @default(true)
+  wajib_tap_terminal_guru    Boolean   @default(true)
+  wajib_guru_beririsan       Boolean   @default(true)
+  wajib_positions_configured Boolean   @default(false)
+  dibuat_oleh                String // user_id
+  created_at                 DateTime  @default(now())
+  updated_at                 DateTime  @updatedAt
 
-  Tenant         Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  TahunPelajaran TahunPelajaran @relation(fields: [tahun_pelajaran_id], references: [id])
-  Semester       Semester?      @relation(fields: [semester_id], references: [id], onDelete: Cascade)
-  SesiAbsensi    SesiAbsensi[]
+  Tenant               Tenant                        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  TahunPelajaran       TahunPelajaran                @relation(fields: [tahun_pelajaran_id], references: [id])
+  Semester             Semester?                     @relation(fields: [semester_id], references: [id], onDelete: Cascade)
+  SesiAbsensi          SesiAbsensi[]
   JadwalPembinaUpacara JadwalPembinaUpacara[]
+  WajibPositions       JadwalKegiatanWajibPosition[]
 
   @@index([tenant_id])
   @@index([tahun_pelajaran_id])
   @@index([tenant_id, tahun_pelajaran_id, semester_id])
+}
+
+model JadwalKegiatanWajibPosition {
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  jadwal_kegiatan_id String
+  position_id        String
+  created_at         DateTime @default(now())
+
+  Tenant         Tenant                 @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  JadwalKegiatan JadwalKegiatan         @relation(fields: [jadwal_kegiatan_id], references: [id], onDelete: Cascade)
+  Position       OrganizationalPosition @relation(fields: [position_id], references: [id], onDelete: Cascade)
+
+  @@unique([jadwal_kegiatan_id, position_id])
+  @@index([tenant_id])
+  @@index([jadwal_kegiatan_id])
+  @@index([position_id])
 }
 
 model JadwalPembinaUpacara {

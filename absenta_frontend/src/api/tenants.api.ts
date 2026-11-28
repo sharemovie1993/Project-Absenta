@@ -62,7 +62,6 @@ interface Tenant {
   hari_sekolah?: string[];
   allow_manual_hadir_gate?: boolean;
   allow_attendance_staging_backfill?: boolean;
-  wajib_tap_terminal_kegiatan_guru?: boolean;
   created_at: string;
   updated_at: string;
   kepala_sekolah?: string | null;
@@ -142,7 +141,6 @@ export interface UpdateTenantRequest {
   nip_kepala?: string;
   allow_manual_hadir_gate?: boolean;
   allow_attendance_staging_backfill?: boolean;
-  wajib_tap_terminal_kegiatan_guru?: boolean;
   jenjang?: string | null;
   shift_jam_pelajaran?: ShiftJamPelajaranConfig | null;
 }

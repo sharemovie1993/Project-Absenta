@@ -13,9 +13,54 @@ export interface JadwalKegiatanItem {
   berlaku_mulai: string;
   berlaku_sampai?: string | null;
   aktif: boolean;
+  wajib_tap_terminal_guru?: boolean;
+  wajib_guru_beririsan?: boolean;
+  wajib_positions_configured?: boolean;
+  wajib_position_ids?: string[];
+  wajib_position_codes?: string[];
   dibuat_oleh: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface AvailableKegiatanPosition {
+  id: string;
+  code: string;
+  name: string;
+  scope_type: string;
+}
+
+export interface JadwalKegiatanPolicyItem {
+  id: string;
+  jadwal_kegiatan_ids: string[];
+  nama: string;
+  jenis_kegiatan: string;
+  hari: string[];
+  waktu_mulai: string;
+  waktu_selesai?: string | null;
+  aktif: boolean;
+  is_apel_pulang: boolean;
+  is_dhuha: boolean;
+  wajib_tap_terminal_guru: boolean;
+  wajib_guru_beririsan: boolean;
+  wajib_positions_configured: boolean;
+  wajib_position_ids: string[];
+  wajib_position_codes: string[];
+}
+
+export interface JadwalKegiatanPolicySummaryResponse {
+  success: boolean;
+  data: {
+    available_positions: AvailableKegiatanPosition[];
+    policies: JadwalKegiatanPolicyItem[];
+  };
+}
+
+export interface UpdateJadwalKegiatanPolicyPayload {
+  wajib_tap_terminal_guru: boolean;
+  wajib_guru_beririsan: boolean;
+  wajib_position_ids: string[];
+  jadwal_kegiatan_ids?: string[];
 }
 
 export async function getJadwalKegiatan(params?: { aktif?: boolean }): Promise<{ success: boolean; data: JadwalKegiatanItem[] }> {
@@ -62,4 +107,39 @@ export async function updateJadwalKegiatan(id: string, data: Partial<JadwalKegia
 
 export async function deleteJadwalKegiatan(id: string): Promise<{ success: boolean; message: string }> {
   return requestWithFallback<{ success: boolean; message: string }>('delete', `/kesiswaan/jadwal-kegiatan/${id}`);
+}
+
+export async function getJadwalKegiatanPolicySummary(): Promise<JadwalKegiatanPolicySummaryResponse> {
+  try {
+    return await requestWithFallback<JadwalKegiatanPolicySummaryResponse>(
+      'get',
+      '/kesiswaan/jadwal-kegiatan/policy-summary',
+      { headers: { 'X-Skip-403-Redirect': 'true' } }
+    );
+  } catch {
+    return await requestWithFallback<JadwalKegiatanPolicySummaryResponse>(
+      'get',
+      '/kurikulum/jadwal-kegiatan/policy-summary',
+      { headers: { 'X-Skip-403-Redirect': 'true' } }
+    );
+  }
+}
+
+export async function updateJadwalKegiatanPolicy(
+  id: string,
+  data: UpdateJadwalKegiatanPolicyPayload
+): Promise<{ success: boolean; message: string; data: any }> {
+  try {
+    return await requestWithFallback<{ success: boolean; message: string; data: any }>(
+      'put',
+      `/kesiswaan/jadwal-kegiatan/policy/${id}`,
+      { data }
+    );
+  } catch {
+    return await requestWithFallback<{ success: boolean; message: string; data: any }>(
+      'put',
+      `/kurikulum/jadwal-kegiatan/policy/${id}`,
+      { data }
+    );
+  }
 }

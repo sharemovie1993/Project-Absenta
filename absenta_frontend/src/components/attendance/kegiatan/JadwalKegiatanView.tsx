@@ -37,6 +37,7 @@ import { formatDate } from '@/utils/layoutUtils';
 import { HARI_LIST as HARI_OPTION } from '@/constants/day.constants';
 import { useJadwalKegiatan } from '@/hooks/attendance/useJadwalKegiatan';
 import { KesiswaanJadwalBuilder } from './KesiswaanJadwalBuilder';
+import { KegiatanWajibPolicyPanel } from './KegiatanWajibPolicyPanel';
 import { cn } from '@/lib/utils';
 
 // Lazy-loaded modal form
@@ -93,7 +94,7 @@ export const JadwalKegiatanView: React.FC<UniversalJadwalKegiatanViewProps> = Re
   const queryClient = useQueryClient();
   const { confirm } = useConfirm();
 
-  const [viewMode, setViewMode] = useState<'BUILDER' | 'LIST'>('BUILDER');
+  const [viewMode, setViewMode] = useState<'BUILDER' | 'LIST' | 'POLICY'>('BUILDER');
   const [activeTab, setActiveTab] = useState<'PEMBIASAAN' | 'ESKUL'>('PEMBIASAAN');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<JadwalKegiatanItem | null>(null);
@@ -398,6 +399,19 @@ export const JadwalKegiatanView: React.FC<UniversalJadwalKegiatanViewProps> = Re
               <ListFilter size={13} />
               <span>Daftar Kartu</span>
             </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('POLICY')}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5',
+                viewMode === 'POLICY'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              )}
+            >
+              <Shield size={13} />
+              <span>Aturan Presensi Guru</span>
+            </button>
           </div>
 
           <Button
@@ -453,8 +467,10 @@ export const JadwalKegiatanView: React.FC<UniversalJadwalKegiatanViewProps> = Re
         </div>
       )}
 
-      {/* Main Content Area: BUILDER vs LIST */}
-      {viewMode === 'BUILDER' ? (
+      {/* Main Content Area: BUILDER vs LIST vs POLICY */}
+      {viewMode === 'POLICY' ? (
+        <KegiatanWajibPolicyPanel readOnly={readOnly} />
+      ) : viewMode === 'BUILDER' ? (
         <KesiswaanJadwalBuilder
           jadwalItems={jadwalItems}
           classes={classes}

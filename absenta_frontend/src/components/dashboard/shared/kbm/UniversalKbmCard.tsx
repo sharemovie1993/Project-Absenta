@@ -243,6 +243,8 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
   );
   const wajibTapTerminalGuru =
     (item.wajib_tap_terminal_kegiatan_guru ?? item.session?.wajib_tap_terminal_kegiatan_guru) !== false;
+  const kegiatanWajibGuruBeririsan =
+    (item.kegiatan_wajib_guru_beririsan ?? item.session?.kegiatan_wajib_guru_beririsan) !== false;
   const guruHadirKegiatanBeririsan = Boolean(
     item.guru_hadir_kegiatan_beririsan || item.session?.guru_hadir_kegiatan_beririsan
   );
@@ -631,7 +633,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
       >
         🔴 Terlambat {prediksiRealtime.menit} m
       </span>
-    ) : prediksiRealtime.kegiatanNama ? (
+    ) : prediksiRealtime.kegiatanNama && kegiatanWajibGuruBeririsan ? (
       <span
         className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-300 dark:border-amber-700 text-[10px] font-bold shrink-0"
         title={`Belum tercatat hadir di ${prediksiRealtime.kegiatanNama} — ${wajibTapTerminalGuru ? 'tap di Terminal Kegiatan' : 'lakukan Selfie Kegiatan'} s.d ${prediksiRealtime.deadline} WIB agar tidak terlambat`}
@@ -1203,7 +1205,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
           )
         )}
 
-        {mode === 'GURU' && !isGuruKegiatanSelfieCard && !isTeacherPresent && !isFinished && !isOverdue && prediksiRealtime?.kegiatanNama && (
+        {mode === 'GURU' && !isGuruKegiatanSelfieCard && !isTeacherPresent && !isFinished && !isOverdue && prediksiRealtime?.kegiatanNama && (kegiatanWajibGuruBeririsan || guruHadirKegiatanBeririsan) && (
           guruHadirKegiatanBeririsan ? (
             <div
               onClick={(e) => e.stopPropagation()}

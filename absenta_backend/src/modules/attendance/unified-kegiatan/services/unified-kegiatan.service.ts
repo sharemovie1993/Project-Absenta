@@ -3,6 +3,10 @@ import { Hari } from '@prisma/client';
 import { getTenantTimezone, getTenantOffsetString } from '@/utils/timezone.utils';
 import { emitDomainEvent } from '@/infra/event-bus';
 import { storageService } from '@/infra/storage/storage.service';
+import {
+  getEffectivePolicyForJadwalKegiatan,
+  formatOrgDutyLabel,
+} from './kegiatan-wajib-config.helper';
 
 export interface UnifiedTapPayload {
   guru_id: string;
@@ -664,37 +668,60 @@ export class UnifiedKegiatanService {
       }
     }
 
-    // Ambil struktur penugasan kepanitiaan & jabatan organisasi pendamping kegiatan
-    // (Pembina Taruna, Koordinator Dhuha/Rohis, Kesiswaan, Kaprog, Guru BK/BPBK, Wali Kelas)
-    const positions = await prisma.organizationalPosition.findMany({
-      where: {
-        tenant_id: tenantId,
-        code: {
-          in: [
-            'KETUA_PEMBINA_TARUNA',
-            'PEMBINA_TARUNA',
-            'KOORDINATOR_DHUHA',
-            'PEMBINA_ROHIS',
-            'KESISWAAN',
-            'KAPROG',
-            'BPBK',
-            'WALIKELAS',
-            'PEMBINA_ESKUL',
-          ],
-        },
-        is_active: true,
-      },
-      include: {
-        organizationalAssigns: {
-          where: { is_active: true },
-          include: {
-            User: { include: { Guru: true } },
-            Kelas: { select: { nama_kelas: true } },
-            Unit: { select: { nama: true } },
-          },
-        },
-      },
-    });
+    // Baca kebijakan relasional 2-tier per JadwalKegiatan (tabel JadwalKegiatan + JadwalKegiatanWajibPosition):
+    // Tier 1: wajibTapTerminalGuru (Wajib Tap Terminal vs Selfie Mandiri di Universal KBM)
+    // Tier 2: wajibGuruBeririsan + relasi posisi jabatan OrganizationalPosition pilihan admin
+    const isApelPulang = activeSiklusType === 'APEL_SORE';
+    const kegiatanPolicy = await getEffectivePolicyForJadwalKegiatan(
+      tenantId,
+      jadwalKegiatan?.id || params.jadwal_kegiatan_id,
+      jadwalKegiatan?.nama,
+      jadwalKegiatan?.jenis_kegiatan || activeSiklusType
+    );
+    const wajibTapTerminalGuru = kegiatanPolicy.wajibTapTerminalGuru;
+
+    // Ambil struktur penugasan jabatan organisasi yang berelasi pada JadwalKegiatan ini
+    const positions = kegiatanPolicy.wajibPositionsConfigured
+      ? (kegiatanPolicy.orgPositionIds.length > 0
+          ? await prisma.organizationalPosition.findMany({
+              where: {
+                tenant_id: tenantId,
+                id: { in: kegiatanPolicy.orgPositionIds },
+                is_active: true,
+              },
+              orderBy: [{ order: 'asc' }, { name: 'asc' }],
+              include: {
+                organizationalAssigns: {
+                  where: { is_active: true },
+                  include: {
+                    User: { include: { Guru: true } },
+                    Kelas: { select: { nama_kelas: true } },
+                    Unit: { select: { nama: true } },
+                  },
+                },
+              },
+            })
+          : [])
+      : (kegiatanPolicy.orgPositionCodes.length > 0
+          ? await prisma.organizationalPosition.findMany({
+              where: {
+                tenant_id: tenantId,
+                code: { in: kegiatanPolicy.orgPositionCodes },
+                is_active: true,
+              },
+              orderBy: [{ order: 'asc' }, { name: 'asc' }],
+              include: {
+                organizationalAssigns: {
+                  where: { is_active: true },
+                  include: {
+                    User: { include: { Guru: true } },
+                    Kelas: { select: { nama_kelas: true } },
+                    Unit: { select: { nama: true } },
+                  },
+                },
+              },
+            })
+          : []);
 
     // Ambil status presensi AbsenGuru yang sudah tercatat di sesi Kegiatan hari ini
     const existingAbsen = sesiId
@@ -722,151 +749,58 @@ export class UnifiedKegiatanService {
     }> = [];
 
     const seenGuruIds = new Set<string>();
+    const isDhuhaMode = activeSiklusType === 'DUHA' || jenis.toUpperCase().includes('DUHA');
 
-    // 1. Pembina Khusus (Taruna, Kesiswaan & Rohis/Dhuha terintegrasi)
-    const tarunaPos = positions.find(p => p.code === 'KETUA_PEMBINA_TARUNA');
-    if (tarunaPos && tarunaPos.organizationalAssigns.length > 0) {
-      tarunaPos.organizationalAssigns.forEach((a, idx) => {
+    // Urutkan posisi prioritas tampilan agar tetap rapi di modal & daftar pendamping
+    const POSITION_ORDER: Record<string, number> = {
+      KETUA_PEMBINA_TARUNA: 1,
+      PEMBINA_TARUNA: 2,
+      KOORDINATOR_DHUHA: 3,
+      PEMBINA_ROHIS: 4,
+      KESISWAAN: 5,
+      KAPROG: 6,
+      BPBK: 7,
+      WALIKELAS: 8,
+    };
+    const sortedPositions = [...positions].sort((a, b) => {
+      const pa = POSITION_ORDER[a.code] ?? 50 + (a.order || 0);
+      const pb = POSITION_ORDER[b.code] ?? 50 + (b.order || 0);
+      return pa - pb;
+    });
+
+    const getPositionIcon = (code: string) => {
+      if (code === 'KETUA_PEMBINA_TARUNA' || code === 'PEMBINA_TARUNA') return '🎖️';
+      if (code === 'KOORDINATOR_DHUHA' || code === 'PEMBINA_ROHIS') return '🕌';
+      if (code === 'KESISWAAN') return '🧑‍🎓';
+      if (code === 'KAPROG') return '🏛️';
+      if (code === 'BPBK') return '🧠';
+      if (code === 'WALIKELAS') return '🏫';
+      if (code === 'KEPALA_SEKOLAH') return '👑';
+      if (code === 'PEMBINA_ESKUL') return '🚩';
+      return '👤';
+    };
+
+    // 1. Seluruh Posisi Jabatan Organisasi yang berelasi pada JadwalKegiatan ini
+    for (const pos of sortedPositions) {
+      if (!kegiatanPolicy.wajibPositionsConfigured && (pos.code === 'KOORDINATOR_DHUHA' || pos.code === 'PEMBINA_ROHIS') && !isDhuhaMode) {
+        continue;
+      }
+      const icon = getPositionIcon(pos.code);
+      pos.organizationalAssigns.forEach((a) => {
         const g = a.User?.Guru;
         if (g && !seenGuruIds.has(g.id)) {
           seenGuruIds.add(g.id);
           const rec = absenMap.get(g.id);
-          result.push({
-            guru_id: g.id,
-            nama_guru: g.nama_guru,
-            jabatan: idx === 0 ? '🎖️ Ketua Pembina Taruna' : `Staf Pembina Taruna ${idx}`,
-            jabatan_kode: 'KETUA_PEMBINA_TARUNA',
-            status: (rec?.status as any) || 'BELUM_TAP',
-            waktu_tap: rec?.waktu_tap ? rec.waktu_tap.toISOString() : null,
-            catatan: rec?.catatan || null,
-            sesi_id: sesiId || null,
+          const label = formatOrgDutyLabel({
+            Position: { code: pos.code, name: pos.name },
+            Kelas: a.Kelas,
+            Unit: a.Unit,
           });
-        }
-      });
-    }
-
-    const pembinaTarunaPos = positions.find(p => p.code === 'PEMBINA_TARUNA');
-    if (pembinaTarunaPos && pembinaTarunaPos.organizationalAssigns.length > 0) {
-      pembinaTarunaPos.organizationalAssigns.forEach((a) => {
-        const g = a.User?.Guru;
-        if (g && !seenGuruIds.has(g.id)) {
-          seenGuruIds.add(g.id);
-          const rec = absenMap.get(g.id);
           result.push({
             guru_id: g.id,
             nama_guru: g.nama_guru,
-            jabatan: '🎖️ Pembina Ketarunaan',
-            jabatan_kode: 'PEMBINA_TARUNA',
-            status: (rec?.status as any) || 'BELUM_TAP',
-            waktu_tap: rec?.waktu_tap ? rec.waktu_tap.toISOString() : null,
-            catatan: rec?.catatan || null,
-            sesi_id: sesiId || null,
-          });
-        }
-      });
-    }
-
-    const dhuhaPositions = positions.filter(p => p.code === 'KOORDINATOR_DHUHA' || p.code === 'PEMBINA_ROHIS');
-    if (dhuhaPositions.length > 0 && (activeSiklusType === 'DUHA' || jenis.toUpperCase().includes('DUHA'))) {
-      dhuhaPositions.forEach((pos) => {
-        pos.organizationalAssigns.forEach((a, idx) => {
-          const g = a.User?.Guru;
-          if (g && !seenGuruIds.has(g.id)) {
-            seenGuruIds.add(g.id);
-            const rec = absenMap.get(g.id);
-            result.push({
-              guru_id: g.id,
-              nama_guru: g.nama_guru,
-              jabatan: idx === 0 ? '🕌 Koordinator Pembina Dhuha / Rohis' : `Pembina Rohis ${idx}`,
-              jabatan_kode: 'KOORDINATOR_DHUHA',
-              status: (rec?.status as any) || 'BELUM_TAP',
-              waktu_tap: rec?.waktu_tap ? rec.waktu_tap.toISOString() : null,
-              catatan: rec?.catatan || null,
-              sesi_id: sesiId || null,
-            });
-          }
-        });
-      });
-    }
-
-    const kesiswaanPos = positions.find(p => p.code === 'KESISWAAN');
-    if (kesiswaanPos) {
-      kesiswaanPos.organizationalAssigns.forEach((a) => {
-        const g = a.User?.Guru;
-        if (g && !seenGuruIds.has(g.id)) {
-          seenGuruIds.add(g.id);
-          const rec = absenMap.get(g.id);
-          result.push({
-            guru_id: g.id,
-            nama_guru: g.nama_guru,
-            jabatan: '🧑‍🎓 Waka Kesiswaan & Staf',
-            jabatan_kode: 'KESISWAAN',
-            status: (rec?.status as any) || 'BELUM_TAP',
-            waktu_tap: rec?.waktu_tap ? rec.waktu_tap.toISOString() : null,
-            catatan: rec?.catatan || null,
-            sesi_id: sesiId || null,
-          });
-        }
-      });
-    }
-
-    // 2. Kaprog (Kepala Program Keahlian / Jurusan)
-    const kaprogPos = positions.find(p => p.code === 'KAPROG');
-    if (kaprogPos) {
-      kaprogPos.organizationalAssigns.forEach(a => {
-        const g = a.User?.Guru;
-        if (g && !seenGuruIds.has(g.id)) {
-          seenGuruIds.add(g.id);
-          const rec = absenMap.get(g.id);
-          result.push({
-            guru_id: g.id,
-            nama_guru: g.nama_guru,
-            jabatan: `🏛️ Kaprog ${a.Unit?.nama || ''}`.trim(),
-            jabatan_kode: 'KAPROG',
-            status: (rec?.status as any) || 'BELUM_TAP',
-            waktu_tap: rec?.waktu_tap ? rec.waktu_tap.toISOString() : null,
-            catatan: rec?.catatan || null,
-            sesi_id: sesiId || null,
-          });
-        }
-      });
-    }
-
-    // 2b. Guru BK / Koordinator BP-BK
-    const bpbkPos = positions.find(p => p.code === 'BPBK');
-    if (bpbkPos) {
-      bpbkPos.organizationalAssigns.forEach(a => {
-        const g = a.User?.Guru;
-        if (g && !seenGuruIds.has(g.id)) {
-          seenGuruIds.add(g.id);
-          const rec = absenMap.get(g.id);
-          result.push({
-            guru_id: g.id,
-            nama_guru: g.nama_guru,
-            jabatan: '🧠 Guru BK / BP-BK',
-            jabatan_kode: 'BPBK',
-            status: (rec?.status as any) || 'BELUM_TAP',
-            waktu_tap: rec?.waktu_tap ? rec.waktu_tap.toISOString() : null,
-            catatan: rec?.catatan || null,
-            sesi_id: sesiId || null,
-          });
-        }
-      });
-    }
-
-    // 3. Wali Kelas
-    const waliPos = positions.find(p => p.code === 'WALIKELAS');
-    if (waliPos) {
-      waliPos.organizationalAssigns.forEach(a => {
-        const g = a.User?.Guru;
-        if (g && !seenGuruIds.has(g.id)) {
-          seenGuruIds.add(g.id);
-          const rec = absenMap.get(g.id);
-          result.push({
-            guru_id: g.id,
-            nama_guru: g.nama_guru,
-            jabatan: `🏫 Wali Kelas ${a.Kelas?.nama_kelas || ''}`.trim(),
-            jabatan_kode: 'WALIKELAS',
+            jabatan: `${icon} ${label}`,
+            jabatan_kode: pos.code === 'PEMBINA_ROHIS' ? 'KOORDINATOR_DHUHA' : pos.code,
             kelas_nama: a.Kelas?.nama_kelas || undefined,
             status: (rec?.status as any) || 'BELUM_TAP',
             waktu_tap: rec?.waktu_tap ? rec.waktu_tap.toISOString() : null,
@@ -877,14 +811,9 @@ export class UnifiedKegiatanService {
       });
     }
 
-    const isApelPulang = activeSiklusType === 'APEL_SORE';
-    const wajibTapTerminalGuru = await this.isWajibTapTerminalKegiatanGuru(tenantId);
-
-    // 4. Guru Mapel KBM yang Jadwalnya BERIRISAN Jam dengan Kegiatan
-    // Khusus Apel Pulang (APEL_SORE), guru mapel TIDAK diwajibkan.
-    // Untuk kegiatan non-Apel Pulang, seluruh unsur (Jabatan Organisasi + Guru Beririsan) tetap dipantau status hadirnya
-    // baik saat mode Wajib Tap Terminal (ON) maupun Selfie Mandiri di Universal KBM (OFF).
-    if (!isApelPulang) {
+    // 2. Guru Mapel KBM yang Jadwalnya BERIRISAN Jam dengan Kegiatan
+    // Aktif jika kebijakan JadwalKegiatan mengaktifkan wajib_guru_beririsan dan kegiatan bukan Apel Pulang (APEL_SORE).
+    if (!isApelPulang && kegiatanPolicy.wajibGuruBeririsan) {
       const allKbmHariIni = await prisma.jadwalKBM.findMany({
         where: {
           tenant_id: tenantId,
@@ -957,6 +886,8 @@ export class UnifiedKegiatanService {
       today_hari: todayHari,
       is_active_session: Boolean(sesiId),
       wajib_tap_terminal_guru: wajibTapTerminalGuru,
+      wajib_guru_beririsan: kegiatanPolicy.wajibGuruBeririsan,
+      wajib_position_codes: kegiatanPolicy.orgPositionCodes,
     };
   }
 

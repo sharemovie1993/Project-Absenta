@@ -11,6 +11,37 @@ export async function jadwalKegiatanRoutes(fastify: any) {
     ]
   }, jadwalKegiatanController.getAll);
 
+  fastify.get('/policy-summary', {
+    preHandler: [
+      requireCapability(
+        [
+          'attendance.schedules.view.list',
+          'academic.schedules.view.list',
+          'kesiswaan.schedules.view.list',
+          'core.tenants.view.detail',
+        ],
+        { exemptRoles: [RoleName.ADMIN, RoleName.GURU] }
+      ),
+      determineDataScope()
+    ]
+  }, jadwalKegiatanController.getPolicySummary);
+
+  fastify.put('/policy/:id', {
+    preHandler: [
+      requireCapability(
+        [
+          'attendance.schedules.update',
+          'academic.schedules.update',
+          'attendance.schedules.manage',
+          'core.tenants.update',
+          'core.sekolah.update.profile',
+        ],
+        { exemptRoles: [RoleName.ADMIN] }
+      ),
+      determineDataScope()
+    ]
+  }, jadwalKegiatanController.updatePolicy);
+
   fastify.get('/:id', {
     preHandler: [
       requireCapability(['attendance.schedules.view.list', 'academic.schedules.view.list']),

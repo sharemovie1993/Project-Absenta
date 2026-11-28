@@ -420,6 +420,7 @@ export function normalizeFromSesiAbsensi(raw: any): KbmItem {
     jadwal_kegiatan_id: raw.jadwal_kegiatan_id || null,
     is_guru_kegiatan_selfie_card: Boolean(raw.is_guru_kegiatan_selfie_card),
     wajib_tap_terminal_kegiatan_guru: raw.wajib_tap_terminal_kegiatan_guru !== false,
+    kegiatan_wajib_guru_beririsan: raw.kegiatan_wajib_guru_beririsan !== false,
     guru_hadir_kegiatan_beririsan: Boolean(raw.guru_hadir_kegiatan_beririsan),
     guru_hadir_kegiatan_nama: raw.guru_hadir_kegiatan_nama || null,
     jabatan_kegiatan_label: raw.jabatan_kegiatan_label || null,

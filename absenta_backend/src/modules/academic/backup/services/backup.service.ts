@@ -22,6 +22,8 @@ export const backupService = {
       organizationalAssignments,
       organizationalCapabilities,
       jadwalKBM,
+      jadwalKegiatan,
+      jadwalKegiatanWajibPositions,
       pelanggaranSiswa,
       supervisiGuru
     ] = await Promise.all([
@@ -48,6 +50,8 @@ export const backupService = {
         where: { Position: { tenant_id: tenantId } },
       }),
       prisma.jadwalKBM.findMany({ where: { tenant_id: tenantId } }),
+      prisma.jadwalKegiatan.findMany({ where: { tenant_id: tenantId } }),
+      prisma.jadwalKegiatanWajibPosition.findMany({ where: { tenant_id: tenantId } }),
       prisma.pelanggaranSiswa.findMany({ where: { tenant_id: tenantId } }),
       prisma.supervisiGuru.findMany({ where: { tenant_id: tenantId } }),
     ]);
@@ -74,6 +78,8 @@ export const backupService = {
         organizationalAssignments,
         organizationalCapabilities,
         jadwalKBM,
+        jadwalKegiatan,
+        jadwalKegiatanWajibPositions,
         pelanggaranSiswa,
         supervisiGuru
       }
@@ -103,6 +109,8 @@ export const backupService = {
       organizationalAssignments,
       organizationalCapabilities,
       jadwalKBM,
+      jadwalKegiatan,
+      jadwalKegiatanWajibPositions,
       pelanggaranSiswa,
       supervisiGuru
     } = backupData.data;
@@ -148,6 +156,8 @@ export const backupService = {
       guruMapel: 0,
       kelasMapel: 0,
       jadwalKBM: 0,
+      jadwalKegiatan: 0,
+      jadwalKegiatanWajibPositions: 0,
       pelanggaran: 0,
       supervisi: 0,
       siswaAkademik: 0
@@ -190,6 +200,14 @@ export const backupService = {
       if (guruMapel?.length) { const res = await tx.guruMapel.createMany({ data: sanitize(guruMapel), skipDuplicates: true }); counts.guruMapel = res.count; }
       if (kelasMapel?.length) { const res = await tx.kelasMapel.createMany({ data: sanitize(kelasMapel), skipDuplicates: true }); counts.kelasMapel = res.count; }
       if (jadwalKBM?.length) { const res = await tx.jadwalKBM.createMany({ data: sanitize(jadwalKBM), skipDuplicates: true }); counts.jadwalKBM = res.count; }
+      if (jadwalKegiatan?.length) {
+        const res = await tx.jadwalKegiatan.createMany({ data: sanitizeWithUpdatedAt(jadwalKegiatan), skipDuplicates: true });
+        counts.jadwalKegiatan = res.count;
+      }
+      if (jadwalKegiatanWajibPositions?.length) {
+        const res = await tx.jadwalKegiatanWajibPosition.createMany({ data: sanitize(jadwalKegiatanWajibPositions), skipDuplicates: true });
+        counts.jadwalKegiatanWajibPositions = res.count;
+      }
       if (organizationalAssignments?.length) {
         const res = await tx.organizationalAssignment.createMany({ data: sanitizeWithUpdatedAt(organizationalAssignments), skipDuplicates: true });
         counts.organizationalAssignments = res.count;

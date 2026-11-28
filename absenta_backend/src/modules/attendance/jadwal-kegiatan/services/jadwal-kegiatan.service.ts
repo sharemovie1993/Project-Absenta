@@ -4,6 +4,10 @@ import { Hari } from '@prisma/client';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 import { getTenantTimezone, getTenantOffsetString } from '@/utils/timezone.utils';
 import { getTenantLocalTime, generateSessionsForTenantDirect } from '@/jobs/attendanceAutoSession.job';
+import {
+  getAvailableKegiatanPositions,
+  resolveJadwalKegiatanPolicy,
+} from '../../unified-kegiatan/services/kegiatan-wajib-config.helper';
 
 export interface CreateJadwalKegiatanInput {
   nama: string;
@@ -16,6 +20,9 @@ export interface CreateJadwalKegiatanInput {
   berlaku_mulai: string; // YYYY-MM-DD
   berlaku_sampai?: string | null; // YYYY-MM-DD
   tahun_pelajaran_id?: string;
+  wajib_tap_terminal_guru?: boolean;
+  wajib_guru_beririsan?: boolean;
+  wajib_position_ids?: string[];
 }
 
 export interface UpdateJadwalKegiatanInput {
@@ -29,6 +36,16 @@ export interface UpdateJadwalKegiatanInput {
   berlaku_mulai?: string;
   berlaku_sampai?: string | null;
   aktif?: boolean;
+  wajib_tap_terminal_guru?: boolean;
+  wajib_guru_beririsan?: boolean;
+  wajib_position_ids?: string[];
+}
+
+export interface UpdateJadwalKegiatanPolicyInput {
+  wajib_tap_terminal_guru: boolean;
+  wajib_guru_beririsan: boolean;
+  wajib_position_ids: string[];
+  jadwal_kegiatan_ids?: string[];
 }
 
 export class JadwalKegiatanService {
@@ -181,13 +198,27 @@ export class JadwalKegiatanService {
   async getAll(scope: DataScope, activeOnly = false) {
     if (!scope.tenantId) throw new Error('Tenant ID required');
 
-    return prisma.jadwalKegiatan.findMany({
+    const rows = await prisma.jadwalKegiatan.findMany({
       where: {
         tenant_id: scope.tenantId,
         ...(activeOnly ? { aktif: true } : {}),
       },
+      include: {
+        WajibPositions: {
+          select: {
+            position_id: true,
+            Position: { select: { id: true, code: true, name: true } },
+          },
+        },
+      },
       orderBy: { created_at: 'desc' },
     });
+
+    return rows.map((row) => ({
+      ...row,
+      wajib_position_ids: row.WajibPositions.map((p) => p.position_id),
+      wajib_position_codes: row.WajibPositions.map((p) => p.Position?.code).filter(Boolean),
+    }));
   }
 
   async getById(scope: DataScope, id: string) {
@@ -195,13 +226,182 @@ export class JadwalKegiatanService {
 
     const record = await prisma.jadwalKegiatan.findFirst({
       where: { id, tenant_id: scope.tenantId },
+      include: {
+        WajibPositions: {
+          select: {
+            position_id: true,
+            Position: { select: { id: true, code: true, name: true } },
+          },
+        },
+      },
     });
 
     if (!record) {
       throw new Error('Jadwal Kegiatan tidak ditemukan atau akses ditolak');
     }
 
-    return record;
+    return {
+      ...record,
+      wajib_position_ids: record.WajibPositions.map((p) => p.position_id),
+      wajib_position_codes: record.WajibPositions.map((p) => p.Position?.code).filter(Boolean),
+    };
+  }
+
+  /**
+   * Ringkasan kebijakan relasional presensi guru per JadwalKegiatan (dikelompokkan per nama kegiatan)
+   * + daftar posisi OrganizationalPosition aktif untuk UI 2 arah (Jadwal Kegiatan Kesiswaan & Aturan Absensi).
+   */
+  async getPolicySummary(scope: DataScope) {
+    if (!scope.tenantId) throw new Error('Tenant ID required');
+    const tenantId = scope.tenantId;
+
+    const [availablePositions, jadwalRows] = await Promise.all([
+      getAvailableKegiatanPositions(tenantId),
+      prisma.jadwalKegiatan.findMany({
+        where: { tenant_id: tenantId, aktif: true },
+        include: {
+          WajibPositions: {
+            select: {
+              position_id: true,
+              Position: { select: { id: true, code: true, name: true } },
+            },
+          },
+        },
+        orderBy: [{ waktu_mulai: 'asc' }, { nama: 'asc' }],
+      }),
+    ]);
+
+    const positionIdByCode = new Map(availablePositions.map((p) => [p.code.toUpperCase(), p.id]));
+
+    // Kelompokkan baris matrix (nama kegiatan sama, beda hari/jam) agar 1 kartu pengaturan per kegiatan
+    const groupedMap = new Map<string, typeof jadwalRows>();
+    for (const row of jadwalRows) {
+      const key = String(row.nama || '').trim().toLowerCase() || row.id;
+      if (!groupedMap.has(key)) groupedMap.set(key, []);
+      groupedMap.get(key)!.push(row);
+    }
+
+    const policies = Array.from(groupedMap.values()).map((group) => {
+      const primary = group.find((g) => g.wajib_positions_configured) || group[0];
+      const resolved = resolveJadwalKegiatanPolicy(primary);
+
+      const resolvedPositionIds = resolved.wajibPositionsConfigured
+        ? resolved.orgPositionIds
+        : resolved.orgPositionCodes
+            .map((code) => positionIdByCode.get(code.toUpperCase()))
+            .filter((id): id is string => Boolean(id));
+
+      const allDays = Array.from(new Set(group.flatMap((g) => g.hari || [])));
+
+      return {
+        id: primary.id,
+        jadwal_kegiatan_ids: group.map((g) => g.id),
+        nama: primary.nama,
+        jenis_kegiatan: primary.jenis_kegiatan,
+        hari: allDays,
+        waktu_mulai: primary.waktu_mulai,
+        waktu_selesai: primary.waktu_selesai,
+        aktif: primary.aktif,
+        is_apel_pulang: resolved.isApelPulang,
+        is_dhuha: resolved.isDhuha,
+        wajib_tap_terminal_guru: resolved.wajibTapTerminalGuru,
+        wajib_guru_beririsan: resolved.wajibGuruBeririsan,
+        wajib_positions_configured: resolved.wajibPositionsConfigured,
+        wajib_position_ids: Array.from(new Set(resolvedPositionIds)),
+        wajib_position_codes: resolved.orgPositionCodes,
+      };
+    });
+
+    return {
+      available_positions: availablePositions,
+      policies,
+    };
+  }
+
+  /**
+   * Simpan kebijakan relasional 2-tier per JadwalKegiatan (menyinkronkan seluruh hari dalam grup kegiatan yang sama).
+   */
+  async updatePolicy(scope: DataScope, id: string, input: UpdateJadwalKegiatanPolicyInput) {
+    if (!scope.tenantId) throw new Error('Tenant ID required');
+    const tenantId = scope.tenantId;
+
+    const primary = await prisma.jadwalKegiatan.findFirst({
+      where: { id, tenant_id: tenantId },
+      select: { id: true, nama: true },
+    });
+    if (!primary) {
+      throw new Error('Jadwal Kegiatan tidak ditemukan atau akses ditolak');
+    }
+
+    const candidateIds = Array.from(
+      new Set([id, ...(Array.isArray(input.jadwal_kegiatan_ids) ? input.jadwal_kegiatan_ids : [])])
+    );
+
+    // Pastikan seluruh target jadwal milik tenant ini (termasuk baris matrix dengan nama sama)
+    const targetJadwals = await prisma.jadwalKegiatan.findMany({
+      where: {
+        tenant_id: tenantId,
+        OR: [
+          { id: { in: candidateIds } },
+          { nama: { equals: primary.nama, mode: 'insensitive' }, aktif: true },
+        ],
+      },
+      select: { id: true },
+    });
+    const targetIds = targetJadwals.map((j) => j.id);
+
+    // Validasi foreign key position_id milik tenant ini
+    const rawPosIds = Array.isArray(input.wajib_position_ids)
+      ? Array.from(new Set(input.wajib_position_ids.filter(Boolean)))
+      : [];
+
+    const validPositions = rawPosIds.length > 0
+      ? await prisma.organizationalPosition.findMany({
+          where: { tenant_id: tenantId, id: { in: rawPosIds }, is_active: true },
+          select: { id: true, code: true },
+        })
+      : [];
+    const validPosIds = validPositions.map((p) => p.id);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.jadwalKegiatan.updateMany({
+        where: { tenant_id: tenantId, id: { in: targetIds } },
+        data: {
+          wajib_tap_terminal_guru: Boolean(input.wajib_tap_terminal_guru),
+          wajib_guru_beririsan: Boolean(input.wajib_guru_beririsan),
+          wajib_positions_configured: true,
+        },
+      });
+
+      await tx.jadwalKegiatanWajibPosition.deleteMany({
+        where: { tenant_id: tenantId, jadwal_kegiatan_id: { in: targetIds } },
+      });
+
+      if (validPosIds.length > 0) {
+        const joinRows = targetIds.flatMap((jkId) =>
+          validPosIds.map((positionId) => ({
+            tenant_id: tenantId,
+            jadwal_kegiatan_id: jkId,
+            position_id: positionId,
+          }))
+        );
+        await tx.jadwalKegiatanWajibPosition.createMany({
+          data: joinRows,
+          skipDuplicates: true,
+        });
+      }
+    });
+
+    await cacheInvalidationService.invalidateAttendanceCache(tenantId);
+
+    return {
+      jadwal_kegiatan_ids: targetIds,
+      wajib_tap_terminal_guru: Boolean(input.wajib_tap_terminal_guru),
+      wajib_guru_beririsan: Boolean(input.wajib_guru_beririsan),
+      wajib_positions_configured: true,
+      wajib_position_ids: validPosIds,
+      wajib_position_codes: validPositions.map((p) => p.code),
+    };
   }
 
   async create(scope: DataScope, userId: string, input: CreateJadwalKegiatanInput) {

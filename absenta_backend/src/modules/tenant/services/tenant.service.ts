@@ -74,7 +74,6 @@ export interface UpdateTenantInput {
   nip_kepala?: string;
   allow_manual_hadir_gate?: boolean;
   allow_attendance_staging_backfill?: boolean;
-  wajib_tap_terminal_kegiatan_guru?: boolean;
   jenjang?: string | null;
   kurikulum?: string | null;
   durasi_smk?: string | null;
@@ -231,7 +230,17 @@ export class TenantService {
       where: {
         tenant_id: id,
         key: {
-          in: ['print_header_lines', 'logo_daerah_url', 'address', 'phone', 'email', 'website', 'ALLOW_MANUAL_HADIR_GATE', 'ALLOW_ATTENDANCE_STAGING_BACKFILL', 'WAJIB_TAP_TERMINAL_KEGIATAN_GURU', 'shift_jam_pelajaran']
+          in: [
+            'print_header_lines',
+            'logo_daerah_url',
+            'address',
+            'phone',
+            'email',
+            'website',
+            'ALLOW_MANUAL_HADIR_GATE',
+            'ALLOW_ATTENDANCE_STAGING_BACKFILL',
+            'shift_jam_pelajaran',
+          ]
         }
       }
     });
@@ -366,7 +375,6 @@ export class TenantService {
       print_header_lines: parsedLines,
       allow_manual_hadir_gate: configMap['ALLOW_MANUAL_HADIR_GATE'] === 'true',
       allow_attendance_staging_backfill: configMap['ALLOW_ATTENDANCE_STAGING_BACKFILL'] === 'true',
-      wajib_tap_terminal_kegiatan_guru: configMap['WAJIB_TAP_TERMINAL_KEGIATAN_GURU'] !== 'false',
       shift_jam_pelajaran: parsedShift,
 
       // Hybrid Kepala Sekolah values
@@ -470,7 +478,6 @@ export class TenantService {
       nip_kepala,
       allow_manual_hadir_gate,
       allow_attendance_staging_backfill,
-      wajib_tap_terminal_kegiatan_guru,
       jenjang,
       kurikulum,
       durasi_smk,
@@ -580,9 +587,6 @@ export class TenantService {
     }
     if (allow_attendance_staging_backfill !== undefined) {
       await upsertConfig('ALLOW_ATTENDANCE_STAGING_BACKFILL', allow_attendance_staging_backfill ? 'true' : 'false');
-    }
-    if (wajib_tap_terminal_kegiatan_guru !== undefined) {
-      await upsertConfig('WAJIB_TAP_TERMINAL_KEGIATAN_GURU', wajib_tap_terminal_kegiatan_guru ? 'true' : 'false');
     }
     if (shift_jam_pelajaran !== undefined) {
       await upsertConfig('shift_jam_pelajaran', JSON.stringify(shift_jam_pelajaran));
@@ -809,7 +813,17 @@ export class TenantService {
       where: {
         tenant_id: tenantId,
         key: {
-          in: ['print_header_lines', 'logo_daerah_url', 'address', 'phone', 'email', 'website', 'ALLOW_MANUAL_HADIR_GATE', 'ALLOW_ATTENDANCE_STAGING_BACKFILL', 'WAJIB_TAP_TERMINAL_KEGIATAN_GURU', 'shift_jam_pelajaran']
+          in: [
+            'print_header_lines',
+            'logo_daerah_url',
+            'address',
+            'phone',
+            'email',
+            'website',
+            'ALLOW_MANUAL_HADIR_GATE',
+            'ALLOW_ATTENDANCE_STAGING_BACKFILL',
+            'shift_jam_pelajaran',
+          ]
         }
       }
     });
@@ -919,7 +933,6 @@ export class TenantService {
       print_header_lines: parsedLines,
       allow_manual_hadir_gate: configMap['ALLOW_MANUAL_HADIR_GATE'] === 'true',
       allow_attendance_staging_backfill: configMap['ALLOW_ATTENDANCE_STAGING_BACKFILL'] === 'true',
-      wajib_tap_terminal_kegiatan_guru: configMap['WAJIB_TAP_TERMINAL_KEGIATAN_GURU'] !== 'false',
       shift_jam_pelajaran: parsedShift,
 
       // Hybrid Kepala Sekolah values
