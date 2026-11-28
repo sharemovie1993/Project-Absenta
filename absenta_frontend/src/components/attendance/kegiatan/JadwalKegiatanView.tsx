@@ -28,7 +28,7 @@ import {
   ListFilter,
   X,
 } from 'lucide-react';
-import { Button, SectionCard, TabSwitcher } from '@/components/ui';
+import { Button, SectionCard, TabSwitcher, Switch } from '@/components/ui';
 import { Loader } from '@/components/ui/Loader';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
@@ -43,10 +43,18 @@ import { cn } from '@/lib/utils';
 // Lazy-loaded modal form
 const JadwalKegiatanFormModal = lazy(() => import('@/components/attendance/kegiatan/JadwalKegiatanFormModal'));
 
+export type JadwalKegiatanScope = 'ALL' | 'KETARUNAAN' | 'DHUHA' | 'ESKUL';
+
 export interface UniversalJadwalKegiatanViewProps {
   /** Injected academic scope from parent role dashboard */
   tahunPelajaranId?: string;
   semesterId?: string;
+  /** Filter cakupan kegiatan untuk dashboard spesifik (Ketarunaan / Dhuha / Eskul) */
+  scope?: JadwalKegiatanScope;
+  /** 'full' = tampilan penuh Kesiswaan; 'compact-builder' = blok jadwal ringkas (label + waktu) untuk disematkan di dashboard role */
+  variant?: 'full' | 'compact-builder';
+  /** Tampilkan toggle opsional "Sertakan Dhuha" pada scope KETARUNAAN */
+  allowOptionalDhuha?: boolean;
   /** True when embedded in a dashboard tab (hides duplicate page header / outer frame) */
   hideLayout?: boolean;
   /** True when opened in a quick modal dialog */
@@ -54,7 +62,30 @@ export interface UniversalJadwalKegiatanViewProps {
   /** True for read-only view */
   readOnly?: boolean;
   onClose?: () => void;
+  onScheduleChanged?: () => void;
   className?: string;
+}
+
+function matchesActivityScope(
+  nama?: string | null,
+  jenis?: string | null,
+  scope: JadwalKegiatanScope = 'ALL',
+  includeDhuha: boolean = false
+): boolean {
+  if (scope === 'ALL') return true;
+  const text = `${nama || ''} ${jenis || ''}`.toLowerCase();
+  const upperJenis = String(jenis || '').toUpperCase();
+  const isEskul = upperJenis === 'ESKUL';
+  const isDhuha = /duha|dhuha|rohis/i.test(text);
+
+  if (scope === 'ESKUL') return isEskul;
+  if (scope === 'DHUHA') return isDhuha;
+  if (scope === 'KETARUNAAN') {
+    if (isEskul) return false;
+    if (isDhuha) return includeDhuha;
+    return /apel|taruna|ketarunaan|upacara/i.test(text);
+  }
+  return true;
 }
 
 interface CardItem {
@@ -84,10 +115,14 @@ const parseArrayField = (field: unknown): string[] => {
 export const JadwalKegiatanView: React.FC<UniversalJadwalKegiatanViewProps> = React.memo(({
   tahunPelajaranId: propTpId,
   semesterId: propSemesterId,
+  scope = 'ALL',
+  variant = 'full',
+  allowOptionalDhuha = false,
   hideLayout = false,
   isModal = false,
   readOnly = false,
   onClose,
+  onScheduleChanged,
   className,
 }) => {
   const navigate = useNavigate();
@@ -96,6 +131,7 @@ export const JadwalKegiatanView: React.FC<UniversalJadwalKegiatanViewProps> = Re
 
   const [viewMode, setViewMode] = useState<'BUILDER' | 'LIST' | 'POLICY'>('BUILDER');
   const [activeTab, setActiveTab] = useState<'PEMBIASAAN' | 'ESKUL'>('PEMBIASAAN');
+  const [includeDhuha, setIncludeDhuha] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<JadwalKegiatanItem | null>(null);
   const [editingItems, setEditingItems] = useState<JadwalKegiatanItem[]>([]);
@@ -116,10 +152,27 @@ export const JadwalKegiatanView: React.FC<UniversalJadwalKegiatanViewProps> = Re
   const { rawList: masterKegiatans = [], isLoading: loadingMasters } = useJenisKegiatanMaster();
   const { rawList: classes = [], isLoading: loadingClasses } = useKelasOptions();
 
+  const scopedJadwalItems = useMemo(
+    () => jadwalItems.filter((j) => matchesActivityScope(j.nama, j.jenis_kegiatan, scope, includeDhuha)),
+    [jadwalItems, scope, includeDhuha]
+  );
+
+  const scopedMasterKegiatans = useMemo(() => {
+    if (scope === 'ALL') return masterKegiatans;
+    return masterKegiatans.filter((m) => matchesActivityScope(m.nama, m.tipe, scope, includeDhuha));
+  }, [masterKegiatans, scope, includeDhuha]);
+
   const invalidateJadwal = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan-list'] });
     queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan'] });
-  }, [queryClient]);
+    queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan-policy-summary'] });
+    queryClient.invalidateQueries({ queryKey: ['ketarunaan-guard'] });
+    queryClient.invalidateQueries({ queryKey: ['ketarunaan-sesi-hari-ini'] });
+    queryClient.invalidateQueries({ queryKey: ['dhuha-guard'] });
+    queryClient.invalidateQueries({ queryKey: ['dhuha-sesi-hari-ini'] });
+    queryClient.invalidateQueries({ queryKey: ['staff-timeline-unified'] });
+    onScheduleChanged?.();
+  }, [queryClient, onScheduleChanged]);
 
   const handleOpenCreate = useCallback(() => {
     if (readOnly) return;
@@ -355,6 +408,98 @@ export const JadwalKegiatanView: React.FC<UniversalJadwalKegiatanViewProps> = Re
     }
     return `${targetIds.length} Kelas`;
   }, [classes]);
+
+  // ── MODE COMPACT BUILDER (UNIVERSAL ROLE-READY EMBEDDED BLOCK UNTUK DASHBOARD KETARUNAAN / DHUHA / ESKUL) ──
+  if (variant === 'compact-builder') {
+    const blockTitle =
+      scope === 'KETARUNAAN'
+        ? 'Slot Jadwal Ketarunaan, Apel & Upacara'
+        : scope === 'DHUHA'
+        ? 'Slot Jadwal Pembiasaan Dhuha'
+        : scope === 'ESKUL'
+        ? 'Slot Jadwal Ekstrakurikuler'
+        : 'Slot Jadwal Kegiatan';
+
+    return (
+      <div className={cn('rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3', className)}>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0">
+            <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <h3 className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 truncate">
+              {blockTitle}
+            </h3>
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 shrink-0">
+              {scopedJadwalItems.length} jadwal
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {allowOptionalDhuha && scope === 'KETARUNAAN' && (
+              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                  Sertakan Dhuha
+                </span>
+                <Switch checked={includeDhuha} onCheckedChange={setIncludeDhuha} />
+              </label>
+            )}
+            {!readOnly && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleOpenCreate}
+                className="h-7 px-3 rounded-xl text-[11px] font-bold bg-indigo-600 hover:bg-indigo-500 text-white border-none flex items-center gap-1 cursor-pointer"
+              >
+                <Plus size={12} />
+                <span>Tambah Jadwal</span>
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {loadingJadwal ? (
+          <div className="py-6 flex justify-center">
+            <Loader size="sm" />
+          </div>
+        ) : (
+          <KesiswaanJadwalBuilder
+            variant="compact"
+            jadwalItems={scopedJadwalItems}
+            classes={classes}
+            readOnly={readOnly}
+            onEditItem={(item, targetDay) => {
+              const allRelated = jadwalItems.filter(j =>
+                j.id === item.id ||
+                (j.nama && item.nama && j.nama.toLowerCase().trim() === item.nama.toLowerCase().trim())
+              );
+              handleOpenEdit(item, allRelated, targetDay);
+            }}
+            onDeleteItem={(id, nama) => handleDelete([{ id, nama } as any], nama)}
+            onAddNewToDay={(day) => handleOpenCreateForDay(day)}
+          />
+        )}
+
+        {/* Universal Role-Ready Form Modal */}
+        {isModalOpen && (
+          <Suspense fallback={null}>
+            <JadwalKegiatanFormModal
+              editingItem={editingItem}
+              editingItems={editingItems}
+              masterKegiatans={scopedMasterKegiatans.length > 0 ? scopedMasterKegiatans : masterKegiatans}
+              classes={classes}
+              activeTahunPelajaranId={effectiveTpId}
+              activeTahunPelajaranName={effectiveTpName}
+              presetNama={presetMasterNama}
+              presetDay={presetDay}
+              focusDay={focusDay}
+              conflictReferenceKegiatan={jadwalItems.filter(j => j.jenis_kegiatan === 'PEMBIASAAN' || (j.nama && (j.nama.toLowerCase().includes('ketarunaan') || j.nama.toLowerCase().includes('upacara') || j.nama.toLowerCase().includes('apel') || j.nama.toLowerCase().includes('duha'))))}
+              onClose={handleCloseModal}
+              onSubmit={handleFormSubmit}
+            />
+          </Suspense>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className={cn('space-y-4 w-full min-w-0', isModal && 'p-2 sm:p-4', className)}>

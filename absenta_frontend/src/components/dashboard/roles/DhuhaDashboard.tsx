@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, Suspense, lazy } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -35,6 +35,12 @@ import { DhuhaLaporanTimTab } from '@/components/kesiswaan/pembiasaan-dhuha/Dhuh
 import { DhuhaLaporanKelasTab } from '@/components/kesiswaan/pembiasaan-dhuha/DhuhaLaporanKelasTab';
 import { KegiatanWajibPolicyPanel } from '@/components/attendance/kegiatan/KegiatanWajibPolicyPanel';
 
+const JadwalKegiatanView = lazy(() =>
+  import('@/components/attendance/kegiatan/JadwalKegiatanView').then((m) => ({
+    default: m.JadwalKegiatanView,
+  }))
+);
+
 const HARI_LABEL: Record<string, string> = {
   SENIN: 'Senin',
   SELASA: 'Selasa',
@@ -58,7 +64,7 @@ const TAB_OPTIONS = [
   { id: 'laporan_kelas', label: 'Laporan Per Rombel', icon: LayoutList },
   { id: 'laporan_tim', label: 'Laporan Pendamping', icon: FileText },
   { id: 'kepanitiaan', label: 'Terminal Presensi & POS', icon: Users },
-  { id: 'aturan_presensi', label: 'Aturan Presensi Guru', icon: Shield },
+  { id: 'aturan_presensi', label: 'Jadwal & Aturan Guru', icon: Shield },
 ];
 
 export interface DhuhaDashboardProps {
@@ -402,7 +408,13 @@ export const DhuhaDashboard: React.FC<DhuhaDashboardProps> = React.memo(() => {
               )}
 
               {activeTab === 'aturan_presensi' && (
-                <div className="p-4 sm:p-6">
+                <div className="p-4 sm:p-6 space-y-5">
+                  <JadwalKegiatanView
+                    hideLayout
+                    variant="compact-builder"
+                    scope="DHUHA"
+                    onScheduleChanged={handleRefresh}
+                  />
                   <KegiatanWajibPolicyPanel scope="DHUHA" />
                 </div>
               )}

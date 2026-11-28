@@ -85,6 +85,11 @@ const KegiatanWajibPolicyPanel = lazy(() =>
     default: m.KegiatanWajibPolicyPanel,
   }))
 );
+const JadwalKegiatanView = lazy(() =>
+  import('@/components/attendance/kegiatan/JadwalKegiatanView').then((m) => ({
+    default: m.JadwalKegiatanView,
+  }))
+);
 
 const HARI_LABEL: Record<string, string> = {
   SENIN: 'Senin',
@@ -406,8 +411,8 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
       },
       {
         id: 'aturan_presensi',
-        label: 'Aturan Presensi Guru',
-        shortLabel: 'Aturan Guru',
+        label: 'Jadwal & Aturan Guru',
+        shortLabel: 'Jadwal & Aturan',
         icon: Shield,
       },
       {
@@ -438,7 +443,7 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
       case 'ploting_panitia':
         return 'Tabel Ploting Panitia';
       case 'aturan_presensi':
-        return 'Aturan Presensi Guru Ketarunaan';
+        return 'Jadwal Kegiatan & Aturan Presensi Guru';
       case 'backfill_presensi':
         return 'Rekap Backfill & Staging Presensi (Event Resmi)';
       default:
@@ -788,12 +793,12 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
                   </div>
                 )}
 
-                {/* 7b. ATURAN PRESENSI GURU KETARUNAAN (2-TIER RELASIONAL) */}
+                {/* 7b. JADWAL BUILDER RINGKAS + ATURAN PRESENSI GURU KETARUNAAN (2 BLOK TERPISAH, 2 ARAH) */}
                 {visitedTabs.has('aturan_presensi') && (
                   <div
                     role="tabpanel"
                     aria-hidden={activeTab !== 'aturan_presensi'}
-                    className={cn('w-full min-w-0 p-3 sm:p-5', activeTab === 'aturan_presensi' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                    className={cn('w-full min-w-0 p-3 sm:p-5 space-y-5', activeTab === 'aturan_presensi' ? 'block animate-in fade-in duration-100' : 'hidden')}
                   >
                     <Suspense
                       fallback={
@@ -804,6 +809,18 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
                         </div>
                       }
                     >
+                      {/* Blok 1: Slot Jadwal Builder (Label & Waktu, APEL / KETARUNAAN / UPACARA + DUHA Opsional) */}
+                      <JadwalKegiatanView
+                        hideLayout
+                        variant="compact-builder"
+                        scope="KETARUNAAN"
+                        allowOptionalDhuha
+                        tahunPelajaranId={selectedTpId}
+                        semesterId={selectedSemId}
+                        onScheduleChanged={handleRefresh}
+                      />
+
+                      {/* Blok 2: Aturan Presensi Guru & Posisi Pendamping (Relasional 2-Tier) */}
                       <KegiatanWajibPolicyPanel scope="KETARUNAAN" />
                     </Suspense>
                   </div>
