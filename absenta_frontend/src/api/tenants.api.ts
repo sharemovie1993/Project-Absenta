@@ -138,6 +138,7 @@ export interface UpdateTenantRequest {
   kepala_sekolah?: string;
   nip_kepala?: string;
   allow_manual_hadir_gate?: boolean;
+  allow_attendance_staging_backfill?: boolean;
   jenjang?: string | null;
   shift_jam_pelajaran?: ShiftJamPelajaranConfig | null;
 }

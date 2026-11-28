@@ -60,6 +60,16 @@ const AttendanceStagingModal = lazy(() =>
     default: m.AttendanceStagingModal,
   }))
 );
+const AttendanceStagingView = lazy(() =>
+  import('../../components/attendance/staging/AttendanceStagingView').then((m) => ({
+    default: m.AttendanceStagingView,
+  }))
+);
+const HistoricalBackfillModal = lazy(() =>
+  import('../../components/attendance/backfill/HistoricalBackfillModal').then((m) => ({
+    default: m.HistoricalBackfillModal,
+  }))
+);
 
 const HARI_LABEL: Record<string, string> = {
   SENIN: 'Senin',
@@ -90,6 +100,7 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
   const [activeTab, setActiveTab] = useState<string>('terminal_absensi');
   const [visitedTabs, setVisitedTabs] = useState<Set<string>>(() => new Set(['terminal_absensi']));
   const [isStagingModalOpen, setIsStagingModalOpen] = useState(false);
+  const [isBackfillModalOpen, setIsBackfillModalOpen] = useState(false);
   const { isKesiswaan, isAdmin, can } = useCapabilities();
 
   // Konteks Akademik Terpadu (Single Source of Truth)
@@ -225,6 +236,13 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
         id: 'ploting_panitia',
         label: 'Tabel Ploting Panitia',
         icon: TableProperties,
+      },
+      {
+        id: 'backfill_presensi',
+        label: 'Rekap Backfill & Staging',
+        icon: FileSpreadsheet,
+        badge: 'Guard',
+        badgeColor: 'bg-amber-500 text-white',
       },
     ];
   }, [stats, sesiId, academicFilter.selectedKelasLabel]);
@@ -413,6 +431,52 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
             />
           </div>
         )}
+
+        {visitedTabs.has('backfill_presensi') && (
+          <div className={cn('w-full min-w-0 p-3 sm:p-4 space-y-4', activeTab === 'backfill_presensi' ? 'block animate-in fade-in duration-100' : 'hidden')}>
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <span>Rekap Backfill Absensi ke Belakang (Template Excel Per Rombel)</span>
+                </h3>
+                <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400">
+                  Unduh template Excel per rombel/peleton dan impor rekap kehadiran Ketarunaan ke belakang. Eksekusi dilindungi oleh Guard Event Resmi Admin.
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setIsBackfillModalOpen(true)}
+                className="shrink-0 h-9 px-4 text-xs font-extrabold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-xs gap-1.5 cursor-pointer"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Buka Wizard Rekap Backfill Excel</span>
+              </Button>
+            </div>
+
+            <Suspense
+              fallback={
+                <div className="p-4 space-y-2.5">
+                  {[1, 2, 3].map((itemKey) => (
+                    <Skeleton key={itemKey} className="h-12 rounded-xl" />
+                  ))}
+                </div>
+              }
+            >
+              <AttendanceStagingView
+                tahunPelajaranId={selectedTpId}
+                semesterId={selectedSemId}
+                kelasId={academicFilter.values.kelasId}
+                hideLayout
+                onSyncSuccess={() => {
+                  handleRefresh();
+                  queryClient.invalidateQueries({ queryKey: ['ketarunaan-stats'] });
+                }}
+              />
+            </Suspense>
+          </div>
+        )}
       </div>
     </SectionCard>
   );
@@ -450,6 +514,16 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
                 type="button"
                 size="sm"
                 variant="outline"
+                onClick={() => setIsBackfillModalOpen(true)}
+                className="h-8 px-2.5 text-xs font-bold gap-1.5 border-amber-300 text-amber-800 dark:text-amber-300"
+              >
+                <Clock size={13} className="text-amber-600" />
+                <span>Rekap Backfill</span>
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
                 onClick={() => setIsStagingModalOpen(true)}
                 className="h-8 px-2.5 text-xs font-bold gap-1.5"
               >
@@ -461,6 +535,34 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
 
           <AcademicFilterToolbar {...academicFilter.toolbarProps} variant="compact" />
           {tabPanelsNode}
+
+          {isBackfillModalOpen && (
+            <Suspense fallback={null}>
+              <HistoricalBackfillModal
+                isOpen={isBackfillModalOpen}
+                onClose={() => setIsBackfillModalOpen(false)}
+                kelasId={
+                  academicFilter.values.kelasId ||
+                  academicFilter.options.kelasOptions?.[0]?.value ||
+                  ''
+                }
+                kelasNama={
+                  academicFilter.selectedKelasLabel ||
+                  academicFilter.options.kelasOptions?.[0]?.label ||
+                  'Pilih Rombel'
+                }
+                kelasList={academicFilter.options.kelasOptions}
+                jenisKegiatan="KETARUNAAN"
+                jadwalKegiatanId={jadwalKegiatanId || undefined}
+                tahunPelajaranId={selectedTpId}
+                semesterId={selectedSemId}
+                onSuccess={() => {
+                  handleRefresh();
+                  queryClient.invalidateQueries({ queryKey: ['ketarunaan-stats'] });
+                }}
+              />
+            </Suspense>
+          )}
 
           {isStagingModalOpen && (
             <Suspense fallback={null}>
@@ -623,6 +725,34 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
             {tabPanelsNode}
           </main>
         </div>
+
+        {isBackfillModalOpen && (
+          <Suspense fallback={null}>
+            <HistoricalBackfillModal
+              isOpen={isBackfillModalOpen}
+              onClose={() => setIsBackfillModalOpen(false)}
+              kelasId={
+                academicFilter.values.kelasId ||
+                academicFilter.options.kelasOptions?.[0]?.value ||
+                ''
+              }
+              kelasNama={
+                academicFilter.selectedKelasLabel ||
+                academicFilter.options.kelasOptions?.[0]?.label ||
+                'Pilih Rombel'
+              }
+              kelasList={academicFilter.options.kelasOptions}
+              jenisKegiatan="KETARUNAAN"
+              jadwalKegiatanId={jadwalKegiatanId || undefined}
+              tahunPelajaranId={selectedTpId}
+              semesterId={selectedSemId}
+              onSuccess={() => {
+                handleRefresh();
+                queryClient.invalidateQueries({ queryKey: ['ketarunaan-stats'] });
+              }}
+            />
+          </Suspense>
+        )}
       </AcademicPageLayout>
     </InfraErrorBoundary>
   );

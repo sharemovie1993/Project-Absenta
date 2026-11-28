@@ -17,6 +17,73 @@ const bulkDeleteSchema = z.object({
 
 export class AttendanceStagingController {
   /**
+   * GET /attendance/staging/guard-status
+   */
+  static async getGuardStatus(req: any, reply: any) {
+    try {
+      const tenantId = req.tenantId || req.user?.tenant_id || req.user?.tenantId;
+      if (!tenantId) {
+        return sendError(reply, 401, 'Unauthorized: Tenant ID tidak ditemukan');
+      }
+      const status = await AttendanceStagingService.getGuardStatus(tenantId);
+      return sendResponse(reply, 200, true, 'Berhasil mengambil status guard staging & backfill', status);
+    } catch (err: any) {
+      return sendError(reply, 500, err.message, err);
+    }
+  }
+
+  /**
+   * PUT /attendance/staging/guard-status
+   */
+  static async updateGuardStatus(req: any, reply: any) {
+    try {
+      const tenantId = req.tenantId || req.user?.tenant_id || req.user?.tenantId;
+      if (!tenantId) {
+        return sendError(reply, 401, 'Unauthorized: Tenant ID tidak ditemukan');
+      }
+
+      const user = req.user || {};
+      const roleName = String(user.roleName || user.role || '').toUpperCase();
+      const userRoles: string[] = Array.isArray(user.roles)
+        ? user.roles.map((r: any) => String(typeof r === 'string' ? r : r?.name || r?.code || '').toUpperCase())
+        : [];
+      const isAdmin =
+        roleName === 'ADMIN' ||
+        roleName === 'SUPERADMIN' ||
+        userRoles.includes('ADMIN') ||
+        userRoles.includes('SUPERADMIN');
+
+      if (!isAdmin) {
+        return sendError(
+          reply,
+          403,
+          'Hanya Administrator Sekolah yang berhak mengaktifkan atau menonaktifkan Guard Event Resmi Staging & Backfill Presensi.'
+        );
+      }
+
+      const { enabled, event_label } = (req.body || {}) as { enabled?: boolean; event_label?: string };
+      if (typeof enabled !== 'boolean') {
+        return sendError(reply, 400, 'Parameter enabled (boolean) wajib disertakan');
+      }
+
+      const actorName = user.name || user.username || user.email || 'Administrator';
+      const status = await AttendanceStagingService.setGuardStatus(tenantId, enabled, actorName, event_label);
+
+      return sendResponse(
+        reply,
+        200,
+        true,
+        enabled
+          ? 'Mode Event Resmi Staging & Backfill Presensi DIAKTIFKAN. Pengguna kini dapat melakukan rekonsiliasi presensi.'
+          : 'Guard Staging & Backfill Presensi DIKUNCI. Fitur manipulasi/backfill presensi kini dinonaktifkan.',
+        status
+      );
+    } catch (err: any) {
+      return sendError(reply, 500, err.message, err);
+    }
+  }
+
+  /**
    * POST /attendance/staging/fetch
    * Unduh Google Sheet, parse seluruh rombel (multi-sheet), simpan ke staging
    */
@@ -28,6 +95,8 @@ export class AttendanceStagingController {
         return sendError(reply, 401, 'Unauthorized: Tenant ID tidak ditemukan');
       }
 
+      await AttendanceStagingService.assertGuardEnabled(tenantId);
+
       const result = await AttendanceStagingService.fetchAndStore(tenantId, url);
       return sendResponse(
         reply,
@@ -38,7 +107,7 @@ export class AttendanceStagingController {
       );
     } catch (err: any) {
       appLogger.error({ err: err.message }, 'Gagal menarik data Google Sheet staging');
-      return sendError(reply, 400, err.message, err);
+      return sendError(reply, err.statusCode || 400, err.message, err);
     }
   }
 
@@ -82,6 +151,8 @@ export class AttendanceStagingController {
       const userId = req.user?.id || 'system';
       const { id } = req.params as { id: string };
 
+      await AttendanceStagingService.assertGuardEnabled(tenantId);
+
       const result = await AttendanceStagingService.syncSheet(tenantId, id, userId);
       return sendResponse(
         reply,
@@ -92,7 +163,7 @@ export class AttendanceStagingController {
       );
     } catch (err: any) {
       appLogger.error({ err: err.message }, 'Gagal sinkronisasi data staging presensi');
-      return sendError(reply, 400, err.message, err);
+      return sendError(reply, err.statusCode || 400, err.message, err);
     }
   }
 
@@ -106,6 +177,8 @@ export class AttendanceStagingController {
       const userId = req.user?.id || 'system';
       const { ids } = bulkSyncSchema.parse(req.body);
 
+      await AttendanceStagingService.assertGuardEnabled(tenantId);
+
       const result = await AttendanceStagingService.bulkSyncSheets(tenantId, ids, userId);
       return sendResponse(
         reply,
@@ -115,7 +188,7 @@ export class AttendanceStagingController {
         result
       );
     } catch (err: any) {
-      return sendError(reply, 400, err.message, err);
+      return sendError(reply, err.statusCode || 400, err.message, err);
     }
   }
 
@@ -278,6 +351,8 @@ export class AttendanceStagingController {
       const userId = req.user?.id || 'SYSTEM_MANUAL';
       const body = req.body;
 
+      await AttendanceStagingService.assertGuardEnabled(tenantId);
+
       const result = await AttendanceStagingService.createManualBackfill(tenantId, userId, body);
       return sendResponse(
         reply,
@@ -288,7 +363,7 @@ export class AttendanceStagingController {
       );
     } catch (err: any) {
       appLogger.error({ err: err.message }, 'Gagal memproses backfill manual UI');
-      return sendError(reply, 400, err.message, err);
+      return sendError(reply, err.statusCode || 400, err.message, err);
     }
   }
 }

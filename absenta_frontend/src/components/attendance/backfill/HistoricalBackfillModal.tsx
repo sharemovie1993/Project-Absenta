@@ -13,7 +13,13 @@ import {
   Info,
   RefreshCw,
   Shield,
+  Lock,
+  Unlock,
+  ShieldAlert,
 } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCapabilities } from '../../../hooks/useCapabilities';
+import { attendanceStagingApi } from '../../../api/attendance-staging.api';
 import toast from 'react-hot-toast';
 import { Modal, Button, Badge } from '../../ui';
 import {
@@ -78,6 +84,41 @@ export const HistoricalBackfillModal: React.FC<HistoricalBackfillModalProps> = (
   const [isDownloading, setIsDownloading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [isTogglingGuard, setIsTogglingGuard] = useState(false);
+
+  const queryClient = useQueryClient();
+  const { isAdmin } = useCapabilities();
+
+  const { data: guardRes, isLoading: isGuardLoading, refetch: refetchStagingGuard } = useQuery({
+    queryKey: ['attendance-staging-guard'],
+    queryFn: () => attendanceStagingApi.getGuardStatus(),
+    enabled: isOpen,
+    staleTime: 30_000,
+  });
+
+  const guardStatus = guardRes?.data;
+  const isGuardEnabled = Boolean(guardStatus?.enabled);
+
+  const handleToggleGuard = async (nextEnabled: boolean) => {
+    setIsTogglingGuard(true);
+    try {
+      const res = await attendanceStagingApi.updateGuardStatus({
+        enabled: nextEnabled,
+      });
+      if (res.success) {
+        toast.success(res.message);
+        await refetchStagingGuard();
+        queryClient.invalidateQueries({ queryKey: ['attendance-staging-guard'] });
+        queryClient.invalidateQueries({ queryKey: ['tenant-info'] });
+      } else {
+        toast.error(res.message || 'Gagal memperbarui status Guard.');
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Gagal memperbarui status Guard.');
+    } finally {
+      setIsTogglingGuard(false);
+    }
+  };
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewData, setPreviewData] = useState<BackfillPreviewResponse | null>(null);
@@ -234,6 +275,80 @@ export const HistoricalBackfillModal: React.FC<HistoricalBackfillModalProps> = (
         </div>
 
         {/* Pemilih Kelas / Peleton jika disediakan opsi */}
+        { isGuardEnabled ? (
+          <div className="p-3.5 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start sm:items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                <Unlock className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-extrabold text-emerald-950 dark:text-emerald-200">
+                    Guard Terbuka • Mode Event Resmi Rekonsiliasi Aktif
+                  </span>
+                  <Badge className="bg-emerald-600 text-white text-[9px] font-bold px-1.5 py-0">
+                    DISETUJUI ADMIN
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-emerald-800/90 dark:text-emerald-300/90">
+                  Pengguna diizinkan melakukan rekap backfill presensi ke belakang selama Event Resmi berlangsung.
+                </p>
+              </div>
+            </div>
+            {isAdmin && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={isTogglingGuard}
+                onClick={() => handleToggleGuard(false)}
+                className="shrink-0 h-7 px-2.5 text-[11px] font-bold border-rose-300 bg-white hover:bg-rose-50 text-rose-700 rounded-lg gap-1"
+              >
+                <Lock className="w-3 h-3" />
+                <span>{isTogglingGuard ? 'Mengunci...' : 'Kunci Guard'}</span>
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="p-4 rounded-xl bg-amber-50/95 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-black text-amber-950 dark:text-amber-100">
+                    Guard Keamanan Aktif • Eksekusi Backfill Dikunci
+                  </span>
+                  <Badge className="bg-rose-600 text-white text-[9px] font-bold px-1.5 py-0">
+                    DI LUAR EVENT RESMI
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-amber-900/90 dark:text-amber-200/90 leading-relaxed">
+                  Untuk mencegah manipulasi data presensi ke belakang, penyimpanan backfill dikunci di luar Event Resmi. Anda tetap dapat mengunduh format Excel dan menguji pratinjau berkas, namun tombol eksekusi hanya terbuka bila Guard diaktifkan oleh Admin.
+                </p>
+              </div>
+            </div>
+            {isAdmin ? (
+              <Button
+                type="button"
+                size="sm"
+                disabled={isTogglingGuard || isGuardLoading}
+                onClick={() => handleToggleGuard(true)}
+                className="shrink-0 h-8 px-3 text-[11px] font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg gap-1"
+              >
+                <Unlock className="w-3.5 h-3.5" />
+                <span>{isTogglingGuard ? 'Membuka...' : 'Aktifkan Event Resmi (Buka Guard)'}</span>
+              </Button>
+            ) : (
+              <div className="shrink-0 px-2.5 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/60 border border-amber-300 text-[10px] font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1">
+                <Lock className="w-3 h-3" />
+                <span>Dikunci Admin</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {kelasList && kelasList.length > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/80 dark:border-slate-700 text-xs">
             <div className="flex items-center gap-2">
@@ -458,8 +573,9 @@ export const HistoricalBackfillModal: React.FC<HistoricalBackfillModalProps> = (
             variant="primary"
             size="sm"
             onClick={handleExecute}
-            disabled={!previewData || isExecuting}
-            className={`${isKetarunaan ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white text-xs gap-1.5 h-9 px-4 rounded-lg shadow-sm`}
+            disabled={!previewData || isExecuting || !isGuardEnabled}
+            title={!isGuardEnabled ? 'Guard Keamanan sedang dikunci oleh Admin (Di Luar Event Resmi)' : undefined}
+            className={`${isKetarunaan ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'} disabled:opacity-50 text-white text-xs gap-1.5 h-9 px-4 rounded-lg shadow-sm`}
           >
             {isExecuting ? (
               <>

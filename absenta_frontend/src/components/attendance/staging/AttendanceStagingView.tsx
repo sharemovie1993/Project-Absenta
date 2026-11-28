@@ -17,7 +17,12 @@ import {
   AlertCircle,
   Calendar,
   X,
+  Lock,
+  Unlock,
+  ShieldAlert,
 } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCapabilities } from '@/hooks/useCapabilities';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -83,6 +88,40 @@ export const AttendanceStagingView: React.FC<UniversalAttendanceStagingViewProps
   const [manualBackfillOpen, setManualBackfillOpen] = useState(false);
   const [isRemappingInline, setIsRemappingInline] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isTogglingGuard, setIsTogglingGuard] = useState(false);
+
+  const queryClient = useQueryClient();
+  const { isAdmin } = useCapabilities();
+
+  const { data: guardRes, isLoading: isGuardLoading, refetch: refetchStagingGuard } = useQuery({
+    queryKey: ['attendance-staging-guard'],
+    queryFn: () => attendanceStagingApi.getGuardStatus(),
+    staleTime: 30_000,
+  });
+
+  const guardStatus = guardRes?.data;
+  const isGuardEnabled = Boolean(guardStatus?.enabled);
+
+  const handleToggleGuard = async (nextEnabled: boolean) => {
+    setIsTogglingGuard(true);
+    try {
+      const res = await attendanceStagingApi.updateGuardStatus({
+        enabled: nextEnabled,
+      });
+      if (res.success) {
+        toast.success(res.message);
+        await refetchStagingGuard();
+        queryClient.invalidateQueries({ queryKey: ['attendance-staging-guard'] });
+        queryClient.invalidateQueries({ queryKey: ['tenant-info'] });
+      } else {
+        toast.error(res.message || 'Gagal memperbarui status Guard.');
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Gagal memperbarui status Guard.');
+    } finally {
+      setIsTogglingGuard(false);
+    }
+  };
 
   // Fetch list sheets from API
   const loadSheets = useCallback(async () => {
@@ -386,9 +425,92 @@ export const AttendanceStagingView: React.FC<UniversalAttendanceStagingViewProps
         <HubBentoGrid cells={bentoCells} columns={4} />
       </div>
 
+      {/* ── OFFICIAL EVENT GUARD BANNER (ANTI-MANIPULATION GUARD) ── */}
+      {isGuardEnabled ? (
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <Unlock className="w-5 h-5" />
+            </div>
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs sm:text-sm font-extrabold text-emerald-950 dark:text-emerald-200">
+                  Mode Event Resmi Aktif • Guard Staging &amp; Backfill Terbuka
+                </span>
+                <Badge className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5">
+                  DISETUJUI ADMIN
+                </Badge>
+              </div>
+              <p className="text-[11px] sm:text-xs text-emerald-800/90 dark:text-emerald-300/90 leading-relaxed">
+                Administrator telah membuka akses <strong>Event Resmi Rekonsiliasi Presensi</strong>. Anda dapat menarik spreadsheet, membuat backfill manual, dan menyinkronkan data ke presensi utama.
+                {guardStatus?.updated_by && (
+                  <span className="opacity-80"> (Diaktifkan oleh: {guardStatus.updated_by})</span>
+                )}
+              </p>
+            </div>
+          </div>
+
+          {isAdmin && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={isTogglingGuard}
+              onClick={() => handleToggleGuard(false)}
+              className="shrink-0 h-8 px-3 text-xs font-bold border-rose-300 bg-white hover:bg-rose-50 text-rose-700 dark:bg-slate-900 dark:border-rose-800 dark:text-rose-300 rounded-xl gap-1.5 cursor-pointer"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>{isTogglingGuard ? 'Mengunci...' : 'Kunci Kembali Guard (Tutup Event)'}</span>
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/95 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-start gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-xs sm:text-sm font-black text-amber-950 dark:text-amber-100">
+                  Guard Keamanan Aktif: Fitur Staging &amp; Backfill Presensi Sedang Dikunci
+                </h3>
+                <Badge className="bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5">
+                  DI LUAR EVENT RESMI
+                </Badge>
+              </div>
+              <p className="text-xs text-amber-900/90 dark:text-amber-200/90 leading-relaxed max-w-3xl">
+                Untuk menghindari manipulasi data presensi ke belakang, eksekusi penarikan spreadsheet, backfill manual, dan sinkronisasi presensi <strong>hanya dapat dilakukan saat diaktifkan oleh Administrator Sekolah</strong> pada Event Resmi Rekonsiliasi. Anda tetap dapat melihat dan memeriksa daftar lembar penampung di bawah ini dalam mode baca.
+              </p>
+            </div>
+          </div>
+
+          {isAdmin ? (
+            <Button
+              type="button"
+              size="sm"
+              disabled={isTogglingGuard || isGuardLoading}
+              onClick={() => handleToggleGuard(true)}
+              className="shrink-0 h-9 px-4 text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm gap-1.5 cursor-pointer"
+            >
+              <Unlock className="w-4 h-4" />
+              <span>{isTogglingGuard ? 'Mengaktifkan...' : 'Aktifkan Event Resmi (Buka Guard)'}</span>
+            </Button>
+          ) : (
+            <div className="shrink-0 px-3 py-2 rounded-xl bg-amber-100/80 dark:bg-amber-900/50 border border-amber-300/80 dark:border-amber-700 text-[11px] font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+              <Lock className="w-3.5 h-3.5 text-amber-700 dark:text-amber-300" />
+              <span>Hubungi Admin untuk Membuka Guard</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* URL Ingestion Form Card (Compact) */}
       {!readOnly && (
-        <Card className="p-3.5 sm:p-4 shadow-2xs border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl">
+        <Card className={cn(
+          'p-3.5 sm:p-4 shadow-2xs border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl transition-opacity',
+          !isGuardEnabled && 'opacity-70'
+        )}>
           <form onSubmit={handleFetchUrl} className="space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
               <div>
@@ -404,8 +526,15 @@ export const AttendanceStagingView: React.FC<UniversalAttendanceStagingViewProps
                 <Button
                   type="button"
                   variant="primary"
-                  onClick={() => setManualBackfillOpen(true)}
-                  className="h-8 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-3 rounded-xl shadow-2xs flex items-center gap-1.5"
+                  disabled={!isGuardEnabled}
+                  onClick={() => {
+                    if (!isGuardEnabled) {
+                      toast.error('Guard Keamanan sedang terkunci. Hubungi Admin untuk mengaktifkan Event Resmi.');
+                      return;
+                    }
+                    setManualBackfillOpen(true);
+                  }}
+                  className="h-8 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold text-xs px-3 rounded-xl shadow-2xs flex items-center gap-1.5"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-amber-200" />
                   Input Backfill Cepat (Manual UI)
@@ -428,16 +557,16 @@ export const AttendanceStagingView: React.FC<UniversalAttendanceStagingViewProps
                   value={urlInput}
                   onChange={(e) => setUrlInput(e.target.value)}
                   placeholder="https://docs.google.com/spreadsheets/d/1FHKzAAVEEcRz3uzEptsgRk09z7mqmQ1ZwFCIwF1Iwe0/edit#gid=0"
-                  className="w-full px-3.5 py-2 pl-9 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-800 dark:text-slate-100 transition-all font-mono"
-                  disabled={isFetching}
+                  className="w-full px-3.5 py-2 pl-9 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-800 dark:text-slate-100 transition-all font-mono disabled:opacity-60"
+                  disabled={isFetching || !isGuardEnabled}
                 />
                 <FileSpreadsheet className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
               </div>
 
               <Button
                 type="submit"
-                disabled={isFetching || !urlInput.trim()}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 shrink-0"
+                disabled={isFetching || !urlInput.trim() || !isGuardEnabled}
+                className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 shrink-0"
               >
                 {isFetching ? (
                   <>
@@ -549,8 +678,8 @@ export const AttendanceStagingView: React.FC<UniversalAttendanceStagingViewProps
               <Button
                 size="sm"
                 onClick={openBulkPreSync}
-                disabled={isExecutingSync}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs flex items-center gap-1.5 rounded-lg shadow-sm"
+                disabled={isExecutingSync || !isGuardEnabled}
+                className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs flex items-center gap-1.5 rounded-lg shadow-sm"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 Sinkronkan Semua Terpilih
@@ -771,14 +900,14 @@ export const AttendanceStagingView: React.FC<UniversalAttendanceStagingViewProps
                           <Button
                             size="sm"
                             onClick={() => openSinglePreSync(item)}
-                            disabled={isExecutingSync}
+                            disabled={isExecutingSync || !isGuardEnabled}
                             className={cn(
-                              'h-8 px-2.5 text-xs rounded-lg flex items-center gap-1',
+                              'h-8 px-2.5 text-xs rounded-lg flex items-center gap-1 disabled:opacity-50',
                               isSynced
                                 ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
                                 : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
                             )}
-                            title={isSynced ? 'Sinkronkan Ulang Data' : 'Sinkronkan Sekarang'}
+                            title={!isGuardEnabled ? 'Dikunci oleh Guard Keamanan (Di Luar Event Resmi)' : isSynced ? 'Sinkronkan Ulang Data' : 'Sinkronkan Sekarang'}
                           >
                             <Sparkles className="w-3.5 h-3.5" />
                             <span>{isSynced ? 'Ulang' : 'Sinkron'}</span>

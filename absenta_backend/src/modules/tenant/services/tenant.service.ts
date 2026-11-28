@@ -73,6 +73,7 @@ export interface UpdateTenantInput {
   kepala_sekolah?: string;
   nip_kepala?: string;
   allow_manual_hadir_gate?: boolean;
+  allow_attendance_staging_backfill?: boolean;
   jenjang?: string | null;
   kurikulum?: string | null;
   durasi_smk?: string | null;
@@ -229,7 +230,7 @@ export class TenantService {
       where: {
         tenant_id: id,
         key: {
-          in: ['print_header_lines', 'logo_daerah_url', 'address', 'phone', 'email', 'website', 'ALLOW_MANUAL_HADIR_GATE', 'shift_jam_pelajaran']
+          in: ['print_header_lines', 'logo_daerah_url', 'address', 'phone', 'email', 'website', 'ALLOW_MANUAL_HADIR_GATE', 'ALLOW_ATTENDANCE_STAGING_BACKFILL', 'shift_jam_pelajaran']
         }
       }
     });
@@ -363,6 +364,7 @@ export class TenantService {
       website: (configMap['website'] && configMap['website'].trim() !== '') ? configMap['website'] : (sekolahWebsite || null),
       print_header_lines: parsedLines,
       allow_manual_hadir_gate: configMap['ALLOW_MANUAL_HADIR_GATE'] === 'true',
+      allow_attendance_staging_backfill: configMap['ALLOW_ATTENDANCE_STAGING_BACKFILL'] === 'true',
       shift_jam_pelajaran: parsedShift,
 
       // Hybrid Kepala Sekolah values
@@ -465,6 +467,7 @@ export class TenantService {
       kepala_sekolah,
       nip_kepala,
       allow_manual_hadir_gate,
+      allow_attendance_staging_backfill,
       jenjang,
       kurikulum,
       durasi_smk,
@@ -571,6 +574,9 @@ export class TenantService {
     }
     if (allow_manual_hadir_gate !== undefined) {
       await upsertConfig('ALLOW_MANUAL_HADIR_GATE', allow_manual_hadir_gate ? 'true' : 'false');
+    }
+    if (allow_attendance_staging_backfill !== undefined) {
+      await upsertConfig('ALLOW_ATTENDANCE_STAGING_BACKFILL', allow_attendance_staging_backfill ? 'true' : 'false');
     }
     if (shift_jam_pelajaran !== undefined) {
       await upsertConfig('shift_jam_pelajaran', JSON.stringify(shift_jam_pelajaran));
@@ -797,7 +803,7 @@ export class TenantService {
       where: {
         tenant_id: tenantId,
         key: {
-          in: ['print_header_lines', 'logo_daerah_url', 'address', 'phone', 'email', 'website', 'shift_jam_pelajaran']
+          in: ['print_header_lines', 'logo_daerah_url', 'address', 'phone', 'email', 'website', 'ALLOW_MANUAL_HADIR_GATE', 'ALLOW_ATTENDANCE_STAGING_BACKFILL', 'shift_jam_pelajaran']
         }
       }
     });
@@ -905,6 +911,8 @@ export class TenantService {
       email: (configMap['email'] && configMap['email'].trim() !== '') ? configMap['email'] : (sekolahEmail || null),
       website: (configMap['website'] && configMap['website'].trim() !== '') ? configMap['website'] : (sekolahWebsite || null),
       print_header_lines: parsedLines,
+      allow_manual_hadir_gate: configMap['ALLOW_MANUAL_HADIR_GATE'] === 'true',
+      allow_attendance_staging_backfill: configMap['ALLOW_ATTENDANCE_STAGING_BACKFILL'] === 'true',
       shift_jam_pelajaran: parsedShift,
 
       // Hybrid Kepala Sekolah values

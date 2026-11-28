@@ -7,6 +7,92 @@ import {
 
 export class AttendanceStagingService {
   /**
+   * Ambil status Guard Event Resmi Staging & Backfill Presensi untuk tenant ini
+   */
+  static async getGuardStatus(tenantId: string): Promise<{
+    enabled: boolean;
+    event_label: string;
+    updated_by: string | null;
+    updated_at: string | null;
+  }> {
+    const configs = await prisma.config.findMany({
+      where: {
+        tenant_id: tenantId,
+        key: {
+          in: [
+            'ALLOW_ATTENDANCE_STAGING_BACKFILL',
+            'ATTENDANCE_STAGING_EVENT_LABEL',
+            'ATTENDANCE_STAGING_UPDATED_BY',
+            'ATTENDANCE_STAGING_UPDATED_AT',
+          ],
+        },
+      },
+    });
+    const map = configs.reduce((acc, c) => {
+      acc[c.key] = c.value;
+      return acc;
+    }, {} as Record<string, string>);
+
+    return {
+      enabled: map['ALLOW_ATTENDANCE_STAGING_BACKFILL'] === 'true',
+      event_label: map['ATTENDANCE_STAGING_EVENT_LABEL'] || 'Event Resmi Rekonsiliasi & Backfill Presensi',
+      updated_by: map['ATTENDANCE_STAGING_UPDATED_BY'] || null,
+      updated_at: map['ATTENDANCE_STAGING_UPDATED_AT'] || null,
+    };
+  }
+
+  /**
+   * Ubah status Guard Event Resmi Staging & Backfill Presensi (Hanya Admin)
+   */
+  static async setGuardStatus(
+    tenantId: string,
+    enabled: boolean,
+    updatedBy: string,
+    eventLabel?: string
+  ) {
+    const upsertConfig = async (key: string, value: string) => {
+      const existing = await prisma.config.findFirst({
+        where: { tenant_id: tenantId, key },
+      });
+      if (existing) {
+        await prisma.config.update({
+          where: { id: existing.id },
+          data: { value },
+        });
+      } else {
+        await prisma.config.create({
+          data: { tenant_id: tenantId, key, value },
+        });
+      }
+    };
+
+    const nowIso = new Date().toISOString();
+    await upsertConfig('ALLOW_ATTENDANCE_STAGING_BACKFILL', enabled ? 'true' : 'false');
+    if (eventLabel !== undefined && eventLabel.trim()) {
+      await upsertConfig('ATTENDANCE_STAGING_EVENT_LABEL', eventLabel.trim());
+    }
+    await upsertConfig('ATTENDANCE_STAGING_UPDATED_BY', updatedBy);
+    await upsertConfig('ATTENDANCE_STAGING_UPDATED_AT', nowIso);
+
+    return this.getGuardStatus(tenantId);
+  }
+
+  /**
+   * Pastikan Guard Event Resmi sedang aktif sebelum menjalankan operasi tulis Staging/Backfill
+   */
+  static async assertGuardEnabled(tenantId: string): Promise<void> {
+    const status = await this.getGuardStatus(tenantId);
+    if (!status.enabled) {
+      const err: any = new Error(
+        'Akses Ditolak oleh Guard Keamanan: Fitur Staging & Backfill Presensi sedang dinonaktifkan untuk mencegah manipulasi data di luar Event Resmi. Silakan hubungi Administrator Sekolah untuk mengaktifkan Mode Event Resmi.'
+      );
+      err.statusCode = 403;
+      err.code = 'STAGING_GUARD_LOCKED';
+      throw err;
+    }
+  }
+
+  /**
    * Tarik Google Spreadsheet dari URL, parse seluruh sheet, dan simpan ke Staging
    */
   static async fetchAndStore(tenantId: string, url: string): Promise<{ totalSheets: number; sheets: any[] }> {

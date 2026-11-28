@@ -1290,6 +1290,7 @@ export function getKetarunaanTabs(currentSubtab?: string): MobileBottomTabItem[]
         { id: 'laporan_tim', label: 'Pembina & Walas', icon: FileText, targetPath: '/dashboard?tab=ketarunaan&subtab=laporan_tim', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
         { id: 'struktur_organisasi', label: 'Bagan Struktur Organisasi', icon: Layers, targetPath: '/dashboard?tab=ketarunaan&subtab=struktur_organisasi', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
         { id: 'ploting_panitia', label: 'Tabel Ploting Panitia', icon: Users, targetPath: '/dashboard?tab=ketarunaan&subtab=ploting_panitia', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
+        { id: 'backfill_presensi', label: 'Rekap Backfill & Staging', icon: FileCheck2, targetPath: '/dashboard?tab=ketarunaan&subtab=backfill_presensi', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
       ],
     },
     {

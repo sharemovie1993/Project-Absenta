@@ -52,7 +52,27 @@ export interface AttendanceStagingItem {
   updated_at: string;
 }
 
+export interface AttendanceStagingGuardStatus {
+  enabled: boolean;
+  event_label: string;
+  updated_by: string | null;
+  updated_at: string | null;
+}
+
 export const attendanceStagingApi = {
+  getGuardStatus: async (): Promise<{ success: boolean; data: AttendanceStagingGuardStatus }> => {
+    const response = await api.get('/attendance/staging/guard-status');
+    return response.data;
+  },
+
+  updateGuardStatus: async (payload: {
+    enabled: boolean;
+    event_label?: string;
+  }): Promise<{ success: boolean; message: string; data: AttendanceStagingGuardStatus }> => {
+    const response = await api.put('/attendance/staging/guard-status', payload);
+    return response.data;
+  },
+
   fetchSheet: async (url: string): Promise<{ success: boolean; message: string; data: { totalSheets: number; sheets: AttendanceStagingItem[] } }> => {
     const response = await api.post('/attendance/staging/fetch', { url }, { timeout: 120000 });
     return response.data;

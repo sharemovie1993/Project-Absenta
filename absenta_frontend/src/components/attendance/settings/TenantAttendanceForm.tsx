@@ -43,7 +43,8 @@ const TenantAttendanceFormComponent: React.FC<UniversalAttendanceSettingsViewPro
 
     // Operasional
     hari_sekolah: ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT'],
-    allow_manual_hadir_gate: false
+    allow_manual_hadir_gate: false,
+    allow_attendance_staging_backfill: false
   });
 
   const DAYS_OPTIONS = HARI_LIST;
@@ -67,7 +68,8 @@ const TenantAttendanceFormComponent: React.FC<UniversalAttendanceSettingsViewPro
         toleransi_kbm_guru_inval_menit: tenant.toleransi_kbm_guru_inval_menit ?? 10,
 
         hari_sekolah: tenant.hari_sekolah || ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT'],
-        allow_manual_hadir_gate: !!tenant.allow_manual_hadir_gate
+        allow_manual_hadir_gate: !!tenant.allow_manual_hadir_gate,
+        allow_attendance_staging_backfill: !!tenant.allow_attendance_staging_backfill
       });
     } catch (err) {
       console.error('Failed to load tenant data', err);
@@ -100,13 +102,15 @@ const TenantAttendanceFormComponent: React.FC<UniversalAttendanceSettingsViewPro
         toleransi_kbm_guru_inval_menit: Number(formData.toleransi_kbm_guru_inval_menit),
 
         hari_sekolah: formData.hari_sekolah,
-        allow_manual_hadir_gate: formData.allow_manual_hadir_gate
+        allow_manual_hadir_gate: formData.allow_manual_hadir_gate,
+        allow_attendance_staging_backfill: formData.allow_attendance_staging_backfill
       };
       
       const response = await updateTenant(user.tenant_id, updateData);
       if (response.success) {
         toast.success('Pengaturan aturan absensi berhasil disimpan');
         queryClient.invalidateQueries({ queryKey: ['attendance-config'] });
+        queryClient.invalidateQueries({ queryKey: ['attendance-staging-guard'] });
         queryClient.invalidateQueries({ queryKey: ['tenant-info'] });
         queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
         queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi'] });
@@ -437,7 +441,7 @@ const TenantAttendanceFormComponent: React.FC<UniversalAttendanceSettingsViewPro
             </div>
           </div>
 
-          <div className="p-4 sm:p-6">
+          <div className="p-4 sm:p-6 space-y-3">
             <div className="flex items-start justify-between gap-4 p-3.5 sm:p-4 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800/60">
               <div className="space-y-1 pr-2">
                 <Label htmlFor="allow-manual-hadir-field" className="text-xs font-semibold text-slate-900 dark:text-slate-200 cursor-pointer">
@@ -454,6 +458,31 @@ const TenantAttendanceFormComponent: React.FC<UniversalAttendanceSettingsViewPro
                 onCheckedChange={(checked) => {
                   if (readOnly) return;
                   setFormData(prev => ({ ...prev, allow_manual_hadir_gate: checked }));
+                }}
+              />
+            </div>
+
+            <div className="flex items-start justify-between gap-4 p-3.5 sm:p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-xl border border-amber-200/80 dark:border-amber-900/50">
+              <div className="space-y-1 pr-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Label htmlFor="allow-staging-backfill-field" className="text-xs font-bold text-slate-900 dark:text-slate-200 cursor-pointer">
+                    Aktifkan Mode Event Resmi Staging &amp; Backfill Presensi (Guard Anti-Manipulasi)
+                  </Label>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${formData.allow_attendance_staging_backfill ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'}`}>
+                    {formData.allow_attendance_staging_backfill ? 'EVENT RESMI AKTIF (TERBUKA)' : 'GUARD TERKUNCI (AMAN)'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                  Untuk mencegah manipulasi data presensi ke belakang, fitur <strong>Staging Presensi Spreadsheet</strong> dan <strong>Rekap Backfill Historis</strong> dikunci secara default. Aktifkan sakelar ini hanya saat <strong>Event Resmi Rekonsiliasi Presensi</strong> berlangsung.
+                </p>
+              </div>
+              <Switch
+                id="allow-staging-backfill-field"
+                disabled={readOnly}
+                checked={formData.allow_attendance_staging_backfill}
+                onCheckedChange={(checked) => {
+                  if (readOnly) return;
+                  setFormData(prev => ({ ...prev, allow_attendance_staging_backfill: checked }));
                 }}
               />
             </div>

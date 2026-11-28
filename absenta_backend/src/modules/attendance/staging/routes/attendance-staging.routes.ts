@@ -8,6 +8,12 @@ export default async function attendanceStagingRoutes(fastify: any) {
     }
   });
 
+  // GET /attendance/staging/guard-status - Cek status Guard Event Resmi Staging & Backfill
+  fastify.get('/guard-status', AttendanceStagingController.getGuardStatus);
+
+  // PUT /attendance/staging/guard-status - Aktifkan / Nonaktifkan Guard Event Resmi (Admin Only)
+  fastify.put('/guard-status', AttendanceStagingController.updateGuardStatus);
+
   // POST /attendance/staging/fetch - Unduh spreadsheet & simpan lembar ke staging
   fastify.post('/fetch', AttendanceStagingController.fetchSheet);
 

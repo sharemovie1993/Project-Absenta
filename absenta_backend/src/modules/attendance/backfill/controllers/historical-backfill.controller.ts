@@ -1,4 +1,5 @@
 import { historicalBackfillService } from '../services/historical-backfill.service';
+import { AttendanceStagingService } from '../../staging/services/attendance-staging.service';
 
 export class HistoricalBackfillController {
   /**
@@ -121,6 +122,8 @@ export class HistoricalBackfillController {
         return reply.status(400).send({ success: false, message: 'Tenant ID tidak ditemukan.' });
       }
 
+      await AttendanceStagingService.assertGuardEnabled(tenantId);
+
       const body = (request.body || {}) as any;
       const {
         kelasId,
@@ -164,8 +167,9 @@ export class HistoricalBackfillController {
       });
     } catch (error: any) {
       request.log?.error(error);
-      return reply.status(500).send({
+      return reply.status(error.statusCode || 500).send({
         success: false,
+        code: error.code,
         message: error.message || 'Gagal mengeksekusi backfill presensi historis.',
       });
     }

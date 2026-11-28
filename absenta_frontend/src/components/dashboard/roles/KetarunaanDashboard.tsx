@@ -65,6 +65,16 @@ const AttendanceStagingModal = lazy(() =>
     default: m.AttendanceStagingModal,
   }))
 );
+const AttendanceStagingView = lazy(() =>
+  import('@/components/attendance/staging/AttendanceStagingView').then((m) => ({
+    default: m.AttendanceStagingView,
+  }))
+);
+const HistoricalBackfillModal = lazy(() =>
+  import('@/components/attendance/backfill/HistoricalBackfillModal').then((m) => ({
+    default: m.HistoricalBackfillModal,
+  }))
+);
 
 const HARI_LABEL: Record<string, string> = {
   SENIN: 'Senin',
@@ -89,7 +99,8 @@ export type KetarunaanSubtabId =
   | 'laporan_kelas'
   | 'laporan_tim'
   | 'struktur_organisasi'
-  | 'ploting_panitia';
+  | 'ploting_panitia'
+  | 'backfill_presensi';
 
 function normalizeKetarunaanSubtab(raw: string | null): KetarunaanSubtabId {
   if (!raw) return 'terminal_absensi';
@@ -110,6 +121,10 @@ function normalizeKetarunaanSubtab(raw: string | null): KetarunaanSubtabId {
       return 'struktur_organisasi';
     case 'ploting_panitia':
       return 'ploting_panitia';
+    case 'backfill_presensi':
+    case 'staging_presensi':
+    case 'backfill':
+      return 'backfill_presensi';
     default:
       return 'terminal_absensi';
   }
@@ -141,6 +156,7 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
   const queryClient = useQueryClient();
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [isStagingModalOpen, setIsStagingModalOpen] = useState(false);
+  const [isBackfillModalOpen, setIsBackfillModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { isMobileSidebarOpen, setIsMobileSidebarOpen } = useMobileSubtabSidebar('ketarunaan');
 
@@ -372,6 +388,14 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
         shortLabel: 'Ploting Panitia',
         icon: TableProperties,
       },
+      {
+        id: 'backfill_presensi',
+        label: 'Rekap Backfill & Staging',
+        shortLabel: 'Backfill & Staging',
+        icon: FileSpreadsheet,
+        badge: 'Guard',
+        badgeColor: 'bg-amber-500 text-white',
+      },
     ];
   }, [stats, sesiId, academicFilter.selectedKelasLabel]);
 
@@ -391,6 +415,8 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
         return 'Bagan Struktur Organisasi';
       case 'ploting_panitia':
         return 'Tabel Ploting Panitia';
+      case 'backfill_presensi':
+        return 'Rekap Backfill & Staging Presensi (Event Resmi)';
       default:
         return 'Dashboard Ketarunaan';
     }
@@ -408,6 +434,17 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
           isRefreshing={isRefreshing}
           actions={
             <div className="flex items-center gap-1.5 sm:gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setIsBackfillModalOpen(true)}
+                className="h-7 sm:h-8 px-2 sm:px-2.5 text-[11px] font-bold bg-amber-500/25 hover:bg-amber-500/40 text-white border-amber-300/40 gap-1.5 cursor-pointer shadow-2xs"
+                title="Buka Rekap Backfill Absensi ke Belakang (Dilindungi Guard Event Resmi)"
+              >
+                <Clock className="w-3.5 h-3.5 text-amber-200" />
+                <span className="hidden sm:inline">Rekap Backfill</span>
+              </Button>
               <Button
                 type="button"
                 size="sm"
@@ -723,10 +760,94 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
                     />
                   </div>
                 )}
+
+                {/* 8. REKAP BACKFILL & STAGING PRESENSI (DILINDUNGI ADMIN GUARD) */}
+                {visitedTabs.has('backfill_presensi') && (
+                  <div
+                    role="tabpanel"
+                    aria-hidden={activeTab !== 'backfill_presensi'}
+                    className={cn('w-full min-w-0 p-3 sm:p-4 space-y-4', activeTab === 'backfill_presensi' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                  >
+                    <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                          <span>Rekap Backfill Absensi ke Belakang (Template Excel Per Rombel)</span>
+                        </h3>
+                        <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400">
+                          Gunakan fitur ini untuk mengunduh template Excel resmi per rombel/peleton dan mengimpor rekap kehadiran Ketarunaan ke belakang. Eksekusi dilindungi oleh Guard Event Resmi Admin.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => setIsBackfillModalOpen(true)}
+                        className="shrink-0 h-9 px-4 text-xs font-extrabold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-xs gap-1.5 cursor-pointer"
+                      >
+                        <FileSpreadsheet className="w-4 h-4" />
+                        <span>Buka Wizard Rekap Backfill Excel</span>
+                      </Button>
+                    </div>
+
+                    <Suspense
+                      fallback={
+                        <div className="p-4 space-y-2.5">
+                          {[1, 2, 3].map((itemKey) => (
+                            <Skeleton key={itemKey} className="h-12 rounded-2xl" />
+                          ))}
+                        </div>
+                      }
+                    >
+                      <AttendanceStagingView
+                        tahunPelajaranId={selectedTpId}
+                        semesterId={selectedSemId}
+                        kelasId={academicFilter.values.kelasId}
+                        hideLayout
+                        onSyncSuccess={() => {
+                          handleRefresh();
+                          queryClient.invalidateQueries({ queryKey: ['ketarunaan-stats'] });
+                          queryClient.invalidateQueries({ queryKey: ['ketarunaan-sesi-hari-ini'] });
+                          queryClient.invalidateQueries({ queryKey: ['ketarunaan-penilaian'] });
+                        }}
+                      />
+                    </Suspense>
+                  </div>
+                )}
               </div>
             </SectionCard>
           </main>
         </div>
+
+        {/* Historical Backfill Excel Modal (Dilindungi Guard Event Resmi) */}
+        {isBackfillModalOpen && (
+          <Suspense fallback={null}>
+            <HistoricalBackfillModal
+              isOpen={isBackfillModalOpen}
+              onClose={() => setIsBackfillModalOpen(false)}
+              kelasId={
+                academicFilter.values.kelasId ||
+                academicFilter.options.kelasOptions?.[0]?.value ||
+                ''
+              }
+              kelasNama={
+                academicFilter.selectedKelasLabel ||
+                academicFilter.options.kelasOptions?.[0]?.label ||
+                'Pilih Rombel'
+              }
+              kelasList={academicFilter.options.kelasOptions}
+              jenisKegiatan="KETARUNAAN"
+              jadwalKegiatanId={jadwalKegiatanId || undefined}
+              tahunPelajaranId={selectedTpId}
+              semesterId={selectedSemId}
+              onSuccess={() => {
+                handleRefresh();
+                queryClient.invalidateQueries({ queryKey: ['ketarunaan-stats'] });
+                queryClient.invalidateQueries({ queryKey: ['ketarunaan-sesi-hari-ini'] });
+                queryClient.invalidateQueries({ queryKey: ['ketarunaan-penilaian'] });
+              }}
+            />
+          </Suspense>
+        )}
 
         {/* Universal Attendance Staging Modal (Hub Penampung Presensi Spreadsheet) */}
         {isStagingModalOpen && (
