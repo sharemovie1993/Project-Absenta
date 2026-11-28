@@ -591,8 +591,8 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
         title="Program Ketarunaan"
         description="Pusat laporan perkembangan kedisiplinan taruna, evaluasi peleton rombel, dan kepanitiaan Ketarunaan."
         breadcrumbs={breadcrumbs}
-        stats={statCards}
-        isLoadingStats={isGuardLoading || isStatsLoading || isSesiLoading}
+        stats={activeTab === 'terminal_absensi' ? [] : statCards}
+        isLoadingStats={activeTab === 'terminal_absensi' ? false : (isGuardLoading || isStatsLoading || isSesiLoading)}
         hardeningModuleKey="program_ketarunaan"
         canView={canView}
         permissionMessage="Anda tidak memiliki izin untuk mengakses modul Program Ketarunaan."
