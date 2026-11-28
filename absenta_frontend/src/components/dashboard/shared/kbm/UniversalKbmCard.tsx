@@ -401,6 +401,9 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
     };
     const todayStr = HARI_MAP[nowTick.getDay()];
 
+    const cardKelasId: string | null =
+      item.kelas_id || item.session?.kelas_id || item.Kelas?.id || item.kelas?.id || null;
+
     const matchingKegiatan = rawList
       .filter((k: any) => {
         if (!k.aktif) return false;
@@ -410,6 +413,15 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
         if (kegType === 'APEL_SORE' || /pulang|apel\s*sore|apel_sore/i.test(kegName)) return false;
         const days: string[] = Array.isArray(k.hari) ? k.hari : (k.hari || '').split(',').map((s: string) => s.trim().toUpperCase());
         if (!days.includes(todayStr)) return false;
+
+        // Scope-aware target kelas: hanya tampilkan peringatan/grace period jika kelas KBM ini menjadi peserta kegiatan
+        if (cardKelasId && k.target_semua_kelas === false) {
+          const targetIds: string[] = Array.isArray(k.target_kelas_ids) ? k.target_kelas_ids : [];
+          if (targetIds.length > 0 && !targetIds.includes(cardKelasId)) {
+            return false;
+          }
+        }
+
         if (!k.waktu_selesai || !k.waktu_selesai.includes(':')) return false;
         const [endH, endM] = k.waktu_selesai.split(':').map(Number);
         const kegEnd = endH * 60 + endM;
@@ -454,7 +466,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
       kegiatanNama,
       kegiatanMulai,
     };
-  }, [nowTick, kegiatanData, jamMulai, jamSelesai, isGuroPrediksiActive]);
+  }, [nowTick, kegiatanData, jamMulai, jamSelesai, isGuroPrediksiActive, item.kelas_id, item.session?.kelas_id, item.Kelas?.id, item.kelas?.id]);
 
   const canStartSessionNow = useMemo(() => {
     if (isSessionActive || isLive || isReadyToOpen) return true;
