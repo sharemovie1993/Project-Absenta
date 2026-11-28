@@ -772,41 +772,8 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
                   <div
                     role="tabpanel"
                     aria-hidden={activeTab !== 'backfill_presensi'}
-                    className={cn('w-full min-w-0 p-3 sm:p-4 space-y-4', activeTab === 'backfill_presensi' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                    className={cn('w-full min-w-0 p-3 sm:p-4', activeTab === 'backfill_presensi' ? 'block animate-in fade-in duration-100' : 'hidden')}
                   >
-                    <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="space-y-1">
-                        <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                          <span>Rekap Backfill Absensi ke Belakang (Versi GUI Ceklis Non-Hadir &amp; Template Excel)</span>
-                        </h3>
-                        <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400">
-                          Gunakan <strong>Backfill Cepat GUI</strong> untuk memilih rentang tanggal dan cukup menceklis siswa yang tidak hadir (S/I/A/T/D) — siswa lainnya otomatis tercatat HADIR. Semua eksekusi dilindungi oleh Guard Event Resmi Admin.
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap shrink-0">
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => setIsManualBackfillModalOpen(true)}
-                          className="h-9 px-4 text-xs font-extrabold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-xs gap-1.5 cursor-pointer"
-                        >
-                          <Clock className="w-4 h-4" />
-                          <span>Buka Backfill Cepat GUI (Ceklis Non-Hadir)</span>
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setIsBackfillModalOpen(true)}
-                          className="h-9 px-3.5 text-xs font-bold border-slate-300 dark:border-slate-700 rounded-xl gap-1.5 cursor-pointer"
-                        >
-                          <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                          <span>Backfill via Excel</span>
-                        </Button>
-                      </div>
-                    </div>
-
                     <Suspense
                       fallback={
                         <div className="p-4 space-y-2.5">
@@ -821,6 +788,7 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
                         semesterId={selectedSemId}
                         kelasId={academicFilter.values.kelasId}
                         hideLayout
+                        onOpenExcelBackfill={() => setIsBackfillModalOpen(true)}
                         onSyncSuccess={() => {
                           handleRefresh();
                           queryClient.invalidateQueries({ queryKey: ['ketarunaan-stats'] });

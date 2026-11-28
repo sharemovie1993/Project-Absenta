@@ -56,6 +56,7 @@ export interface UniversalAttendanceStagingViewProps {
   readOnly?: boolean;
   onClose?: () => void;
   onSyncSuccess?: () => void;
+  onOpenExcelBackfill?: () => void;
 }
 
 export const AttendanceStagingView: React.FC<UniversalAttendanceStagingViewProps> = React.memo(({
@@ -64,6 +65,7 @@ export const AttendanceStagingView: React.FC<UniversalAttendanceStagingViewProps
   readOnly = false,
   onClose,
   onSyncSuccess,
+  onOpenExcelBackfill,
 }) => {
   const [urlInput, setUrlInput] = useState('');
   const [isFetching, setIsFetching] = useState(false);
@@ -380,73 +382,72 @@ export const AttendanceStagingView: React.FC<UniversalAttendanceStagingViewProps
 
   return (
     <div className={cn('space-y-3 w-full max-w-full min-w-0', isModal && 'p-1 sm:p-2')}>
-      {/* Top Banner & Info (Compact Mode when inside Modal/Tab) */}
-      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 rounded-2xl p-3.5 sm:p-5 text-white shadow-md relative overflow-hidden">
-        <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="space-y-1.5 max-w-4xl">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-white/20 backdrop-blur-md rounded-full text-[11px] font-bold text-emerald-100">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-200" />
-                Smart Dispatcher 5 Siklus Presensi
-              </span>
-              {stagingSheets[0]?.tahun_pelajaran_nama && (
-                <span className="inline-flex items-center gap-1 bg-black/30 border border-white/20 px-2.5 py-0.5 rounded-full text-[11px] font-bold text-amber-300">
-                  <Calendar className="w-3 h-3 text-amber-400" /> TP {stagingSheets[0].tahun_pelajaran_nama}
+      {/* Top Banner & Info (Only when standalone page or modal, hidden when embedded as subtab) */}
+      {!hideLayout && (
+        <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 rounded-2xl p-3.5 sm:p-5 text-white shadow-md relative overflow-hidden">
+          <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-1.5 max-w-4xl">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-white/20 backdrop-blur-md rounded-full text-[11px] font-bold text-emerald-100">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-200" />
+                  Smart Dispatcher 5 Siklus Presensi
                 </span>
-              )}
-            </div>
-            <h1 className="text-base sm:text-xl font-black tracking-tight">
-              Wadah Penampung Presensi (Attendance Staging Hub)
-            </h1>
-            {!hideLayout && (
+                {stagingSheets[0]?.tahun_pelajaran_nama && (
+                  <span className="inline-flex items-center gap-1 bg-black/30 border border-white/20 px-2.5 py-0.5 rounded-full text-[11px] font-bold text-amber-300">
+                    <Calendar className="w-3 h-3 text-amber-400" /> TP {stagingSheets[0].tahun_pelajaran_nama}
+                  </span>
+                )}
+              </div>
+              <h1 className="text-base sm:text-xl font-black tracking-tight">
+                Wadah Penampung Presensi (Attendance Staging Hub)
+              </h1>
               <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed">
                 Penampung data presensi multi-sheet mingguan dari Google Spreadsheet atau input manual untuk didistribusikan ke Upacara, Ketarunaan, Dhuha, dan Apel Sore.
               </p>
+            </div>
+
+            {isModal && onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="self-end sm:self-start p-2 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/25 transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 text-xs font-bold"
+                title="Tutup Modal Staging Presensi"
+              >
+                <X className="w-4 h-4" />
+                <span>Tutup</span>
+              </button>
             )}
           </div>
-
-          {isModal && onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              className="self-end sm:self-start p-2 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/25 transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 text-xs font-bold"
-              title="Tutup Modal Staging Presensi"
-            >
-              <X className="w-4 h-4" />
-              <span>Tutup</span>
-            </button>
-          )}
         </div>
-      </div>
+      )}
 
-      {/* Shopee-Grade Hairline Bento Grid Metrics (1 Card Container, 2 Lines Max) */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xs">
-        <HubBentoGrid cells={bentoCells} columns={4} />
-      </div>
+      {/* Shopee-Grade Hairline Bento Grid Metrics (Only when standalone, hidden when inside subtab that already has top Bento) */}
+      {!hideLayout && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xs">
+          <HubBentoGrid cells={bentoCells} columns={4} />
+        </div>
+      )}
 
-      {/* ── OFFICIAL EVENT GUARD BANNER (ANTI-MANIPULATION GUARD) ── */}
+      {/* ── OFFICIAL EVENT GUARD BANNER (CLEAN & COMPACT SINGLE-ROW) ── */}
       {isGuardEnabled ? (
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-          <div className="flex items-start sm:items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-              <Unlock className="w-5 h-5" />
+        <div className="px-3.5 py-2.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/70 flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+              <Unlock className="w-3.5 h-3.5" />
             </div>
-            <div className="space-y-0.5">
+            <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs sm:text-sm font-extrabold text-emerald-950 dark:text-emerald-200">
-                  Mode Event Resmi Aktif • Guard Staging &amp; Backfill Terbuka
+                <span className="text-xs font-bold text-emerald-950 dark:text-emerald-200">
+                  Mode Event Resmi Aktif
                 </span>
-                <Badge className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5">
-                  DISETUJUI ADMIN
-                </Badge>
+                <span className="px-1.5 py-0.5 rounded bg-emerald-600 text-white text-[9px] font-extrabold uppercase tracking-wide">
+                  Guard Terbuka
+                </span>
+                <span className="text-[11px] text-emerald-700 dark:text-emerald-300/80 hidden md:inline">
+                  &bull; Rekonsiliasi &amp; Backfill presensi diizinkan{guardStatus?.updated_by ? ` (Oleh: ${guardStatus.updated_by})` : ''}
+                </span>
               </div>
-              <p className="text-[11px] sm:text-xs text-emerald-800/90 dark:text-emerald-300/90 leading-relaxed">
-                Administrator telah membuka akses <strong>Event Resmi Rekonsiliasi Presensi</strong>. Anda dapat menarik spreadsheet, membuat backfill manual, dan menyinkronkan data ke presensi utama.
-                {guardStatus?.updated_by && (
-                  <span className="opacity-80"> (Diaktifkan oleh: {guardStatus.updated_by})</span>
-                )}
-              </p>
             </div>
           </div>
 
@@ -457,30 +458,30 @@ export const AttendanceStagingView: React.FC<UniversalAttendanceStagingViewProps
               variant="outline"
               disabled={isTogglingGuard}
               onClick={() => handleToggleGuard(false)}
-              className="shrink-0 h-8 px-3 text-xs font-bold border-rose-300 bg-white hover:bg-rose-50 text-rose-700 dark:bg-slate-900 dark:border-rose-800 dark:text-rose-300 rounded-xl gap-1.5 cursor-pointer"
+              className="shrink-0 h-7 px-2.5 text-[11px] font-bold border-rose-200 bg-white hover:bg-rose-50 text-rose-600 dark:bg-slate-900 dark:border-rose-800 dark:text-rose-300 rounded-lg gap-1 cursor-pointer"
             >
-              <Lock className="w-3.5 h-3.5" />
-              <span>{isTogglingGuard ? 'Mengunci...' : 'Kunci Kembali Guard (Tutup Event)'}</span>
+              <Lock className="w-3 h-3" />
+              <span>{isTogglingGuard ? 'Mengunci...' : 'Kunci Guard'}</span>
             </Button>
           )}
         </div>
       ) : (
-        <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/95 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
-          <div className="flex items-start gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-              <ShieldAlert className="w-5 h-5" />
+        <div className="px-3.5 py-3 rounded-xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800/70 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-amber-600 text-white flex items-center justify-center shrink-0">
+              <ShieldAlert className="w-4 h-4" />
             </div>
-            <div className="space-y-1">
+            <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-xs sm:text-sm font-black text-amber-950 dark:text-amber-100">
-                  Guard Keamanan Aktif: Fitur Staging &amp; Backfill Presensi Sedang Dikunci
-                </h3>
-                <Badge className="bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5">
-                  DI LUAR EVENT RESMI
-                </Badge>
+                <span className="text-xs font-extrabold text-amber-950 dark:text-amber-100">
+                  Guard Keamanan Terkunci (Di Luar Event Resmi)
+                </span>
+                <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white text-[9px] font-bold uppercase">
+                  Mode Baca
+                </span>
               </div>
-              <p className="text-xs text-amber-900/90 dark:text-amber-200/90 leading-relaxed max-w-3xl">
-                Untuk menghindari manipulasi data presensi ke belakang, eksekusi penarikan spreadsheet, backfill manual, dan sinkronisasi presensi <strong>hanya dapat dilakukan saat diaktifkan oleh Administrator Sekolah</strong> pada Event Resmi Rekonsiliasi. Anda tetap dapat melihat dan memeriksa daftar lembar penampung di bawah ini dalam mode baca.
+              <p className="text-[11px] text-amber-800 dark:text-amber-300/90 truncate">
+                Eksekusi penarikan spreadsheet, backfill manual, dan sinkronisasi hanya aktif saat dibuka oleh Admin.
               </p>
             </div>
           </div>
@@ -491,54 +492,62 @@ export const AttendanceStagingView: React.FC<UniversalAttendanceStagingViewProps
               size="sm"
               disabled={isTogglingGuard || isGuardLoading}
               onClick={() => handleToggleGuard(true)}
-              className="shrink-0 h-9 px-4 text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm gap-1.5 cursor-pointer"
+              className="shrink-0 h-8 px-3 text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg gap-1.5 cursor-pointer"
             >
-              <Unlock className="w-4 h-4" />
-              <span>{isTogglingGuard ? 'Mengaktifkan...' : 'Aktifkan Event Resmi (Buka Guard)'}</span>
+              <Unlock className="w-3.5 h-3.5" />
+              <span>{isTogglingGuard ? 'Membuka...' : 'Buka Guard (Event Resmi)'}</span>
             </Button>
           ) : (
-            <div className="shrink-0 px-3 py-2 rounded-xl bg-amber-100/80 dark:bg-amber-900/50 border border-amber-300/80 dark:border-amber-700 text-[11px] font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-              <Lock className="w-3.5 h-3.5 text-amber-700 dark:text-amber-300" />
-              <span>Hubungi Admin untuk Membuka Guard</span>
-            </div>
+            <span className="shrink-0 px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/50 border border-amber-300 text-[10px] font-bold text-amber-900 dark:text-amber-200 inline-flex items-center gap-1">
+              <Lock className="w-3 h-3" />
+              <span>Dikunci Admin</span>
+            </span>
           )}
         </div>
       )}
 
-      {/* URL Ingestion Form Card (Compact) */}
+      {/* URL Ingestion & Quick Backfill Action Bar (Clean & Unified) */}
       {!readOnly && (
-        <Card className={cn(
-          'p-3.5 sm:p-4 shadow-2xs border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl transition-opacity',
-          !isGuardEnabled && 'opacity-70'
-        )}>
-          <form onSubmit={handleFetchUrl} className="space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-              <div>
-                <h2 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                  <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  Tarik Data dari Google Spreadsheet atau Input Backfill
-                </h2>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                  Pastikan tautan Google Spreadsheet berstatus <strong>&quot;Siapa saja yang memiliki link dapat melihat (Viewer)&quot;</strong>.
-                </p>
+        <Card className="p-3.5 shadow-2xs border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl">
+          <form onSubmit={handleFetchUrl} className="space-y-2.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <div>
+                  <h2 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100">
+                    Input Rekap Backfill &amp; Tarik Google Spreadsheet
+                  </h2>
+                </div>
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <Button
                   type="button"
                   variant="primary"
                   onClick={() => setManualBackfillOpen(true)}
-                  className="h-8 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-3 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                  className="h-8 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-3 rounded-lg shadow-2xs flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-200" />
-                  Input Backfill Cepat (Manual UI)
+                  <Sparkles className="w-3.5 h-3.5 text-amber-100" />
+                  <span>Backfill Cepat GUI (Ceklis Non-Hadir)</span>
                 </Button>
+                {onOpenExcelBackfill && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={onOpenExcelBackfill}
+                    className="h-8 px-2.5 text-xs font-semibold border-slate-200 dark:border-slate-700 rounded-lg gap-1.5 cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Template Excel</span>
+                  </Button>
+                )}
                 <a
                   href="https://docs.google.com/spreadsheets/d/1FHKzAAVEEcRz3uzEptsgRk09z7mqmQ1ZwFCIwF1Iwe0/edit?gid=1255049954#gid=1255049954"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1 font-medium"
+                  className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1 font-semibold px-1.5"
                 >
-                  <ExternalLink className="w-3.5 h-3.5" /> Sampel Sheet
+                  <ExternalLink className="w-3 h-3" /> Sampel Sheet
                 </a>
               </div>
             </div>
