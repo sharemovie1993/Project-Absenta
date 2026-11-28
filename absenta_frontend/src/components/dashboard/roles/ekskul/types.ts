@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type EkskulTabId = 'ringkasan' | 'anggota' | 'nilai' | 'jadwal' | 'rekap';
+export type EkskulTabId = 'ringkasan' | 'anggota' | 'nilai' | 'jadwal' | 'aturan_presensi' | 'rekap';
 
 export interface EkskulNavTabItem {
   id: EkskulTabId;

@@ -80,6 +80,11 @@ const HistoricalBackfillModal = lazy(() =>
     default: m.HistoricalBackfillModal,
   }))
 );
+const KegiatanWajibPolicyPanel = lazy(() =>
+  import('@/components/attendance/kegiatan/KegiatanWajibPolicyPanel').then((m) => ({
+    default: m.KegiatanWajibPolicyPanel,
+  }))
+);
 
 const HARI_LABEL: Record<string, string> = {
   SENIN: 'Senin',
@@ -105,6 +110,7 @@ export type KetarunaanSubtabId =
   | 'laporan_tim'
   | 'struktur_organisasi'
   | 'ploting_panitia'
+  | 'aturan_presensi'
   | 'backfill_presensi';
 
 function normalizeKetarunaanSubtab(raw: string | null): KetarunaanSubtabId {
@@ -126,6 +132,10 @@ function normalizeKetarunaanSubtab(raw: string | null): KetarunaanSubtabId {
       return 'struktur_organisasi';
     case 'ploting_panitia':
       return 'ploting_panitia';
+    case 'aturan_presensi':
+    case 'aturan_guru':
+    case 'policy':
+      return 'aturan_presensi';
     case 'backfill_presensi':
     case 'staging_presensi':
     case 'backfill':
@@ -395,6 +405,12 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
         icon: TableProperties,
       },
       {
+        id: 'aturan_presensi',
+        label: 'Aturan Presensi Guru',
+        shortLabel: 'Aturan Guru',
+        icon: Shield,
+      },
+      {
         id: 'backfill_presensi',
         label: 'Rekap Backfill & Staging',
         shortLabel: 'Backfill & Staging',
@@ -421,6 +437,8 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
         return 'Bagan Struktur Organisasi';
       case 'ploting_panitia':
         return 'Tabel Ploting Panitia';
+      case 'aturan_presensi':
+        return 'Aturan Presensi Guru Ketarunaan';
       case 'backfill_presensi':
         return 'Rekap Backfill & Staging Presensi (Event Resmi)';
       default:
@@ -767,6 +785,27 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
                       guard={guard}
                       mode="PLOTING"
                     />
+                  </div>
+                )}
+
+                {/* 7b. ATURAN PRESENSI GURU KETARUNAAN (2-TIER RELASIONAL) */}
+                {visitedTabs.has('aturan_presensi') && (
+                  <div
+                    role="tabpanel"
+                    aria-hidden={activeTab !== 'aturan_presensi'}
+                    className={cn('w-full min-w-0 p-3 sm:p-5', activeTab === 'aturan_presensi' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                  >
+                    <Suspense
+                      fallback={
+                        <div className="p-4 space-y-2.5">
+                          {[1, 2, 3].map((itemKey) => (
+                            <Skeleton key={itemKey} className="h-12 rounded-2xl" />
+                          ))}
+                        </div>
+                      }
+                    >
+                      <KegiatanWajibPolicyPanel scope="KETARUNAAN" />
+                    </Suspense>
                   </div>
                 )}
 

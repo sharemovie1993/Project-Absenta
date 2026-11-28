@@ -33,6 +33,8 @@ export async function jadwalKegiatanRoutes(fastify: any) {
           'attendance.schedules.update',
           'academic.schedules.update',
           'attendance.schedules.manage',
+          'kesiswaan.schedules.create',
+          'kesiswaan.schedules.update',
           'core.tenants.update',
           'core.sekolah.update.profile',
         ],

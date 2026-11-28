@@ -26,10 +26,65 @@ import {
 import { getDayShortLabel } from '@/constants/day.constants';
 import { cn } from '@/lib/utils';
 
+export type KegiatanPolicyScope = 'ALL' | 'KETARUNAAN' | 'DHUHA' | 'ESKUL' | 'PEMBIASAAN';
+
 export interface KegiatanWajibPolicyPanelProps {
+  scope?: KegiatanPolicyScope;
+  title?: string;
+  description?: string;
   readOnly?: boolean;
   compact?: boolean;
   className?: string;
+}
+
+const SCOPE_META: Record<KegiatanPolicyScope, { title: string; description: string; emptyHint: string }> = {
+  ALL: {
+    title: 'Aturan Wajib Tap Terminal & Posisi Pendamping Kegiatan',
+    description:
+      'Atur per kegiatan (Tier 1: Wajib Tap Terminal vs Selfie Mandiri di Universal KBM, lalu Tier 2: pilih unsur Guru KBM Beririsan & posisi jabatan dari Struktur Organisasi). Tersimpan relasional dan otomatis sinkron dengan masing-masing dashboard kegiatan.',
+    emptyHint: 'Belum ada Jadwal Kegiatan aktif. Tambahkan jadwal kegiatan terlebih dahulu di menu Jadwal Kegiatan Kesiswaan.',
+  },
+  KETARUNAAN: {
+    title: 'Aturan Presensi Guru — Program Ketarunaan & Apel',
+    description:
+      'Kelola kewajiban kehadiran guru untuk seluruh jadwal siklus Ketarunaan (Ketarunaan, Upacara, Apel Pagi/Sore). Pilih mode Wajib Tap Terminal atau Selfie Mandiri di Universal KBM beserta posisi jabatan yang diwajibkan.',
+    emptyHint: 'Belum ada jadwal kegiatan Ketarunaan / Upacara / Apel yang aktif. Tambahkan jadwal di menu Jadwal Kegiatan Kesiswaan.',
+  },
+  DHUHA: {
+    title: 'Aturan Presensi Guru — Pembiasaan Dhuha & Rohis',
+    description:
+      'Kelola kewajiban kehadiran guru & pendamping khusus jadwal Pembiasaan Dhuha / Rohis. Pengaturan tersimpan relasional dan sinkron langsung dengan Jadwal Kegiatan & Aturan Absensi.',
+    emptyHint: 'Belum ada jadwal Pembiasaan Dhuha yang aktif. Tambahkan jadwal Dhuha di menu Jadwal Kegiatan Kesiswaan.',
+  },
+  ESKUL: {
+    title: 'Aturan Presensi Guru — Ekstrakurikuler',
+    description:
+      'Kelola kewajiban kehadiran pembina & guru pendamping pada seluruh jadwal Ekstrakurikuler sekolah. Tersimpan relasional dan otomatis sinkron ke seluruh modul.',
+    emptyHint: 'Belum ada jadwal Ekstrakurikuler aktif. Tambahkan jadwal eskul di menu Jadwal Kegiatan Kesiswaan.',
+  },
+  PEMBIASAAN: {
+    title: 'Aturan Presensi Guru — Kegiatan Pembiasaan',
+    description:
+      'Kelola kewajiban kehadiran guru untuk seluruh kegiatan pembiasaan rutin sekolah (Tier 1: Wajib Tap Terminal vs Selfie Mandiri, Tier 2: Posisi Jabatan & Guru Beririsan).',
+    emptyHint: 'Belum ada jadwal Pembiasaan aktif.',
+  },
+};
+
+function matchesPolicyScope(p: JadwalKegiatanPolicyItem, scope: KegiatanPolicyScope): boolean {
+  if (scope === 'ALL') return true;
+  const nama = String(p.nama || '').toLowerCase();
+  const jenis = String(p.jenis_kegiatan || '').toUpperCase();
+  const isEskul = jenis === 'ESKUL';
+  const isDhuha = Boolean(p.is_dhuha) || /duha|dhuha|rohis/i.test(`${jenis} ${nama}`);
+
+  if (scope === 'ESKUL') return isEskul;
+  if (scope === 'DHUHA') return isDhuha;
+  if (scope === 'PEMBIASAAN') return !isEskul;
+  if (scope === 'KETARUNAAN') {
+    if (isEskul || isDhuha) return false;
+    return /taruna|ketarunaan|upacara|apel|pembiasaan|baris|senam/i.test(`${jenis} ${nama}`) || jenis === 'PEMBIASAAN';
+  }
+  return true;
 }
 
 interface LocalDraft {
@@ -54,6 +109,9 @@ const DHUHA_PENDAMPING_CODES = new Set([
 ]);
 
 export const KegiatanWajibPolicyPanel: React.FC<KegiatanWajibPolicyPanelProps> = React.memo(({
+  scope = 'ALL',
+  title,
+  description,
   readOnly = false,
   compact = false,
   className,
@@ -73,10 +131,15 @@ export const KegiatanWajibPolicyPanel: React.FC<KegiatanWajibPolicyPanelProps> =
     () => summaryRes?.data?.available_positions || [],
     [summaryRes]
   );
-  const policies: JadwalKegiatanPolicyItem[] = useMemo(
+  const allPolicies: JadwalKegiatanPolicyItem[] = useMemo(
     () => summaryRes?.data?.policies || [],
     [summaryRes]
   );
+  const policies: JadwalKegiatanPolicyItem[] = useMemo(
+    () => allPolicies.filter((p) => matchesPolicyScope(p, scope)),
+    [allPolicies, scope]
+  );
+  const scopeMeta = SCOPE_META[scope] || SCOPE_META.ALL;
 
   // Sinkronkan draft lokal setiap kali data server berubah
   useEffect(() => {
@@ -192,7 +255,7 @@ export const KegiatanWajibPolicyPanel: React.FC<KegiatanWajibPolicyPanelProps> =
           <div className="space-y-0.5 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
-                Aturan Wajib Tap Terminal &amp; Posisi Pendamping Kegiatan
+                {title || scopeMeta.title}
               </h4>
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                 <Link2 size={10} />
@@ -200,7 +263,7 @@ export const KegiatanWajibPolicyPanel: React.FC<KegiatanWajibPolicyPanelProps> =
               </span>
             </div>
             <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-              Atur per kegiatan (<strong>Tier 1</strong>: Wajib Tap Terminal vs Selfie Mandiri di Universal KBM, lalu <strong>Tier 2</strong>: pilih unsur <strong>Guru KBM Beririsan</strong> &amp; posisi jabatan dari <strong>Struktur Organisasi</strong>). Tersimpan relasional di database sehingga aman saat backup/clone dan otomatis sinkron antara menu <em>Jadwal Kegiatan Kesiswaan</em> dan <em>Aturan Absensi</em>.
+              {description || scopeMeta.description}
             </p>
           </div>
         </div>
@@ -216,7 +279,7 @@ export const KegiatanWajibPolicyPanel: React.FC<KegiatanWajibPolicyPanelProps> =
 
       {policies.length === 0 ? (
         <div className="p-6 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-xs text-slate-500 dark:text-slate-400">
-          Belum ada Jadwal Kegiatan aktif. Tambahkan jadwal kegiatan terlebih dahulu di menu <strong>Jadwal Kegiatan Kesiswaan</strong>.
+          {scopeMeta.emptyHint}
         </div>
       ) : (
         <div className="space-y-3">

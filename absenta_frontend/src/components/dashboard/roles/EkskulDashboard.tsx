@@ -11,6 +11,7 @@ import {
   SlidersHorizontal,
   RefreshCw,
   UserCheck,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -32,6 +33,7 @@ import { EkskulAnggotaTab } from './ekskul/tabs/EkskulAnggotaTab';
 import { EkskulNilaiTab } from './ekskul/tabs/EkskulNilaiTab';
 import { EkskulJadwalTab } from './ekskul/tabs/EkskulJadwalTab';
 import { EkskulRekapTab } from './ekskul/tabs/EkskulRekapTab';
+import { KegiatanWajibPolicyPanel } from '@/components/attendance/kegiatan/KegiatanWajibPolicyPanel';
 import { 
   UniversalMobileSubtabSidebar, 
   useMobileSubtabSidebar,
@@ -52,7 +54,7 @@ export const EkskulDashboard: React.FC<EkskulDashboardProps> = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const subtabParam = searchParams.get('subtab') as EkskulTabId | null;
 
-  const validTabs: EkskulTabId[] = ['ringkasan', 'anggota', 'nilai', 'jadwal', 'rekap'];
+  const validTabs: EkskulTabId[] = ['ringkasan', 'anggota', 'nilai', 'jadwal', 'aturan_presensi', 'rekap'];
 
   // Mobile Filter Collapsible State
   const [showMobileFilter, setShowMobileFilter] = useState(false);
@@ -215,6 +217,7 @@ export const EkskulDashboard: React.FC<EkskulDashboardProps> = () => {
       { id: 'anggota', label: 'Anggota', shortLabel: 'Anggota', icon: Users, badge: stats.total_anggota },
       { id: 'nilai', label: 'Nilai', shortLabel: 'Nilai', icon: Award },
       { id: 'jadwal', label: 'Jadwal', shortLabel: 'Jadwal', icon: Calendar, badge: stats.total_pembina },
+      { id: 'aturan_presensi', label: 'Aturan Presensi Guru', shortLabel: 'Aturan Guru', icon: Shield },
       { id: 'rekap', label: 'Cetak', shortLabel: 'Cetak', icon: Printer },
     ],
     [stats.total_anggota, stats.total_pembina]
@@ -230,6 +233,7 @@ export const EkskulDashboard: React.FC<EkskulDashboardProps> = () => {
       case 'anggota': return 'Anggota Eskul';
       case 'nilai': return 'Penilaian Eskul';
       case 'jadwal': return 'Jadwal Latihan';
+      case 'aturan_presensi': return 'Aturan Presensi Guru Eskul';
       case 'rekap': return 'Cetak Nilai';
       default: return 'Beranda';
     }
@@ -405,6 +409,16 @@ export const EkskulDashboard: React.FC<EkskulDashboardProps> = () => {
                 className={cn('w-full min-w-0', activeTab === 'jadwal' ? 'block' : 'hidden')}
               >
                 <EkskulJadwalTab />
+              </div>
+            )}
+
+            {visitedTabs.has('aturan_presensi') && (
+              <div
+                role="tabpanel"
+                aria-hidden={activeTab !== 'aturan_presensi'}
+                className={cn('w-full min-w-0', activeTab === 'aturan_presensi' ? 'block' : 'hidden')}
+              >
+                <KegiatanWajibPolicyPanel scope="ESKUL" />
               </div>
             )}
 

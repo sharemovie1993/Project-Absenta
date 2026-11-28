@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Clock,
   HeartHandshake,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
@@ -32,6 +33,7 @@ import { DhuhaKepanitiaanTab } from '@/components/kesiswaan/pembiasaan-dhuha/Dhu
 import { DhuhaStatistikTab } from '@/components/kesiswaan/pembiasaan-dhuha/DhuhaStatistikTab';
 import { DhuhaLaporanTimTab } from '@/components/kesiswaan/pembiasaan-dhuha/DhuhaLaporanTimTab';
 import { DhuhaLaporanKelasTab } from '@/components/kesiswaan/pembiasaan-dhuha/DhuhaLaporanKelasTab';
+import { KegiatanWajibPolicyPanel } from '@/components/attendance/kegiatan/KegiatanWajibPolicyPanel';
 
 const HARI_LABEL: Record<string, string> = {
   SENIN: 'Senin',
@@ -49,13 +51,14 @@ function formatWaktu(w?: string | null) {
   return w.length === 5 ? w : w.slice(0, 5);
 }
 
-export type DhuhaSubtabId = 'statistik' | 'laporan_kelas' | 'laporan_tim' | 'kepanitiaan';
+export type DhuhaSubtabId = 'statistik' | 'laporan_kelas' | 'laporan_tim' | 'kepanitiaan' | 'aturan_presensi';
 
 const TAB_OPTIONS = [
   { id: 'statistik', label: 'Performa & Jamaah', icon: BarChart2 },
   { id: 'laporan_kelas', label: 'Laporan Per Rombel', icon: LayoutList },
   { id: 'laporan_tim', label: 'Laporan Pendamping', icon: FileText },
   { id: 'kepanitiaan', label: 'Terminal Presensi & POS', icon: Users },
+  { id: 'aturan_presensi', label: 'Aturan Presensi Guru', icon: Shield },
 ];
 
 export interface DhuhaDashboardProps {
@@ -72,7 +75,7 @@ export const DhuhaDashboard: React.FC<DhuhaDashboardProps> = React.memo(() => {
   const [searchParams, setSearchParams] = useSearchParams();
   const subtabParam = searchParams.get('subtab') as DhuhaSubtabId | null;
 
-  const validTabs: DhuhaSubtabId[] = ['statistik', 'laporan_kelas', 'laporan_tim', 'kepanitiaan'];
+  const validTabs: DhuhaSubtabId[] = ['statistik', 'laporan_kelas', 'laporan_tim', 'kepanitiaan', 'aturan_presensi'];
 
   const [activeTab, setActiveTab] = useState<DhuhaSubtabId>(() => {
     if (subtabParam && validTabs.includes(subtabParam)) {
@@ -395,6 +398,12 @@ export const DhuhaDashboard: React.FC<DhuhaDashboardProps> = React.memo(() => {
                       guard={guard}
                     />
                   )}
+                </div>
+              )}
+
+              {activeTab === 'aturan_presensi' && (
+                <div className="p-4 sm:p-6">
+                  <KegiatanWajibPolicyPanel scope="DHUHA" />
                 </div>
               )}
             </Suspense>
