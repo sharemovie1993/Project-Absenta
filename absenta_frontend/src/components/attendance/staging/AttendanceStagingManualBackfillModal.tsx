@@ -143,6 +143,7 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
   const [lateMinutes, setLateMinutes] = useState<number>(15);
 
   const [exceptionsList, setExceptionsList] = useState<ManualBackfillException[]>([]);
+  const [activeChecklistDate, setActiveChecklistDate] = useState<string>('ALL_DATES');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // ── Step 3: Preview State ──
@@ -457,6 +458,15 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
     if (selectedKelasIds.length === 0) {
       toast.error('Mohon pilih minimal 1 rombel kelas sasaran.');
       return;
+    }
+    // Jika tanggal lebih dari 1, defaultkan fokus tab tanggal ke tanggal pertama agar dinamis per tanggal (atau tetap jika sudah valid)
+    const sorted = [...new Set(selectedDates)].sort();
+    if (sorted.length === 1) {
+      setActiveChecklistDate(sorted[0]);
+    } else if (activeChecklistDate !== 'ALL_DATES' && !sorted.includes(activeChecklistDate)) {
+      setActiveChecklistDate(sorted[0]);
+    } else if (activeChecklistDate === 'ALL_DATES' && sorted.length > 1) {
+      setActiveChecklistDate(sorted[0]);
     }
     setCurrentStep(2);
   };
@@ -831,61 +841,180 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
         )}
 
         {/* ═══════════════════════════════════════════════════════════════════════════ */}
-        {/* ── STEP 2: CEKLIS CEPAT SISWA NON-HADIR (CLEAN INTERACTIVE MATRIX) ── */}
+        {/* ── STEP 2: CEKLIS CEPAT SISWA NON-HADIR (DINAMIS PER TANGGAL & AGENDA) ── */}
         {/* ═══════════════════════════════════════════════════════════════════════════ */}
         {currentStep === 2 && (
           <div className="space-y-3.5">
-            {/* Compact Top Toolbar: Pilih Rombel + Search + Counter */}
             <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100 dark:border-slate-800">
+              {/* Top Info & Counter */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
                 <div>
                   <h4 className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
                     <Check className="w-4 h-4 text-amber-600" />
-                    Ceklis Siswa Non-Hadir (Sakit / Izin / Alpa / Telat / Dispen)
+                    Ceklis Siswa Non-Hadir Dinamis Sesuai Jadwal &amp; Rombel Terpilih
                   </h4>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Siswa yang tidak diceklis otomatis tercatat <strong className="text-emerald-600">HADIR TEPAT WAKTU</strong> pada seluruh {selectedDates.length} tanggal terpilih.
+                    Pilih <strong>Tab Tanggal Sesi</strong> di bawah untuk menceklis siswa pada tanggal tersebut, atau pilih <strong>Semua Tanggal ({selectedDates.length} Hari)</strong> untuk menerapkan sekaligus.
                   </p>
                 </div>
                 <Badge variant="warning" className="text-xs font-extrabold shrink-0 self-start sm:self-center">
-                  {exceptionsList.length} Siswa Non-Hadir
+                  {exceptionsList.length} Pengecualian Tercatat
                 </Badge>
               </div>
 
-              {/* Filter Bar: Rombel Selector + Search Input */}
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
-                <div className="sm:col-span-5 flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-500 shrink-0">Rombel:</span>
-                  <select
-                    value={activeFilterKelasId || selectedKelasIds[0] || ''}
-                    onChange={(e) => setActiveFilterKelasId(e.target.value)}
-                    className="w-full h-9 text-xs font-extrabold px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100"
-                  >
-                    {selectedKelasIds.map((kId) => {
-                      const c = classOptions.find((opt) => opt.id === kId);
-                      const countInClass = exceptionsList.filter((ex) => ex.nama_kelas === c?.nama_kelas).length;
-                      return (
-                        <option key={kId} value={kId}>
-                          {c?.nama_kelas || kId} {countInClass > 0 ? `(${countInClass} Non-Hadir)` : ''}
-                        </option>
-                      );
-                    })}
-                  </select>
+              {/* ── DYNAMIC DATE & AGENDA TABS (FOLLOWING STEP 1 RULES) ── */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-amber-600" />
+                    Pilih Tanggal Sesi yang Sedang Diceklis:
+                  </span>
+                  <span className="text-slate-400 font-semibold">
+                    Total {generatedSessions.length} Sesi dari {selectedDates.length} Tanggal
+                  </span>
                 </div>
 
-                <div className="sm:col-span-7 relative">
-                  <input
-                    type="text"
-                    value={studentChecklistSearch}
-                    onChange={(e) => setStudentChecklistSearch(e.target.value)}
-                    placeholder="Cari cepat nama atau NIS siswa di rombel ini..."
-                    className="w-full h-9 pl-8 pr-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-                  />
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5">
+                  {[...new Set(selectedDates)].sort().map((dStr) => {
+                    const isSelectedDate = activeChecklistDate === dStr;
+                    const sessionsForDate = generatedSessions.filter((s) => s.dateIso === dStr);
+                    const agendaLabels = Array.from(new Set(sessionsForDate.map((s) => s.sessionLabel))).join(' + ');
+                    const countOnDate = exceptionsList.filter(
+                      (ex) => !ex.dates || ex.dates.length === 0 || ex.dates.includes(dStr)
+                    ).length;
+
+                    return (
+                      <button
+                        key={dStr}
+                        type="button"
+                        onClick={() => setActiveChecklistDate(dStr)}
+                        className={`px-3 py-1.5 rounded-xl border text-left transition-all shrink-0 cursor-pointer flex items-center gap-2 ${
+                          isSelectedDate
+                            ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                            : 'bg-slate-50 dark:bg-slate-800/70 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400'
+                        }`}
+                      >
+                        <div>
+                          <div className="text-xs font-extrabold leading-tight flex items-center gap-1.5">
+                            <span>{formatTanggalIndo(dStr)}</span>
+                            {countOnDate > 0 && (
+                              <span
+                                className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                                  isSelectedDate
+                                    ? 'bg-white text-amber-800'
+                                    : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                }`}
+                              >
+                                {countOnDate}
+                              </span>
+                            )}
+                          </div>
+                          <span
+                            className={`text-[10px] font-bold block ${
+                              isSelectedDate ? 'text-amber-100' : 'text-indigo-600 dark:text-indigo-400'
+                            }`}
+                          >
+                            {agendaLabels || 'Sesi Kegiatan'}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+
+                  {selectedDates.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveChecklistDate('ALL_DATES')}
+                      className={`px-3 py-1.5 rounded-xl border text-left transition-all shrink-0 cursor-pointer ${
+                        activeChecklistDate === 'ALL_DATES'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                          : 'bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-800 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 hover:border-indigo-400'
+                      }`}
+                    >
+                      <div className="text-xs font-extrabold leading-tight">
+                        ⚡ Berlaku Semua Tanggal
+                      </div>
+                      <span
+                        className={`text-[10px] font-bold block ${
+                          activeChecklistDate === 'ALL_DATES' ? 'text-indigo-100' : 'text-indigo-600/80 dark:text-indigo-400'
+                        }`}
+                      >
+                        Terapkan ke {selectedDates.length} Hari Sekaligus
+                      </span>
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* Interactive Student Checklist Table */}
+              {/* ── ROMBEL QUICK PILLS & SEARCH BAR ── */}
+              <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                  <span className="text-[11px] font-extrabold text-slate-400 uppercase shrink-0 mr-1">
+                    Rombel ({selectedKelasIds.length}):
+                  </span>
+                  {selectedKelasIds.map((kId) => {
+                    const c = classOptions.find((opt) => opt.id === kId);
+                    const isCurrentKelas = (activeFilterKelasId || selectedKelasIds[0]) === kId;
+                    const countInClass = exceptionsList.filter((ex) => {
+                      if (ex.nama_kelas !== c?.nama_kelas) return false;
+                      if (activeChecklistDate === 'ALL_DATES') return true;
+                      return !ex.dates || ex.dates.length === 0 || ex.dates.includes(activeChecklistDate);
+                    }).length;
+
+                    return (
+                      <button
+                        key={kId}
+                        type="button"
+                        onClick={() => setActiveFilterKelasId(kId)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-extrabold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 border ${
+                          isCurrentKelas
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                            : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-emerald-400'
+                        }`}
+                      >
+                        <span>{c?.nama_kelas || kId}</span>
+                        {countInClass > 0 && (
+                          <span
+                            className={`px-1.5 rounded-full text-[10px] font-black ${
+                              isCurrentKelas ? 'bg-white text-emerald-800' : 'bg-amber-500 text-white'
+                            }`}
+                          >
+                            {countInClass}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
+                    <span>Sedang Menceklis:</span>
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-extrabold border border-emerald-200 dark:border-emerald-800">
+                      Rombel {classOptions.find((c) => c.id === (activeFilterKelasId || selectedKelasIds[0]))?.nama_kelas}
+                    </span>
+                    <span>&bull;</span>
+                    <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-extrabold border border-amber-200 dark:border-amber-800">
+                      {activeChecklistDate === 'ALL_DATES'
+                        ? `Semua Tanggal (${selectedDates.length} Hari)`
+                        : formatTanggalIndo(activeChecklistDate)}
+                    </span>
+                  </div>
+
+                  <div className="relative w-full sm:w-64">
+                    <input
+                      type="text"
+                      value={studentChecklistSearch}
+                      onChange={(e) => setStudentChecklistSearch(e.target.value)}
+                      placeholder="Cari cepat nama atau NIS siswa..."
+                      className="w-full h-8 pl-8 pr-3 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                    />
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Interactive Student Checklist Table (Dynamic per activeChecklistDate) */}
               <div className="max-h-64 overflow-y-auto border border-slate-200/80 dark:border-slate-800 rounded-xl divide-y divide-slate-100 dark:divide-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
                 {loadingStudents ? (
                   <div className="p-8 text-center text-xs text-slate-400">Memuat daftar siswa rombel...</div>
@@ -899,53 +1028,150 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                       return st.nama_siswa.toLowerCase().includes(q) || (st.nis && st.nis.toLowerCase().includes(q));
                     })
                     .map((st, sIdx) => {
-                      const existingExIndex = exceptionsList.findIndex((e) => e.siswa_id === st.siswa_id);
-                      const existingEx = existingExIndex >= 0 ? exceptionsList[existingExIndex] : null;
                       const kId = activeFilterKelasId || selectedKelasIds[0];
                       const kObj = classOptions.find((c) => c.id === kId);
 
-                      const toggleStudentException = (status: 'SAKIT' | 'IZIN' | 'ALPA' | 'TERLAMBAT' | 'DISPENSASI') => {
-                        if (existingEx && existingEx.status === status) {
-                          setExceptionsList((prev) => prev.filter((e) => e.siswa_id !== st.siswa_id));
-                        } else if (existingEx) {
-                          setExceptionsList((prev) =>
-                            prev.map((e) => (e.siswa_id === st.siswa_id ? { ...e, status } : e))
-                          );
-                        } else {
-                          setExceptionsList((prev) => [
-                            {
-                              siswa_id: st.siswa_id,
-                              nama_siswa: st.nama_siswa,
-                              nis: st.nis,
-                              nama_kelas: kObj?.nama_kelas || '',
-                              status,
-                            },
-                            ...prev,
-                          ]);
+                      // Cari exception siswa ini yang berlaku pada activeChecklistDate
+                      const matchingExOnActiveDate = exceptionsList.find((e) => {
+                        if (e.siswa_id !== st.siswa_id) return false;
+                        if (activeChecklistDate === 'ALL_DATES') {
+                          return !e.dates || e.dates.length === 0 || e.dates.length === selectedDates.length;
                         }
+                        return !e.dates || e.dates.length === 0 || e.dates.includes(activeChecklistDate);
+                      });
+
+                      // Semua exception siswa ini di tanggal-tanggal lain (untuk ditampilkan sebagai mini badge)
+                      const allStudentExceptions = exceptionsList.filter((e) => e.siswa_id === st.siswa_id);
+
+                      const toggleStudentExceptionForActiveDate = (
+                        status: 'SAKIT' | 'IZIN' | 'ALPA' | 'TERLAMBAT' | 'DISPENSASI'
+                      ) => {
+                        if (activeChecklistDate === 'ALL_DATES') {
+                          // Mode Berlaku Semua Tanggal
+                          setExceptionsList((prev) => {
+                            const withoutStudent = prev.filter((e) => e.siswa_id !== st.siswa_id);
+                            if (matchingExOnActiveDate && matchingExOnActiveDate.status === status) {
+                              return withoutStudent;
+                            }
+                            return [
+                              {
+                                siswa_id: st.siswa_id,
+                                nama_siswa: st.nama_siswa,
+                                nis: st.nis,
+                                nama_kelas: kObj?.nama_kelas || '',
+                                status,
+                                dates: undefined, // Berlaku seluruh tanggal
+                                catatan: matchingExOnActiveDate?.catatan,
+                              },
+                              ...withoutStudent,
+                            ];
+                          });
+                          return;
+                        }
+
+                        // Mode Tanggal Spesifik (activeChecklistDate)
+                        setExceptionsList((prev) => {
+                          const next: ManualBackfillException[] = [];
+                          let wasSameStatusOnThisDate = false;
+                          let existingNote: string | undefined;
+
+                          for (const ex of prev) {
+                            if (ex.siswa_id !== st.siswa_id) {
+                              next.push(ex);
+                              continue;
+                            }
+
+                            const exDates = ex.dates && ex.dates.length > 0 ? ex.dates : [...selectedDates];
+                            if (exDates.includes(activeChecklistDate)) {
+                              if (ex.status === status) {
+                                wasSameStatusOnThisDate = true;
+                              }
+                              existingNote = ex.catatan;
+                              const remainingDates = exDates.filter((d) => d !== activeChecklistDate);
+                              if (remainingDates.length > 0) {
+                                next.push({ ...ex, dates: remainingDates });
+                              }
+                            } else {
+                              next.push(ex);
+                            }
+                          }
+
+                          // Jika belum berstatus sama pada tanggal ini, tambahkan atau gabungkan
+                          if (!wasSameStatusOnThisDate) {
+                            const sameStatusEntryIdx = next.findIndex(
+                              (e) => e.siswa_id === st.siswa_id && e.status === status
+                            );
+                            if (sameStatusEntryIdx >= 0) {
+                              const target = next[sameStatusEntryIdx];
+                              const mergedDates = Array.from(
+                                new Set([...(target.dates || selectedDates), activeChecklistDate])
+                              ).sort();
+                              next[sameStatusEntryIdx] = {
+                                ...target,
+                                dates: mergedDates,
+                              };
+                            } else {
+                              next.unshift({
+                                siswa_id: st.siswa_id,
+                                nama_siswa: st.nama_siswa,
+                                nis: st.nis,
+                                nama_kelas: kObj?.nama_kelas || '',
+                                status,
+                                dates: [activeChecklistDate],
+                                catatan: existingNote,
+                              });
+                            }
+                          }
+
+                          return next;
+                        });
                       };
 
                       return (
                         <div
                           key={st.siswa_id}
                           className={`flex items-center justify-between gap-2 px-3.5 py-2 text-xs transition-colors ${
-                            existingEx
+                            matchingExOnActiveDate
                               ? 'bg-amber-50/90 dark:bg-amber-950/30'
                               : 'hover:bg-white dark:hover:bg-slate-800/60'
                           }`}
                         >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <span className="text-[11px] font-bold text-slate-400 w-5">{sIdx + 1}.</span>
-                            <div className="min-w-0">
-                              <span className="font-bold text-slate-800 dark:text-slate-100 truncate block">
-                                {st.nama_siswa}
-                              </span>
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            <span className="text-[11px] font-bold text-slate-400 w-5 shrink-0">{sIdx + 1}.</span>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-slate-800 dark:text-slate-100 truncate">
+                                  {st.nama_siswa}
+                                </span>
+                                {/* Tampilkan ringkasan badge tanggal jika siswa memiliki status non-hadir di tanggal tertentu */}
+                                {allStudentExceptions.map((exItem, exIdx) => (
+                                  <span
+                                    key={exIdx}
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 text-[9px] font-extrabold"
+                                  >
+                                    <span>{exItem.status}:</span>
+                                    <span>
+                                      {!exItem.dates || exItem.dates.length === 0 || exItem.dates.length === selectedDates.length
+                                        ? `Semua (${selectedDates.length} Hari)`
+                                        : exItem.dates
+                                            .map((d) =>
+                                              new Date(`${d}T00:00:00Z`).toLocaleDateString('id-ID', {
+                                                day: '2-digit',
+                                                month: 'short',
+                                                timeZone: 'UTC',
+                                              })
+                                            )
+                                            .join(', ')}
+                                    </span>
+                                  </span>
+                                ))}
+                              </div>
                               {st.nis && <span className="text-[10px] text-slate-400 font-mono">NIS: {st.nis}</span>}
                             </div>
                           </div>
 
                           <div className="flex items-center gap-1.5 shrink-0">
-                            {!existingEx ? (
+                            {!matchingExOnActiveDate ? (
                               <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 text-[10px] font-extrabold mr-1">
                                 HADIR
                               </span>
@@ -953,12 +1179,12 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                               <input
                                 type="text"
                                 placeholder="Catatan (opsional)..."
-                                value={existingEx.catatan || ''}
+                                value={matchingExOnActiveDate.catatan || ''}
                                 onChange={(e) => {
                                   const val = e.target.value;
                                   setExceptionsList((prev) =>
                                     prev.map((item) =>
-                                      item.siswa_id === st.siswa_id ? { ...item, catatan: val || undefined } : item
+                                      item === matchingExOnActiveDate ? { ...item, catatan: val || undefined } : item
                                     )
                                   );
                                 }}
@@ -974,13 +1200,17 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                                 { code: 'DISPENSASI', short: 'D', label: 'Dispen', activeCls: 'bg-purple-600 text-white border-purple-600' },
                               ] as const
                             ).map((btn) => {
-                              const isSelected = existingEx?.status === btn.code;
+                              const isSelected = matchingExOnActiveDate?.status === btn.code;
                               return (
                                 <button
                                   key={btn.code}
                                   type="button"
-                                  onClick={() => toggleStudentException(btn.code)}
-                                  title={`Tandai ${btn.label}`}
+                                  onClick={() => toggleStudentExceptionForActiveDate(btn.code)}
+                                  title={`Tandai ${btn.label} pada ${
+                                    activeChecklistDate === 'ALL_DATES'
+                                      ? 'Semua Tanggal'
+                                      : formatTanggalIndo(activeChecklistDate)
+                                  }`}
                                   className={`w-7 h-7 rounded-lg text-[10px] font-black border transition-all cursor-pointer flex items-center justify-center ${
                                     isSelected
                                       ? `${btn.activeCls} shadow-2xs`
@@ -998,12 +1228,12 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                 )}
               </div>
 
-              {/* Ringkasan Chips Siswa Non-Hadir Terpilih Lintas Rombel */}
+              {/* Ringkasan Chips Siswa Non-Hadir Terpilih Lintas Rombel & Tanggal */}
               {exceptionsList.length > 0 && (
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-slate-500">
-                      Daftar Siswa Non-Hadir Terpilih ({exceptionsList.length}):
+                      Ringkasan Pengecualian Non-Hadir Lintas Tanggal &amp; Rombel ({exceptionsList.length}):
                     </span>
                     <button
                       type="button"
@@ -1024,6 +1254,12 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
                         </span>
                         <span>{ex.nama_siswa}</span>
                         <span className="text-[10px] text-slate-400">({ex.nama_kelas})</span>
+                        <span className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold">
+                          &bull;{' '}
+                          {!ex.dates || ex.dates.length === 0 || ex.dates.length === selectedDates.length
+                            ? 'Semua Tanggal'
+                            : `${ex.dates.length} Tgl`}
+                        </span>
                         <button
                           type="button"
                           onClick={() => handleRemoveException(idx)}
