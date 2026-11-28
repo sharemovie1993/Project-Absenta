@@ -797,65 +797,70 @@ export class UnifiedKegiatanService {
       });
     }
 
+    const isApelPulang = activeSiklusType === 'APEL_SORE';
+
     // 4. Guru Mapel KBM yang Jadwalnya BERIRISAN Jam dengan Kegiatan
-    const allKbmHariIni = await prisma.jadwalKBM.findMany({
-      where: {
-        tenant_id: tenantId,
-        hari: kbmHariQuery,
-        guru_id: { not: null },
-      },
-      include: {
-        Guru: { select: { id: true, nama_guru: true } },
-        Kelas: { select: { id: true, nama_kelas: true } },
-        Mapel: { select: { id: true, nama_mapel: true } },
-      },
-    });
+    // Khusus Apel Pulang (APEL_SORE), guru mapel TIDAK diwajibkan tap di terminal kegiatan meskipun ada jadwal KBM beririsan.
+    if (!isApelPulang) {
+      const allKbmHariIni = await prisma.jadwalKBM.findMany({
+        where: {
+          tenant_id: tenantId,
+          hari: kbmHariQuery,
+          guru_id: { not: null },
+        },
+        include: {
+          Guru: { select: { id: true, nama_guru: true } },
+          Kelas: { select: { id: true, nama_kelas: true } },
+          Mapel: { select: { id: true, nama_mapel: true } },
+        },
+      });
 
-    // Ambil sesi KBM fisik yang sudah ada hari ini untuk mengetahui status live (MENDATANG / BERLANGSUNG)
-    const kbmSesiHariIni = await prisma.sesiAbsensi.findMany({
-      where: {
-        tenant_id: tenantId,
-        tanggal: new Date(targetDateStr),
-        jenis_kegiatan: 'KBM',
-      },
-      select: {
-        id: true,
-        jadwal_kbm_id: true,
-        guru_id: true,
-        status: true,
-      }
-    });
-    const kbmSesiMap = new Map(kbmSesiHariIni.map(s => [`${s.jadwal_kbm_id}_${s.guru_id}`, s]));
-
-    allKbmHariIni.forEach((kbm: any) => {
-      // Periksa irisan waktu secara presisi
-      const isOverlapping = this.isTimeOverlapping(kegiatanWaktuMulai, kegiatanWaktuSelesai, kbm.jam_mulai, kbm.jam_selesai);
-      
-      if (isOverlapping && kbm.Guru) {
-        const liveKbmSesi = kbmSesiMap.get(`${kbm.id}_${kbm.Guru.id}`);
-        const rec = absenMap.get(kbm.Guru.id);
-
-        if (!seenGuruIds.has(kbm.Guru.id)) {
-          seenGuruIds.add(kbm.Guru.id);
-          result.push({
-            guru_id: kbm.Guru.id,
-            nama_guru: kbm.Guru.nama_guru,
-            jabatan: `📚 Guru Mapel (${kbm.Mapel?.nama_mapel || 'KBM'})`,
-            jabatan_kode: 'GURU_MAPEL',
-            kelas_nama: kbm.Kelas?.nama_kelas || undefined,
-            mapel_nama: kbm.Mapel?.nama_mapel || undefined,
-            jam_kbm: `${kbm.jam_mulai || '07:15'} - ${kbm.jam_selesai || '11:05'}`,
-            status: (rec?.status as any) || 'BELUM_TAP',
-            waktu_tap: rec?.waktu_tap ? rec.waktu_tap.toISOString() : null,
-            catatan: rec?.catatan || null,
-            sesi_id: sesiId || null,
-            is_overlapping_kbm: true,
-            kbm_sesi_id: liveKbmSesi?.id || null,
-            kbm_status: liveKbmSesi?.status || 'MENDATANG',
-          });
+      // Ambil sesi KBM fisik yang sudah ada hari ini untuk mengetahui status live (MENDATANG / BERLANGSUNG)
+      const kbmSesiHariIni = await prisma.sesiAbsensi.findMany({
+        where: {
+          tenant_id: tenantId,
+          tanggal: new Date(targetDateStr),
+          jenis_kegiatan: 'KBM',
+        },
+        select: {
+          id: true,
+          jadwal_kbm_id: true,
+          guru_id: true,
+          status: true,
         }
-      }
-    });
+      });
+      const kbmSesiMap = new Map(kbmSesiHariIni.map(s => [`${s.jadwal_kbm_id}_${s.guru_id}`, s]));
+
+      allKbmHariIni.forEach((kbm: any) => {
+        // Periksa irisan waktu secara presisi
+        const isOverlapping = this.isTimeOverlapping(kegiatanWaktuMulai, kegiatanWaktuSelesai, kbm.jam_mulai, kbm.jam_selesai);
+        
+        if (isOverlapping && kbm.Guru) {
+          const liveKbmSesi = kbmSesiMap.get(`${kbm.id}_${kbm.Guru.id}`);
+          const rec = absenMap.get(kbm.Guru.id);
+
+          if (!seenGuruIds.has(kbm.Guru.id)) {
+            seenGuruIds.add(kbm.Guru.id);
+            result.push({
+              guru_id: kbm.Guru.id,
+              nama_guru: kbm.Guru.nama_guru,
+              jabatan: `📚 Guru Mapel (${kbm.Mapel?.nama_mapel || 'KBM'})`,
+              jabatan_kode: 'GURU_MAPEL',
+              kelas_nama: kbm.Kelas?.nama_kelas || undefined,
+              mapel_nama: kbm.Mapel?.nama_mapel || undefined,
+              jam_kbm: `${kbm.jam_mulai || '07:15'} - ${kbm.jam_selesai || '11:05'}`,
+              status: (rec?.status as any) || 'BELUM_TAP',
+              waktu_tap: rec?.waktu_tap ? rec.waktu_tap.toISOString() : null,
+              catatan: rec?.catatan || null,
+              sesi_id: sesiId || null,
+              is_overlapping_kbm: true,
+              kbm_sesi_id: liveKbmSesi?.id || null,
+              kbm_status: liveKbmSesi?.status || 'MENDATANG',
+            });
+          }
+        }
+      });
+    }
 
     return {
       data: result,
