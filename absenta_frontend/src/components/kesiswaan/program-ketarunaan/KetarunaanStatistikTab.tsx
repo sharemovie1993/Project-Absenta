@@ -238,248 +238,153 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
     return trendList.slice(-8).reverse(); // Latest 8 meetings in compact view
   }, [trendList, showAllMeetings]);
 
-  return (
-    <div className="space-y-3.5 p-2.5 sm:p-4">
-      {/* FILTER BAR SCOPE DATA KETARUNAAN: 1 Tahun, 1 Semester, 1 Bulan */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3 shadow-2xs space-y-2.5">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-              <Calendar className="w-4 h-4" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100">
-                Scope Data &amp; Periode Evaluasi Ketarunaan
-              </h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Cakupan analitik &amp; peringkat aktif: <strong className="text-amber-600 dark:text-amber-400">{scopeLabel}</strong>
-                {ringkasan?.tanggal_mulai && ringkasan?.tanggal_selesai && (
-                  <span className="ml-1.5 text-[11px] text-slate-400">
-                    ({formatTanggal(ringkasan.tanggal_mulai)} – {formatTanggal(ringkasan.tanggal_selesai)})
-                  </span>
-                )}
-              </p>
-            </div>
-          </div>
+  // Ekstraksi Insight Cepat 3 Detik (Terkuat, Terlemah, Hari Rawan)
+  const instantHighlights = useMemo(() => {
+    const sortedAgendas = [...agendaBreakdown].sort((a, b) => (b.persen_hadir ?? 0) - (a.persen_hadir ?? 0));
+    const bestAgenda = sortedAgendas[0] || null;
+    const worstAgenda = sortedAgendas[sortedAgendas.length - 1] || null;
 
-          <div className="flex items-center gap-1.5 flex-wrap">
+    const sortedDays = [...polaHari].sort((a, b) => (b.avg_persen ?? 0) - (a.avg_persen ?? 0));
+    const bestDay = sortedDays[0] || null;
+    const worstDay = sortedDays[sortedDays.length - 1] || null;
+
+    const bestClass = sortedKelas.top[0] || null;
+    const worstClass = sortedKelas.attention[0] || null;
+
+    return { bestAgenda, worstAgenda, bestDay, worstDay, bestClass, worstClass };
+  }, [agendaBreakdown, polaHari, sortedKelas]);
+
+  const cdiPersen = ringkasan?.avg_persen_siswa ?? 0;
+  const isCdiOnTarget = cdiPersen >= 85;
+  const isCdiWarning = cdiPersen >= 75 && cdiPersen < 85;
+
+  return (
+    <div className="space-y-4 p-3 sm:p-4">
+      {/* ── COMPACT FILTER BAR & AGENDA CHIPS (ZERO NOISE, 1-GLANCE) ── */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 shadow-2xs space-y-2.5">
+        {/* Row 1: Scope Periode + Rentang Tanggal + Agenda Switcher */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-slate-700 dark:text-slate-200 mr-1">
+              <Calendar className="w-3.5 h-3.5 text-amber-600" />
+              Periode:
+            </span>
             {([
-              { id: '1_tahun', label: 'Scope 1 Tahun' },
-              { id: '1_semester', label: 'Scope 1 Semester' },
-              { id: '1_bulan', label: 'Scope 1 Bulan' },
+              { id: '1_tahun', label: '1 Tahun' },
+              { id: '1_semester', label: '1 Semester' },
+              { id: '1_bulan', label: '1 Bulan' },
             ] as Array<{ id: ScopePeriode; label: string }>).map((p) => {
               const isActive = scopePeriode === p.id;
               return (
-                <Button
+                <button
                   key={p.id}
-                  size="sm"
-                  variant={isActive ? 'default' : 'outline'}
+                  type="button"
                   onClick={() => setScopePeriode(p.id)}
-                  className={`h-8 px-3.5 text-xs font-bold rounded-xl transition-all ${
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-sm'
-                      : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300'
+                      ? 'bg-amber-600 text-white shadow-2xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
                   }`}
                 >
                   {p.label}
-                </Button>
+                </button>
+              );
+            })}
+            {ringkasan?.tanggal_mulai && ringkasan?.tanggal_selesai && (
+              <span className="text-[11px] font-semibold text-slate-400 hidden sm:inline ml-1">
+                ({formatTanggal(ringkasan.tanggal_mulai)} – {formatTanggal(ringkasan.tanggal_selesai)})
+              </span>
+            )}
+          </div>
+
+          {/* Sub-pilihan Bulan saat Scope 1 Bulan aktif */}
+          {scopePeriode === '1_bulan' && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <select
+                value={selectedBulanYm}
+                onChange={(e) => setSelectedBulanYm(e.target.value)}
+                className="h-8 px-2.5 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/40 text-xs font-bold text-amber-900 dark:text-amber-200"
+              >
+                <option value="latest_30d">30 Hari Aktif Terakhir</option>
+                {availableMonths.map((ym) => (
+                  <option key={ym} value={ym}>
+                    {formatBulanYm(ym)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Filter Pilar Siklus Cepat (Compact Pills dengan Persentase Langsung) */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setModeAgenda('SEMUA_SIKLUS')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                modeAgenda === 'SEMUA_SIKLUS'
+                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-2xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+              }`}
+            >
+              Semua Siklus
+            </button>
+            <button
+              type="button"
+              onClick={() => setModeAgenda('APEL_PAGI')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                modeAgenda === 'APEL_PAGI'
+                  ? 'bg-indigo-600 text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+              }`}
+            >
+              Apel Pagi
+            </button>
+            {agendaBreakdown.map((ag) => {
+              const active = modeAgenda === ag.kode;
+              const shortTitle = ag.kode === 'UPACARA' ? 'Upacara' : ag.kode === 'KETARUNAAN' ? 'Ketarunaan' : ag.kode === 'DUHA' ? 'Dhuha' : 'Apel Sore';
+              const pctColor = ag.persen_hadir >= 85 ? 'text-emerald-600' : ag.persen_hadir >= 75 ? 'text-amber-600' : 'text-rose-600';
+              return (
+                <button
+                  key={ag.kode}
+                  type="button"
+                  onClick={() => setModeAgenda(active ? 'SEMUA_SIKLUS' : (ag.kode as ModeAgenda))}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                    active
+                      ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400'
+                  }`}
+                >
+                  <span>{shortTitle}</span>
+                  <span className={`font-black ${active ? 'text-amber-100' : pctColor}`}>
+                    {ag.persen_hadir}%
+                  </span>
+                </button>
               );
             })}
           </div>
         </div>
-
-        {/* Sub-pilihan Bulan saat Scope 1 Bulan aktif */}
-        {scopePeriode === '1_bulan' && (
-          <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2">
-            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-              Pilih Bulan Pelaksanaan:
-            </span>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <button
-                type="button"
-                onClick={() => setSelectedBulanYm('latest_30d')}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
-                  selectedBulanYm === 'latest_30d'
-                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
-                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300'
-                }`}
-              >
-                30 Hari Aktif Terakhir
-              </button>
-              {availableMonths.map((ym) => (
-                <button
-                  key={ym}
-                  type="button"
-                  onClick={() => setSelectedBulanYm(ym)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
-                    selectedBulanYm === ym
-                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
-                      : 'bg-slate-50 text-slate-600 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300'
-                  }`}
-                >
-                  {formatBulanYm(ym)}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Pilar Siklus Mingguan Ketarunaan Terpadu (Upacara, Ketarunaan, Dhuha, Apel Sore) */}
-        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-                <Shield className="w-4 h-4 text-amber-600" />
-                Pilar Siklus Disiplin Taruna Kelas X (Apel Pagi + Makan Lapangan &amp; Apel Sore)
-              </span>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Klik salah satu pilar untuk memfilter seluruh analitik dan peringkat di bawah ke agenda tersebut, atau pilih <strong>Semua Siklus</strong> untuk evaluasi menyeluruh.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setModeAgenda('SEMUA_SIKLUS')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  modeAgenda === 'SEMUA_SIKLUS'
-                    ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-sm'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                Semua Siklus (4 Agenda Taruna)
-              </button>
-              <button
-                type="button"
-                onClick={() => setModeAgenda('APEL_PAGI')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  modeAgenda === 'APEL_PAGI'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
-                }`}
-              >
-                Seluruh Apel Pagi
-              </button>
-            </div>
-          </div>
-
-          {/* 4 Interactive Agenda Pillar Cards */}
-          {agendaBreakdown.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
-              {agendaBreakdown.map((ag) => {
-                const isCardActive =
-                  modeAgenda === ag.kode ||
-                  (modeAgenda === 'APEL_PAGI' && (ag.kode === 'UPACARA' || ag.kode === 'KETARUNAAN' || ag.kode === 'DUHA'));
-
-                return (
-                  <div
-                    key={ag.kode}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => {
-                      if (modeAgenda === ag.kode) {
-                        setModeAgenda('SEMUA_SIKLUS');
-                      } else {
-                        setModeAgenda(ag.kode as ModeAgenda);
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        setModeAgenda(modeAgenda === ag.kode ? 'SEMUA_SIKLUS' : (ag.kode as ModeAgenda));
-                      }
-                    }}
-                    className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer relative flex flex-col justify-between gap-2 select-none hover:shadow-md ${
-                      modeAgenda === ag.kode
-                        ? 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-500 dark:border-amber-500 ring-2 ring-amber-400/40 shadow-sm'
-                        : 'bg-slate-50/70 hover:bg-white dark:bg-slate-800/40 dark:hover:bg-slate-800 border-slate-200/80 dark:border-slate-800'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-xs font-black text-slate-800 dark:text-slate-100 block">
-                            {ag.nama}
-                          </span>
-                          {modeAgenda === ag.kode && (
-                            <Badge variant="warning" className="text-[9px] font-black px-1.5 py-0">
-                              Aktif di Radar
-                            </Badge>
-                          )}
-                        </div>
-                        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 block mt-0.5">
-                          {ag.hari_label}
-                        </span>
-                      </div>
-                      <Badge
-                        variant={ag.persen_hadir >= 85 ? 'success' : ag.persen_hadir >= 75 ? 'warning' : 'error'}
-                        className="text-[10px] font-black shrink-0"
-                      >
-                        {ag.persen_hadir}% Hadir
-                      </Badge>
-                    </div>
-
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
-                      {ag.deskripsi}
-                    </p>
-
-                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-600 dark:text-slate-300 pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60">
-                      <span>{ag.total_pertemuan ?? 0} Pertemuan ({ag.total_sesi_kelas ?? 0} Sesi Kelas)</span>
-                      <span className="text-emerald-600 dark:text-emerald-400">
-                        {(ag.hadir ?? 0).toLocaleString('id-ID')} Hadir
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Banner Indikator Radar Aktif */}
-          {modeAgenda !== 'SEMUA_SIKLUS' && (
-            <div className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-amber-500/10 border border-amber-300/60 dark:border-amber-800/60 text-xs">
-              <span className="text-amber-800 dark:text-amber-300 font-semibold flex items-center gap-1.5">
-                <Search className="w-3.5 h-3.5 text-amber-600" />
-                Radar Aktif: Menampilkan data khusus <strong>{
-                  modeAgenda === 'APEL_PAGI'
-                    ? 'Seluruh Apel Pagi (Upacara + Ketarunaan + Dhuha)'
-                    : agendaBreakdown.find((a) => a.kode === modeAgenda)?.nama || modeAgenda
-                }</strong>. Seluruh metrik, grafik, dan peringkat di bawah terfilter ke agenda ini.
-              </span>
-              <button
-                type="button"
-                onClick={() => setModeAgenda('SEMUA_SIKLUS')}
-                className="text-[11px] font-black text-amber-700 dark:text-amber-400 hover:underline shrink-0 ml-2"
-              >
-                Reset ke Semua Siklus &rarr;
-              </button>
-            </div>
-          )}
-        </div>
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-28 rounded-2xl" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-24 rounded-2xl" />
           ))}
         </div>
       ) : !stats || trendList.length === 0 ? (
-        <div className="text-center py-16 px-4 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
-          <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-3">
-            <BarChart3 className="w-7 h-7 opacity-60" />
-          </div>
-          <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 mb-1">
-            Belum Ada Sesi Pertemuan Pada Periode Ini
+        <div className="text-center py-12 px-4 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
+          <BarChart3 className="w-8 h-8 text-amber-500/60 mx-auto mb-2" />
+          <h4 className="text-sm font-black text-slate-800 dark:text-slate-100">
+            Belum Ada Sesi Pada Periode Ini
           </h4>
-          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-4">
-            Tidak ada rekaman sesi Program Ketarunaan pada cakupan {scopeLabel}. Pilih cakupan 1 Tahun untuk melihat keseluruhan riwayat.
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-3">
+            Tidak ada rekaman Program Ketarunaan pada cakupan {scopeLabel}.
           </p>
           <Button
             size="sm"
             variant="outline"
             onClick={() => setScopePeriode('1_tahun')}
-            className="text-xs font-bold border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-300"
+            className="text-xs font-bold border-amber-300 text-amber-700 hover:bg-amber-50"
           >
             Tampilkan Scope 1 Tahun
           </Button>
@@ -487,132 +392,124 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
       ) : (
         <>
           {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-          {/* [WIDGET 1] HERO ANALYTICS & BAROMETER KESIAPAN KETARUNAAN (EXECUTIVE PULSE)      */}
+          {/* [PAPAN INFORMASI 3-DETIK] EXECUTIVE GLANCE BOARD: INTI MASALAH & CAPAIAN SEKILAS */}
           {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* 1. Indeks Disiplin Taruna */}
-            <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm relative overflow-hidden">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
-                  Indeks Disiplin (CDI)
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
+            {/* Panel Kiri (7 Kolom): 3 Angka Kesehatan Utama Sekilas */}
+            <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-2xs flex flex-col justify-between gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                  <Flame className="w-3.5 h-3.5 text-amber-500" />
+                  Ringkasan Kesehatan Program
                 </span>
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center">
-                  <Flame className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-black text-slate-800 dark:text-slate-100">
-                  {ringkasan?.avg_persen_siswa ?? 0}%
-                </span>
-                {deltaBadge(trendList[trendList.length - 1]?.delta_siswa)}
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                {(ringkasan?.total_hadir_siswa ?? 0).toLocaleString()} akumulasi taruna hadir
-              </p>
-              <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full mt-3 overflow-hidden">
-                <div
-                  className="h-full bg-emerald-500 rounded-full transition-all duration-700"
-                  style={{ width: `${Math.min(ringkasan?.avg_persen_siswa ?? 0, 100)}%` }}
-                />
-              </div>
-            </div>
-
-            {/* 2. Barometer Kesiapan Sertifikasi */}
-            <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
-                  Kesiapan Sertifikasi Taruna
-                </span>
-                <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center">
-                  <Award className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-black text-slate-800 dark:text-slate-100">
-                  {barometer?.persen_kelayakan ?? 0}%
-                </span>
-                <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-700 dark:border-blue-800">
-                  Syarat &ge;80%
+                <Badge
+                  variant={isCdiOnTarget ? 'success' : isCdiWarning ? 'warning' : 'error'}
+                  className="text-[10px] font-black"
+                >
+                  {isCdiOnTarget ? 'SESUAI TARGET (≥85%)' : isCdiWarning ? 'PERLU PENINGKATAN' : 'DI BAWAH TARGET'}
                 </Badge>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                <strong className="text-emerald-600">{(barometer?.siap_sertifikasi ?? 0).toLocaleString()}</strong> siap lulus / {(barometer?.total_taruna ?? 0).toLocaleString()} taruna
-              </p>
-              <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full mt-3 overflow-hidden">
-                <div
-                  className="h-full bg-blue-500 rounded-full transition-all duration-700"
-                  style={{ width: `${Math.min(barometer?.persen_kelayakan ?? 0, 100)}%` }}
-                />
+
+              <div className="grid grid-cols-3 divide-x divide-slate-100 dark:divide-slate-800">
+                {/* 1. Hadir Taruna */}
+                <div className="pr-3">
+                  <span className="text-[11px] font-bold text-slate-400 block">Hadir Taruna</span>
+                  <div className="flex items-baseline gap-1.5 mt-0.5 flex-wrap">
+                    <span className={`text-2xl sm:text-3xl font-black ${isCdiOnTarget ? 'text-emerald-600' : isCdiWarning ? 'text-amber-600' : 'text-rose-600'}`}>
+                      {cdiPersen}%
+                    </span>
+                    {deltaBadge(trendList[trendList.length - 1]?.delta_siswa)}
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
+                    Target sekolah: ≥85%
+                  </span>
+                </div>
+
+                {/* 2. Layak Sertifikat */}
+                <div className="px-3">
+                  <span className="text-[11px] font-bold text-slate-400 block">Layak Sertifikat</span>
+                  <div className="flex items-baseline gap-1.5 mt-0.5 flex-wrap">
+                    <span className="text-2xl sm:text-3xl font-black text-blue-600 dark:text-blue-400">
+                      {barometer?.persen_kelayakan ?? 0}%
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-semibold block mt-0.5">
+                    {(barometer?.siap_sertifikasi ?? 0).toLocaleString()} / {(barometer?.total_taruna ?? 0).toLocaleString()} taruna (≥80%)
+                  </span>
+                </div>
+
+                {/* 3. Pembina & Sesi */}
+                <div className="pl-3">
+                  <span className="text-[11px] font-bold text-slate-400 block">Pembina &amp; Sesi</span>
+                  <div className="flex items-baseline gap-1.5 mt-0.5 flex-wrap">
+                    <span className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-slate-100">
+                      {ringkasan?.avg_persen_guru ?? 0}%
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-semibold block mt-0.5">
+                    {ringkasan?.total_pertemuan_taruna ?? ringkasan?.total_sesi ?? trendList.length} Sesi &bull; {ringkasan?.total_sesi ?? 0} Hari
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* 3. Kepatuhan Pembina / Pelatih */}
-            <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
-                  Kepatuhan Pembina Lapangan
-                </span>
-                <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center">
-                  <Shield className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-black text-slate-800 dark:text-slate-100">
-                  {ringkasan?.avg_persen_guru ?? 0}%
-                </span>
-                {deltaBadge(trendList[trendList.length - 1]?.delta_guru)}
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                Rata-rata kehadiran pembina & wali kelas
-              </p>
-              <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full mt-3 overflow-hidden">
-                <div
-                  className="h-full bg-amber-500 rounded-full transition-all duration-700"
-                  style={{ width: `${Math.min(ringkasan?.avg_persen_guru ?? 0, 100)}%` }}
-                />
-              </div>
-            </div>
+            {/* Panel Kanan (5 Kolom): Sorotan Terkuat vs Terlemah & Prioritas Tindakan */}
+            <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-2xs flex flex-col justify-between gap-2.5">
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                Sorotan Cepat &amp; Fokus Pembinaan
+              </span>
 
-            {/* 4. Total Pertemuan Terlaksana */}
-            <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
-                  Pertemuan Terlaksana
-                </span>
-                <div className="w-8 h-8 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 flex items-center justify-center">
-                  <Clock className="w-4 h-4" />
+              <div className="space-y-2 text-xs">
+                {/* Baris 1: Agenda Terkuat vs Terlemah */}
+                {instantHighlights.bestAgenda && instantHighlights.worstAgenda && (
+                  <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                    <span className="text-slate-500 font-semibold">Agenda:</span>
+                    <div className="flex items-center gap-2 font-bold">
+                      <span className="text-emerald-600">
+                        ▲ {instantHighlights.bestAgenda.kode === 'APEL_SORE' ? 'Apel Sore' : instantHighlights.bestAgenda.kode} ({instantHighlights.bestAgenda.persen_hadir}%)
+                      </span>
+                      <span className="text-slate-300">|</span>
+                      <span className="text-amber-600">
+                        ▼ {instantHighlights.worstAgenda.kode === 'APEL_SORE' ? 'Apel Sore' : instantHighlights.worstAgenda.kode} ({instantHighlights.worstAgenda.persen_hadir}%)
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Baris 2: Kelas Terbaik vs Perlu Perhatian */}
+                {instantHighlights.bestClass && instantHighlights.worstClass && (
+                  <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                    <span className="text-slate-500 font-semibold">Rombel:</span>
+                    <div className="flex items-center gap-2 font-bold">
+                      <span className="text-emerald-600">
+                        ★ {instantHighlights.bestClass.kelas_nama} ({instantHighlights.bestClass.persen}%)
+                      </span>
+                      <span className="text-slate-300">|</span>
+                      <span className="text-rose-600">
+                        ! {instantHighlights.worstClass.kelas_nama} ({instantHighlights.worstClass.persen}%)
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Baris 3: Hari Rawan & Radar Alpa */}
+                <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-rose-50/70 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40">
+                  <span className="text-rose-700 dark:text-rose-300 font-bold flex items-center gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Perlu Tindakan:
+                  </span>
+                  <div className="flex items-center gap-2 font-extrabold">
+                    {instantHighlights.worstDay && (
+                      <span className="text-slate-700 dark:text-slate-200">
+                        Hari {instantHighlights.worstDay.hari} ({instantHighlights.worstDay.avg_persen}%)
+                      </span>
+                    )}
+                    <span className="px-2 py-0.5 rounded-md bg-rose-600 text-white text-[10px]">
+                      {atRiskStudents.length} Taruna Alpa Kronis
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-black text-slate-800 dark:text-slate-100">
-                  {ringkasan?.total_pertemuan_taruna ?? ringkasan?.total_sesi ?? trendList.length}
-                </span>
-                <span className="text-xs text-slate-500 font-bold">
-                  {modeAgenda === 'SEMUA_SIKLUS'
-                    ? 'Sesi Pertemuan Taruna'
-                    : modeAgenda === 'APEL_SORE'
-                    ? 'Sesi Apel Sore'
-                    : modeAgenda === 'KETARUNAAN'
-                    ? 'Sesi Ketarunaan'
-                    : modeAgenda === 'UPACARA'
-                    ? 'Sesi Upacara'
-                    : modeAgenda === 'DUHA'
-                    ? 'Sesi Dhuha'
-                    : 'Sesi Pertemuan'}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                <Badge variant={ringkasan?.arah_perkembangan === 'NAIK' ? 'success' : ringkasan?.arah_perkembangan === 'TURUN' ? 'error' : 'neutral'} className="text-[10px]">
-                  {ringkasan?.arah_perkembangan === 'NAIK' ? 'Tren Positif' : ringkasan?.arah_perkembangan === 'TURUN' ? 'Perlu Pendampingan' : 'Konsisten'}
-                </Badge>
-                <span className="text-[11px] text-slate-400">
-                  {modeAgenda === 'SEMUA_SIKLUS'
-                    ? `${ringkasan?.total_sesi ?? 30} Hari Kalender (Pagi & Sore) • ${(ringkasan?.total_sesi_kelas ?? 1200).toLocaleString('id-ID')} Sesi Kelas`
-                    : `${ringkasan?.total_sesi ?? trendList.length} Hari Kalender • ${(ringkasan?.total_sesi_kelas ?? ((ringkasan?.total_pertemuan_taruna || 1) * 20)).toLocaleString('id-ID')} Sesi Kelas`}
-                </span>
-              </div>
-              <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full mt-3 overflow-hidden">
-                <div className="h-full bg-purple-500 rounded-full w-full" />
               </div>
             </div>
           </div>
@@ -624,15 +521,10 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
             {/* Widget 2: Interactive Attendance Trendline (8 Kolom) */}
             <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight flex items-center gap-1.5">
-                    <TrendingUp className="w-4 h-4 text-amber-500" />
-                    Kurva Tren Kehadiran Taruna (#1 s/d #{trendList.length})
-                  </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Grafik time-series fluktuasi kedisiplinan apel taruna dengan benchmark target sekolah (85%)
-                  </p>
-                </div>
+                <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight flex items-center gap-1.5">
+                  <TrendingUp className="w-4 h-4 text-amber-500" />
+                  Tren Kehadiran Taruna (#1 – #{trendList.length})
+                </h4>
                 <div className="flex items-center gap-2 self-start sm:self-auto">
                   <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
                     <span className="w-3 h-0.5 bg-amber-500 rounded-full inline-block" /> Taruna (%)
@@ -707,14 +599,14 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
 
             {/* Widget 3: Komposisi Status Ketidakhadiran (4 Kolom Donut) */}
             <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col justify-between space-y-4">
-              <div>
+              <div className="flex items-center justify-between">
                 <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight flex items-center gap-1.5">
                   <PieIcon className="w-4 h-4 text-emerald-500" />
-                  Komposisi Kehadiran Taruna
+                  Komposisi Status
                 </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Distribusi riil {(statusBreakdown?.total ?? 0).toLocaleString()} rekaman presensi
-                </p>
+                <span className="text-[11px] font-bold text-slate-400">
+                  {(statusBreakdown?.total ?? 0).toLocaleString()} Rekaman
+                </span>
               </div>
 
               {donutData.length === 0 ? (
@@ -775,15 +667,10 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
             {/* Widget 4: Benchmark Program Keahlian / Jurusan (6 Kolom) */}
             <div className="lg:col-span-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight flex items-center gap-1.5">
-                    <Layers className="w-4 h-4 text-blue-500" />
-                    Komparasi Disiplin Antar-Jurusan
-                  </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Peringkat ketangguhan & kepatuhan apel taruna lintas program keahlian
-                  </p>
-                </div>
+                <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 text-blue-500" />
+                  Komparasi Antar-Jurusan
+                </h4>
                 <Badge variant="outline" className="text-[10px] border-slate-200 dark:border-slate-800">
                   {byJurusan.length} Jurusan
                 </Badge>
@@ -829,15 +716,10 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
             {/* Widget 5: Heatmap Pola Hari Ketarunaan (6 Kolom) */}
             <div className="lg:col-span-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight flex items-center gap-1.5">
-                    <Clock className="w-4 h-4 text-purple-500" />
-                    Pola Kedisiplinan Hari Pelaksanaan
-                  </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Mendeteksi hari apel dengan partisipasi tertinggi vs hari rawan alpa
-                  </p>
-                </div>
+                <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-purple-500" />
+                  Pola Kehadiran Per Hari
+                </h4>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
@@ -881,14 +763,6 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
                   })
                 )}
               </div>
-
-              {/* Insight Rekomendasi POS */}
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 text-xs flex items-start gap-2.5">
-                <Sparkles className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                <p className="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
-                  <strong>Insight Kesiswaan:</strong> Optimalkan patroli pembina dan gerbang kedisiplinan pada hari dengan tingkat kehadiran &lt;70% untuk menekan tingkat alpa apel pagi.
-                </p>
-              </div>
             </div>
           </div>
 
@@ -898,31 +772,24 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
           <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-5">
             {/* Header & Dimensi Peringkat */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-200/60 dark:border-amber-800/50">
-                  <Trophy className="w-5 h-5" />
+              <div className="flex items-start gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                  <Trophy className="w-4 h-4" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">
-                      Peringkat &amp; Hall of Fame Taruna Terbaik
+                      Peringkat Taruna Terbaik
                     </h4>
                     <Badge variant="warning" className="text-[10px] font-bold">
                       {scopeLabel}
                     </Badge>
-                    {rankingMeta?.is_backfill_dominant ? (
+                    {rankingMeta?.is_backfill_dominant && (
                       <Badge variant="info" className="text-[10px] font-bold">
-                        Mode Nominasi Setara (Data Backfill + Penalti Terlambat Sekolah)
-                      </Badge>
-                    ) : (
-                      <Badge variant="success" className="text-[10px] font-bold">
-                        Realtime Presisi Aktif
+                        Mode Setara ({rankingMeta.total_kandidat_sempurna} Kandidat #1)
                       </Badge>
                     )}
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Pemeringkatan komposit berdasarkan Kehadiran Ketarunaan (85%), Apel Pendukung (15%), dikurangi Penalti Keterlambatan (Ketarunaan &amp; KBM/Gerbang)
-                  </p>
                 </div>
               </div>
 
@@ -952,31 +819,22 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
               </div>
             </div>
 
-            {/* Banner Audit Keadilan & Sumber Data (Backfill vs Realtime) */}
-            {rankingMeta && rankingMeta.is_backfill_dominant && (
-              <div className="p-3.5 rounded-2xl border border-amber-200/80 dark:border-amber-800/60 bg-amber-50/50 dark:bg-amber-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-start gap-2.5">
-                  <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                  <div className="text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed">
-                    <strong className="text-amber-900 dark:text-amber-200">
-                      Proteksi Keadilan Ranking (Data Bersumber dari Backfill {rankingMeta.persen_data_backfill}%):
-                    </strong>{' '}
-                    Karena data sesi ketarunaan saat ini diimpor dari <strong>Google Sheet Backfill</strong> (belum memuat timestamp kecepatan tap RFID ketarunaan), sistem mengintegrasikan <strong>data keterlambatan KBM/Gerbang Sekolah</strong> sebagai faktor pengurang skor, serta menetapkan <strong>Peringkat Bersama (<code>#1 SETARA</code>)</strong> bagi <strong>{rankingMeta.total_kandidat_sempurna} Taruna</strong> yang meraih skor tertinggi identik (<strong>{rankingMeta.top_tied_score} Poin</strong> — 100% Hadir, 0 Alpa, 0 Terlambat). Sistem <strong>tidak menetapkan Juara 1 Tunggal berdasarkan urutan abjad nama</strong>.
-                  </div>
-                </div>
-
-                {rankingTab === 'global' && rankingMeta.total_kandidat_sempurna > 20 && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setShowAllTiedGlobal((prev) => !prev)}
-                    className="h-8 px-3 text-[11px] font-bold shrink-0 border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-200"
-                  >
-                    {showAllTiedGlobal
-                      ? 'Tampilkan 20 Perwakilan Lintas Kelas'
-                      : `Lihat Semua ${rankingMeta.total_kandidat_sempurna} Kandidat #1 Setara`}
-                  </Button>
-                )}
+            {/* Banner Ringkas Proteksi Keadilan Ranking (Compact 1-Line) */}
+            {rankingMeta && rankingMeta.is_backfill_dominant && rankingTab === 'global' && rankingMeta.total_kandidat_sempurna > 20 && (
+              <div className="px-3 py-2 rounded-xl border border-amber-200/80 dark:border-amber-800/60 bg-amber-50/50 dark:bg-amber-950/20 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span className="text-amber-900 dark:text-amber-200 font-semibold">
+                  <strong className="font-black">{rankingMeta.total_kandidat_sempurna} Taruna</strong> meraih skor sempurna ({rankingMeta.top_tied_score} Poin). Ditampilkan perwakilan merata lintas kelas.
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowAllTiedGlobal((prev) => !prev)}
+                  className="h-7 px-2.5 text-[11px] font-bold shrink-0 border-amber-300 text-amber-800 hover:bg-amber-100"
+                >
+                  {showAllTiedGlobal
+                    ? 'Tampilkan 20 Perwakilan'
+                    : `Lihat Semua ${rankingMeta.total_kandidat_sempurna} Kandidat`}
+                </Button>
               </div>
             )}
 
@@ -1059,56 +917,8 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
               </div>
             </div>
 
-            {/* Podium Top 3 (Hanya tampil jika juara 1 tidak Tie massal) ATAU 3 Kartu Ringkasan Keadilan Nominasi */}
-            {rankingTab === 'global' && !rankingSearch.trim() && activeRankingRows.length >= 3 && (
-              rankingMeta?.is_tie_at_top ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-1">
-                  <div className="p-4 rounded-2xl border border-amber-200 dark:border-amber-800/60 bg-gradient-to-br from-amber-50/70 to-white dark:from-amber-950/30 dark:to-slate-900">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                        Kandidat Peringkat #1 Setara
-                      </span>
-                      <Trophy className="w-4 h-4 text-amber-500" />
-                    </div>
-                    <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-                      {rankingMeta.total_kandidat_sempurna} Taruna
-                    </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                      Meraih skor sempurna <strong>{rankingMeta.top_tied_score} Poin</strong> (100% Hadir Ketarunaan, 100% Apel Pendukung, 0 Alpa, 0 Terlambat)
-                    </p>
-                  </div>
-
-                  <div className="p-4 rounded-2xl border border-blue-200 dark:border-blue-800/60 bg-gradient-to-br from-blue-50/70 to-white dark:from-blue-950/30 dark:to-slate-900">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-300">
-                        Distribusi Proporsional Rombel
-                      </span>
-                      <Users className="w-4 h-4 text-blue-500" />
-                    </div>
-                    <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-                      {tarunaRanking?.best_per_kelas?.length || 20} Peleton Kelas
-                    </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                      Tabel di bawah menampilkan perwakilan merata lintas kelas (bukan urutan abjad A-Z dari satu kelas saja)
-                    </p>
-                  </div>
-
-                  <div className="p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800/60 bg-gradient-to-br from-emerald-50/70 to-white dark:from-emerald-950/30 dark:to-slate-900">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                        Koreksi Keterlambatan Aktif
-                      </span>
-                      <Clock className="w-4 h-4 text-emerald-500" />
-                    </div>
-                    <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-                      Penalti Waktu Aktif
-                    </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                      Taruna yang tercatat terlambat di sekolah/KBM otomatis turun peringkat. Pembeda detik tap aktif saat menggunakan RFID Realtime
-                    </p>
-                  </div>
-                </div>
-              ) : (
+            {/* Ringkasan Angka (Hanya tampil saat bukan mode tie massal) */}
+            {rankingTab === 'global' && !rankingSearch.trim() && activeRankingRows.length >= 3 && !rankingMeta?.is_tie_at_top && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-1">
                   {activeRankingRows.slice(0, 3).map((st, idx) => {
                     const isFirst = idx === 0;
@@ -1170,7 +980,6 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
                     );
                   })}
                 </div>
-              )
             )}
 
             {/* Tabel Peringkat Taruna */}

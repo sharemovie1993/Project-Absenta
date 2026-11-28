@@ -20,6 +20,8 @@ import {
   Lock,
   Unlock,
   ShieldAlert,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCapabilities } from '@/hooks/useCapabilities';
@@ -157,12 +159,14 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
   const [previewSearchStudent, setPreviewSearchStudent] = useState<string>('');
   const [hasInitializedKelas, setHasInitializedKelas] = useState<boolean>(false);
   const [focusedCellKey, setFocusedCellKey] = useState<string | null>(null);
+  const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
 
   // Reset flag saat modal ditutup agar saat dibuka ulang tetap ter-init rapi
   useEffect(() => {
     if (!isOpen) {
       setHasInitializedKelas(false);
       setFocusedCellKey(null);
+      setIsFocusMode(false);
     }
   }, [isOpen]);
 
@@ -551,28 +555,53 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
       isOpen={isOpen}
       onClose={onClose}
       size="full"
-      contentClassName="p-0 overflow-y-auto"
+      className={isFocusMode ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !border-0' : ''}
+      contentClassName={
+        isFocusMode
+          ? 'p-0 overflow-y-auto !max-h-[calc(100vh-58px)] flex flex-col justify-between'
+          : 'p-0 overflow-y-auto'
+      }
       title={
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
-            <Sparkles className="w-4 h-4" />
+        <div className="flex items-center justify-between gap-3 w-full pr-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 truncate">
+                Wizard Backfill Presensi Cepat (Manual UI Multi-Tanggal)
+              </h3>
+              {!isFocusMode && (
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                  {currentStep === 1 && 'Langkah 1 dari 3: Konfigurasi Tanggal, Agenda & Rombel Kelas'}
+                  {currentStep === 2 && 'Langkah 2 dari 3: Matriks Ceklis Siswa Non-Hadir'}
+                  {currentStep === 3 && 'Langkah 3 dari 3: Review Matriks Kehadiran Sebelum Eksekusi'}
+                </p>
+              )}
+            </div>
           </div>
-          <div>
-            <h3 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100">
-              Wizard Backfill Presensi Cepat (Manual UI Multi-Tanggal)
-            </h3>
-            <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-              {currentStep === 1 && 'Langkah 1 dari 3: Konfigurasi Tanggal, Agenda & Rombel Kelas'}
-              {currentStep === 2 && 'Langkah 2 dari 3: Input Siswa Non-Hadir (Daftar Pengecualian)'}
-              {currentStep === 3 && 'Langkah 3 dari 3: Review Matriks Kehadiran Sebelum Eksekusi'}
-            </p>
-          </div>
+
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setIsFocusMode((prev) => !prev)}
+            className={`h-8 px-2.5 text-xs font-bold rounded-lg gap-1.5 shrink-0 cursor-pointer ${
+              isFocusMode
+                ? 'bg-amber-600 text-white border-amber-600 hover:bg-amber-700 hover:text-white'
+                : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+            }`}
+            title={isFocusMode ? 'Keluar dari Mode Fokus (Layar Penuh)' : 'Aktifkan Mode Fokus (Layar Penuh)'}
+          >
+            {isFocusMode ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+            <span className="hidden sm:inline">{isFocusMode ? 'Keluar Mode Fokus' : 'Mode Fokus (Fullscreen)'}</span>
+          </Button>
         </div>
       }
     >
-      <div className={currentStep === 2 ? 'p-3 sm:p-4 space-y-2.5' : 'p-4 sm:p-5 space-y-4'}>
-        {/* ── COMPACT OFFICIAL EVENT GUARD BAR + STEPPER HEADER (HIDDEN IN STEP 2 FOR MAX WORKSPACE FOCUS) ── */}
-        {currentStep !== 2 && (
+      <div className={currentStep === 2 || isFocusMode ? 'p-3 sm:p-4 space-y-2.5 flex-1' : 'p-4 sm:p-5 space-y-4'}>
+        {/* ── COMPACT OFFICIAL EVENT GUARD BAR + STEPPER HEADER (HIDDEN IN STEP 2 OR FOCUS MODE) ── */}
+        {currentStep !== 2 && !isFocusMode && (
           <div className="space-y-2.5">
             {isGuardEnabled ? (
               <div className="px-3.5 py-2 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/70 flex flex-wrap items-center justify-between gap-2">
@@ -1701,7 +1730,7 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
       </div>
 
       {/* ── FOOTER ACTIONS BERDASARKAN STEP ── */}
-      <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+      <div className="p-3 sm:p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/90 dark:bg-slate-900/90 sticky bottom-0 z-30 backdrop-blur-xs">
         {currentStep === 1 && (
           <>
             <Button type="button" variant="outline" onClick={onClose}>
